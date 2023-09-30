@@ -1,0 +1,11 @@
+[package]
+name = "greed"
+description = "A rust tool to automate trades 📈"
+
+edition = "2021"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/ncipollo/sheepit"
+version = "0.1.0"
+
+[dependencies]
