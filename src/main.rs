@@ -1,9 +1,9 @@
-use apca::{ApiInfo, Client, RequestError};
 use apca::api::v2::account;
 use apca::data::v2::last_quotes::LastQuotesReqInit;
+use apca::data::v2::quotes::QuotesReqInit;
 use apca::data::v2::{last_quotes, quotes};
-use apca::data::v2::quotes::{QuotesReq, QuotesReqInit};
-use chrono::{DateTime, Duration, Utc};
+use apca::{ApiInfo, Client, RequestError};
+use chrono::{Duration, Utc};
 
 #[tokio::main]
 async fn main() {
@@ -16,8 +16,10 @@ async fn main() {
     println!("VTI Historic Quotes: ---");
     let end = Utc::now() - Duration::minutes(15);
     let start = end - Duration::hours(2);
-    let quote_req = QuotesReqInit { ..Default::default() }
-        .init("VTI", start, end);
+    let quote_req = QuotesReqInit {
+        ..Default::default()
+    }
+    .init("VTI", start, end);
     let quote_result = client.issue::<quotes::Get>(&quote_req).await;
     if quote_result.is_err() {
         let err = quote_result.unwrap_err();
@@ -33,7 +35,8 @@ async fn main() {
     println!("Latest VTI: ---");
     let latest_req = LastQuotesReqInit {
         ..Default::default()
-    }.init(vec!["VTI", "SPY"]);
+    }
+    .init(vec!["VTI", "SPY"]);
 
     let latest = client.issue::<last_quotes::Get>(&latest_req).await.unwrap();
     let quote = latest[0].clone().1;
@@ -41,5 +44,4 @@ async fn main() {
     let bid = quote.bid_price.to_f64().unwrap();
     println!("Spy and VTI: {:?}", latest);
     println!("Ask and bid: {ask} , {bid}")
-
 }
