@@ -8,6 +8,8 @@ use apca::data::v2::{last_quotes, quotes};
 use apca::{ApiInfo, Client, RequestError};
 use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
+use log::{error, LevelFilter};
+use simplelog::{ColorChoice, CombinedLogger, Config, TerminalMode, TermLogger};
 use greed::{fetch_quote, greed_loop};
 
 #[tokio::main]
@@ -15,7 +17,10 @@ async fn main() {
     let cli = Cli::parse();
     let command = cli.command;
     match command {
-        Command::Run => greed_loop().await,
+        Command::Run => {
+            setup_logging();
+            greed_loop().await;
+        },
         Command::Quote(debug_options) => fetch_quote().await,
         Command::TestAlpaca => test_alpaca().await
     }
@@ -59,4 +64,15 @@ async fn test_alpaca() {
     let bid = quote.bid_price.to_f64().unwrap();
     println!("Spy and VTI: {:?}", latest);
     println!("Ask and bid: {ask} , {bid}")
+}
+
+fn setup_logging() {
+    CombinedLogger::init(
+        vec![
+            TermLogger::new(LevelFilter::Info,
+                            Config::default(),
+                            TerminalMode::Mixed,
+                            ColorChoice::Auto)
+        ]
+    ).expect("Failed to initialize logger")
 }
