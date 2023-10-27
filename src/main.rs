@@ -1,12 +1,27 @@
+mod cli;
+
+use crate::cli::{Cli, Command};
 use apca::api::v2::account;
 use apca::data::v2::last_quotes::LastQuotesReqInit;
 use apca::data::v2::quotes::QuotesReqInit;
 use apca::data::v2::{last_quotes, quotes};
 use apca::{ApiInfo, Client, RequestError};
 use chrono::{Duration, Utc};
+use clap::{Parser, Subcommand};
+use greed::{fetch_quote, greed_loop};
 
 #[tokio::main]
 async fn main() {
+    let cli = Cli::parse();
+    let command = cli.command;
+    match command {
+        Command::Run => greed_loop().await,
+        Command::Quote(debug_options) => fetch_quote().await,
+        Command::TestAlpaca => test_alpaca().await
+    }
+}
+
+async fn test_alpaca() {
     let api_info = ApiInfo::from_env().expect("failed to load alpaca info from env");
     let client = Client::new(api_info);
     let account = client.issue::<account::Get>(&()).await.unwrap();
