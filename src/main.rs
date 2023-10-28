@@ -1,20 +1,17 @@
 mod cli;
 
 use crate::cli::{Cli, Command};
-use apca::api::v2::order::{Side, Type};
 use apca::api::v2::orders::{OrdersReq, Status};
-use apca::api::v2::{account, order, orders, positions};
+use apca::api::v2::{account, orders, positions};
 use apca::data::v2::last_quotes::LastQuotesReqInit;
 use apca::data::v2::quotes::QuotesReqInit;
 use apca::data::v2::{last_quotes, quotes};
 use apca::{ApiInfo, Client, RequestError};
 use chrono::{Duration, Utc};
-use clap::{Parser, Subcommand};
+use clap::{Parser};
 use greed::{fetch_quote, greed_loop};
 use log::LevelFilter;
-use num_decimal::Num;
 use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode};
-use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() {
@@ -25,7 +22,7 @@ async fn main() {
             setup_logging();
             greed_loop().await;
         }
-        Command::Quote(debug_options) => fetch_quote().await,
+        Command::Quote(_debug_options) => fetch_quote().await,
         Command::TestAlpaca => test_alpaca().await,
     }
 }

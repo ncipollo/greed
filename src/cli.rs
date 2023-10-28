@@ -1,5 +1,4 @@
 use clap::{Args, Parser, Subcommand};
-use clap::builder::Str;
 
 #[derive(Debug, Parser)]
 #[command(name = "greed", version)]

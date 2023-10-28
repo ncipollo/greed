@@ -1,8 +1,11 @@
 use std::time::Duration;
-use log::{error, info};
+use log::info;
 use tokio::time::sleep;
 
 mod asset;
+mod config;
+mod error;
+mod fixture;
 
 pub async fn fetch_quote() {
     println!("fetch quote!!")

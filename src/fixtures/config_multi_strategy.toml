@@ -1,0 +1,24 @@
+[[strategies]]
+name = "ETFs"
+# Strategy level rules
+[strategies.buy_rules]
+portfolio_target = { percent = 50 }
+
+# Assets for strategy
+[[strategies.assets]]
+symbol = "VTI"
+[strategies.assets.buy_rules]
+portfolio_target = { percent = 25 }
+
+[[strategies.assets]]
+symbol = "VEA"
+[strategies.assets.buy_rules]
+portfolio_target = { percent = 15 }
+
+# ------
+
+[[strategies]]
+name = "Chaos"
+# Assets for strategy
+[[strategies.assets]]
+symbol = "VIXY"
