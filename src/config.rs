@@ -52,7 +52,7 @@ mod test {
         let path = fixture::path("config_minimal.toml");
         let config = Config::from_path(path)
             .await
-            .expect("minimal config not found");
+            .expect("config not found");
 
         let expected = Config {
             platform: PlatformType::Alpaca,
@@ -66,7 +66,7 @@ mod test {
         let path = fixture::path("config_minimal_asset.toml");
         let config = Config::from_path(path)
             .await
-            .expect("minimal config not found");
+            .expect("config not found");
 
         let expected = Config {
             platform: PlatformType::Alpaca,
@@ -87,7 +87,7 @@ mod test {
         let path = fixture::path("config_multi_strategy.toml");
         let config = Config::from_path(path)
             .await
-            .expect("minimal config not found");
+            .expect("config not found");
 
         let expected = Config {
             platform: PlatformType::Alpaca,
