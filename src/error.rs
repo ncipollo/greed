@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Debug, PartialEq)]
 pub struct GreedError {
@@ -23,8 +23,22 @@ impl GreedError {
     }
 }
 
-impl<T: Display> From<T> for GreedError {
-    fn from(value: T) -> Self {
+impl Display for GreedError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for GreedError { }
+
+impl From<std::io::Error> for GreedError {
+    fn from(value: std::io::Error) -> Self {
+        GreedError::from_display(value)
+    }
+}
+
+impl From<toml::de::Error> for GreedError {
+    fn from(value: toml::de::Error) -> Self {
         GreedError::from_display(value)
     }
 }

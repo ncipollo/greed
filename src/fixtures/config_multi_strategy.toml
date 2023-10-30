@@ -1,3 +1,5 @@
+platform = "alpaca"
+
 [[strategies]]
 name = "ETFs"
 # Strategy level rules
