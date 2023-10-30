@@ -6,6 +6,7 @@ mod asset;
 mod config;
 mod error;
 mod fixture;
+mod platform;
 
 pub async fn fetch_quote() {
     println!("fetch quote!!")
