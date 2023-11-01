@@ -1,3 +1,4 @@
+use std::env::VarError;
 use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Debug, PartialEq)]
@@ -39,6 +40,18 @@ impl From<std::io::Error> for GreedError {
 
 impl From<toml::de::Error> for GreedError {
     fn from(value: toml::de::Error) -> Self {
+        GreedError::from_display(value)
+    }
+}
+
+impl From<VarError> for GreedError {
+    fn from(value: VarError) -> Self {
+        GreedError::from_display(value)
+    }
+}
+
+impl From<apca::Error> for GreedError {
+    fn from(value: apca::Error) -> Self {
         GreedError::from_display(value)
     }
 }

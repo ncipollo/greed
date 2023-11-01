@@ -18,9 +18,9 @@ async fn main() {
     let cli = Cli::parse();
     let command = cli.command;
     match command {
-        Command::Run => {
+        Command::Run(args) => {
             setup_logging();
-            greed_loop().await;
+            greed_loop(args.into()).await;
         }
         Command::Quote(_debug_options) => fetch_quote().await,
         Command::TestAlpaca => test_alpaca().await,

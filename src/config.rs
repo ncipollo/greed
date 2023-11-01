@@ -14,9 +14,9 @@ pub mod strategy;
 #[derive(Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct Config {
     #[serde(default)]
-    platform: PlatformType,
+    pub platform: PlatformType,
     #[serde(default)]
-    strategies: Vec<StrategyConfig>,
+    pub strategies: Vec<StrategyConfig>,
 }
 
 impl Config {
