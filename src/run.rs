@@ -1,10 +1,10 @@
 use crate::config::Config;
 use crate::error::GreedError;
-use crate::platform;
+use crate::{platform, strategy};
 use crate::platform::FinancialPlatform;
+use log::info;
 use std::path::PathBuf;
 use std::time::Duration;
-use log::info;
 use tokio::time::sleep;
 
 #[derive(Debug, Default, PartialEq)]
@@ -25,14 +25,16 @@ impl GreedRunner {
 
     pub async fn from_args(args: GreedRunnerArgs) -> Result<Self, GreedError> {
         let config = Config::from_path(&args.config_path).await?;
-        let platform = platform::for_type(&config.platform, &args)?;
+        let platform = platform::for_type(&config.platform, args.into())?;
         Ok(Self::new(config, platform))
     }
 
-    pub async fn run_loop(&self) {
+    pub async fn run_loop(&self) -> Result<(), GreedError> {
+        let mut strategy_index = 0;
         loop {
-            info!(" 💵");
-            sleep(Duration::from_millis(1_000)).await;
+            strategy::run(&self.config.strategies[strategy_index], &self.platform).await?;
+            strategy_index = (strategy_index + 1) % self.config.strategies.len();
+            sleep(Duration::from_millis(5_000)).await;
         }
     }
 }

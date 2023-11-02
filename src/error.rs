@@ -18,7 +18,7 @@ impl GreedError {
         Self::new(&message)
     }
 
-    fn from_display<T: Display>(display: T) -> Self {
+    pub fn from_display<T: Display>(display: T) -> Self {
         let message = format!("error: {display}");
         Self::new(&message)
     }
@@ -32,29 +32,21 @@ impl Display for GreedError {
 
 impl std::error::Error for GreedError { }
 
-impl From<std::io::Error> for GreedError {
-    fn from(value: std::io::Error) -> Self {
-        GreedError::from_display(value)
-    }
+#[macro_export]
+macro_rules! greed_error_from {
+    ($err_type:ty) => {
+        impl From<$err_type> for GreedError {
+            fn from(value: $err_type) -> Self {
+                GreedError::from_display(value)
+            }
+        }
+    };
 }
 
-impl From<toml::de::Error> for GreedError {
-    fn from(value: toml::de::Error) -> Self {
-        GreedError::from_display(value)
-    }
-}
-
-impl From<VarError> for GreedError {
-    fn from(value: VarError) -> Self {
-        GreedError::from_display(value)
-    }
-}
-
-impl From<apca::Error> for GreedError {
-    fn from(value: apca::Error) -> Self {
-        GreedError::from_display(value)
-    }
-}
+greed_error_from!(std::io::Error);
+greed_error_from!(toml::de::Error);
+greed_error_from!(VarError);
+greed_error_from!(apca::Error);
 
 #[cfg(test)]
 mod test {

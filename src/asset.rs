@@ -1,9 +1,11 @@
+use clap::Parser;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq)]
+/// A symbol representing an asset (for example a stock such as VTI).
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct AssetSymbol {
     pub symbol: String,
 }
@@ -22,6 +24,12 @@ impl FromStr for AssetSymbol {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let symbol = s.trim_start_matches("$").to_string();
         Ok(AssetSymbol { symbol })
+    }
+}
+
+impl From<String> for AssetSymbol {
+    fn from(value: String) -> Self {
+        AssetSymbol::from_str(&value).expect("asset symbol from_str shouldn't fail")
     }
 }
 
@@ -62,11 +70,24 @@ impl Serialize for AssetSymbol {
     }
 }
 
+impl Display for AssetSymbol {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.symbol.to_uppercase())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::asset::AssetSymbol;
     use serde::{Deserialize, Serialize};
     use serde_json::json;
+
+    #[test]
+    fn display() {
+        let asset = "vti".parse::<AssetSymbol>().expect("failed to parse asset");
+        let display = asset.to_string();
+        assert_eq!(display, "VTI")
+    }
 
     #[test]
     fn from_str_no_dollar_sign() {
@@ -77,7 +98,9 @@ mod test {
 
     #[test]
     fn from_str_with_dollar_sign() {
-        let asset = "$vti".parse::<AssetSymbol>().expect("failed to parse asset");
+        let asset = "$vti"
+            .parse::<AssetSymbol>()
+            .expect("failed to parse asset");
         let expected = AssetSymbol::new("vti");
         assert_eq!(asset, expected);
     }

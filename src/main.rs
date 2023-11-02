@@ -8,7 +8,8 @@ use apca::data::v2::quotes::QuotesReqInit;
 use apca::data::v2::{last_quotes, quotes};
 use apca::{ApiInfo, Client, RequestError};
 use chrono::{Duration, Utc};
-use clap::{Parser};
+use clap::Parser;
+use greed::platform::args::PlatformArgs;
 use greed::{fetch_quote, greed_loop};
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode};
@@ -20,9 +21,19 @@ async fn main() {
     match command {
         Command::Run(args) => {
             setup_logging();
-            greed_loop(args.into()).await;
+            greed_loop(args.into())
+                .await
+                .expect("greed loop threw error");
         }
-        Command::Quote(_debug_options) => fetch_quote().await,
+        Command::Quote(args) => {
+            fetch_quote(
+                &args.symbols,
+                &args.platform_type,
+                PlatformArgs::from(&args),
+            )
+            .await
+            .expect("quote fetch failed");
+        }
         Command::TestAlpaca => test_alpaca().await,
     }
 }
@@ -96,7 +107,11 @@ async fn test_alpaca() {
             "Position - {}, amount - {:?}, unrealized gain percent - {:?}",
             position.symbol,
             position.quantity.to_f64(),
-            position.unrealized_gain_total_percent.clone().unwrap().to_f64()
+            position
+                .unrealized_gain_total_percent
+                .clone()
+                .unwrap()
+                .to_f64()
         )
     });
 }

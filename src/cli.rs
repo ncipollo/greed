@@ -1,6 +1,8 @@
 pub mod run;
+pub mod quote;
 
 use clap::{Args, Parser, Subcommand};
+use crate::cli::quote::QuoteArgs;
 use crate::cli::run::RunCommandArgs;
 
 #[derive(Debug, Parser)]
@@ -15,7 +17,7 @@ pub enum Command {
     #[command(about = "Run the main greed loop")]
     Run(RunCommandArgs),
     #[command(about = "Fetch quote")]
-    Quote(DebugArgs),
+    Quote(QuoteArgs),
     #[command(about = "Test Alpaca")]
     TestAlpaca
 }

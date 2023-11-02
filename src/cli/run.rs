@@ -7,6 +7,7 @@ pub struct RunCommandArgs {
     /// Path to the greed configuration toml file
     #[arg(value_name = "PATH")]
     config_path: PathBuf,
+    /// Use a simulated financial platform instead of a live account.
     #[arg(short = 's', long)]
     is_simulated: bool
 }
@@ -27,7 +28,7 @@ mod test {
     use std::path::PathBuf;
 
     #[test]
-    fn from() {
+    fn runner_args_from() {
         let command_args = RunCommandArgs {
             config_path: PathBuf::from("path"),
             is_simulated: true
