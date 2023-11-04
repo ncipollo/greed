@@ -1,3 +1,4 @@
+interval = 300
 platform = "alpaca"
 
 [[strategies]]

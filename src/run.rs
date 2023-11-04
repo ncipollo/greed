@@ -30,11 +30,12 @@ impl GreedRunner {
     }
 
     pub async fn run_loop(&self) -> Result<(), GreedError> {
+        let loop_interval = Duration::from_secs(self.config.interval);
         let mut strategy_index = 0;
         loop {
             strategy::run(&self.config.strategies[strategy_index], &self.platform).await?;
             strategy_index = (strategy_index + 1) % self.config.strategies.len();
-            sleep(Duration::from_millis(5_000)).await;
+            sleep(loop_interval).await;
         }
     }
 }

@@ -17,6 +17,12 @@ pub struct Config {
     pub platform: PlatformType,
     #[serde(default)]
     pub strategies: Vec<StrategyConfig>,
+    #[serde(default="default_interval")]
+    pub interval: u64
+}
+
+fn default_interval() -> u64 {
+    60
 }
 
 impl Config {
@@ -42,6 +48,7 @@ mod test {
         let expected = Config {
             platform: PlatformType::Alpaca,
             strategies: vec![],
+            interval: 0
         };
 
         assert_eq!(default, expected)
@@ -57,6 +64,7 @@ mod test {
         let expected = Config {
             platform: PlatformType::Alpaca,
             strategies: vec![],
+            interval: 60
         };
         assert_eq!(config, expected)
     }
@@ -78,6 +86,7 @@ mod test {
                 }],
                 ..Default::default()
             }],
+            interval: 300
         };
         assert_eq!(config, expected)
     }
@@ -127,6 +136,7 @@ mod test {
                     ..Default::default()
                 },
             ],
+            interval: 300
         };
         assert_eq!(config, expected)
     }
