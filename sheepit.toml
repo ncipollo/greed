@@ -1,0 +1,14 @@
+[repository]
+enable_commit = true
+
+[[transforms]]
+path = 'Cargo.toml'
+replace = 'version = "{version}"'
+
+[[transforms]]
+path = 'Cargo.lock'
+replace = """\
+[[package]]
+name = "greed"
+version = "{version}"
+"""

@@ -8,7 +8,7 @@ use apca::data::v2::quotes::QuotesReqInit;
 use apca::data::v2::{last_quotes, quotes};
 use apca::{ApiInfo, Client, RequestError};
 use chrono::{Duration, Utc};
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use greed::platform::args::PlatformArgs;
 use greed::{fetch_quote, greed_loop};
 use log::LevelFilter;
@@ -35,6 +35,9 @@ async fn main() {
             .expect("quote fetch failed");
         }
         Command::TestAlpaca => test_alpaca().await,
+        Command::Completions { shell } => {
+            shell.generate(&mut Cli::command(), &mut std::io::stdout());
+        }
     }
 }
 

@@ -19,7 +19,12 @@ pub enum Command {
     #[command(about = "Fetch quote")]
     Quote(QuoteArgs),
     #[command(about = "Test Alpaca")]
-    TestAlpaca
+    TestAlpaca,
+    #[command(about = "prints out completions for the provided shell")]
+    Completions {
+        #[arg(value_enum)]
+        shell: clap_complete_command::Shell,
+    },
 }
 
 #[derive(Args, Debug)]
