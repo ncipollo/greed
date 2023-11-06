@@ -1,18 +1,22 @@
+pub mod account;
 mod alpaca;
 pub mod args;
+mod id;
 pub mod quote;
 
-use async_trait::async_trait;
 use crate::asset::AssetSymbol;
 use crate::config::platform::PlatformType;
 use crate::error::GreedError;
+use crate::platform::account::Account;
 use crate::platform::alpaca::AlpacaPlatform;
 use crate::platform::args::PlatformArgs;
 use crate::platform::quote::Quote;
+use async_trait::async_trait;
 use log::info;
 
 #[async_trait]
 pub trait FinancialPlatform {
+    async fn account(&self) -> Result<Account, GreedError>;
     async fn latest_quotes(&self, symbols: &Vec<AssetSymbol>) -> Result<Vec<Quote>, GreedError>;
 }
 

@@ -5,6 +5,7 @@ use crate::platform::quote::Quote;
 use crate::platform::FinancialPlatform;
 use itertools::Itertools;
 use log::info;
+use crate::platform::account::Account;
 
 mod symbols;
 
@@ -13,10 +14,18 @@ pub async fn run(
     platform: &Box<dyn FinancialPlatform>,
 ) -> Result<(), GreedError> {
     info!("🧠 running strategy: {}", config.name);
+    let _ = fetch_account(platform).await?;
     let symbols = symbols::from_config(config);
     let _ = fetch_quotes(symbols, platform).await?;
     info!("----------");
     Ok(())
+}
+
+async fn fetch_account(platform: &Box<dyn FinancialPlatform>) -> Result<Account, GreedError> {
+    info!("- fetching account info");
+    let account = platform.account().await?;
+    info!("-- {}", account);
+    Ok(account)
 }
 
 async fn fetch_quotes(

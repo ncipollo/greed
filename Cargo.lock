@@ -569,6 +569,7 @@ dependencies = [
  "simplelog",
  "tokio",
  "toml",
+ "uuid",
 ]
 
 [[package]]
