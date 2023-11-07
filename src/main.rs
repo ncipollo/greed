@@ -12,15 +12,24 @@ use clap::{CommandFactory, Parser};
 use greed::platform::args::PlatformArgs;
 use greed::{fetch_quote, greed_loop};
 use log::LevelFilter;
-use simplelog::{ColorChoice, CombinedLogger, Config, TermLogger, TerminalMode};
+use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, ConfigBuilder};
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    setup_logging();
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            async_main().await
+        });
+}
+
+async fn async_main() {
     let cli = Cli::parse();
     let command = cli.command;
     match command {
         Command::Run(args) => {
-            setup_logging();
             greed_loop(args.into())
                 .await
                 .expect("greed loop threw error");
@@ -31,8 +40,8 @@ async fn main() {
                 &args.platform_type,
                 PlatformArgs::from(&args),
             )
-            .await
-            .expect("quote fetch failed");
+                .await
+                .expect("quote fetch failed");
         }
         Command::TestAlpaca => test_alpaca().await,
         Command::Completions { shell } => {
@@ -120,9 +129,13 @@ async fn test_alpaca() {
 }
 
 fn setup_logging() {
+    let config  = ConfigBuilder::new()
+        .set_time_offset_to_local()
+        .expect("failed to use local time for logs")
+        .build();
     CombinedLogger::init(vec![TermLogger::new(
         LevelFilter::Info,
-        Config::default(),
+        config,
         TerminalMode::Mixed,
         ColorChoice::Auto,
     )])
