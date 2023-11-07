@@ -13,6 +13,7 @@ impl GreedError {
         }
     }
 
+    #[allow(unused)]
     fn from_debug<T: Debug>(debug: T) -> Self {
         let message = format!("debug error: {:?}", debug);
         Self::new(&message)

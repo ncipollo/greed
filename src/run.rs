@@ -2,7 +2,6 @@ use crate::config::Config;
 use crate::error::GreedError;
 use crate::{platform, strategy};
 use crate::platform::FinancialPlatform;
-use log::info;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::time::sleep;

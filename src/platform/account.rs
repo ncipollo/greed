@@ -1,5 +1,4 @@
 use crate::platform::id::Id;
-use crate::platform::quote::Quote;
 use num_decimal::Num;
 use std::fmt::{Display, Formatter};
 
