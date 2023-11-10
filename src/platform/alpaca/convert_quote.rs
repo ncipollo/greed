@@ -1,6 +1,5 @@
 use apca::RequestError;
 use crate::asset::AssetSymbol;
-use crate::error::GreedError;
 use crate::greed_error_from;
 use crate::platform::quote::Quote;
 

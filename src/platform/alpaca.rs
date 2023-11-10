@@ -1,5 +1,6 @@
 mod convert_account;
 mod convert_asset_class;
+mod convert_order;
 mod convert_position;
 mod convert_quote;
 mod convert_side;
@@ -10,15 +11,17 @@ use crate::error::GreedError;
 use crate::platform::account::Account;
 use crate::platform::alpaca::factory::create_alpaca_client;
 use crate::platform::args::PlatformArgs;
+use crate::platform::order::Order;
+use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::FinancialPlatform;
-use apca::api::v2::{account, positions};
+use apca::api::v2::orders::{OrdersReq, Status};
+use apca::api::v2::{account, orders, positions};
 use apca::data::v2::last_quotes;
 use apca::data::v2::last_quotes::LastQuotesReqInit;
 use apca::Client;
 use async_trait::async_trait;
 use itertools::Itertools;
-use crate::platform::position::Position;
 
 pub struct AlpacaPlatform {
     client: Client,
@@ -55,5 +58,15 @@ impl FinancialPlatform for AlpacaPlatform {
         let alpaca_positions = self.client.issue::<positions::Get>(&()).await?;
         let positions: Vec<Position> = alpaca_positions.into_iter().map_into().collect();
         Ok(positions)
+    }
+
+    async fn open_orders(&self) -> Result<Vec<Order>, GreedError> {
+        let orders_req = OrdersReq {
+            status: Status::Open,
+            ..OrdersReq::default()
+        };
+        let alpaca_orders = self.client.issue::<orders::Get>(&orders_req).await?;
+        let orders: Vec<Order> = alpaca_orders.into_iter().map_into().collect();
+        Ok(orders)
     }
 }
