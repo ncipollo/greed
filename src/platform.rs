@@ -3,7 +3,7 @@ mod alpaca;
 pub mod args;
 pub mod asset_class;
 mod id;
-mod order;
+pub mod order;
 pub mod position;
 pub mod quote;
 pub mod side;

@@ -1,5 +1,6 @@
 mod convert_account;
 mod convert_asset_class;
+mod convert_order;
 mod convert_position;
 mod convert_quote;
 mod convert_side;
@@ -10,6 +11,7 @@ use crate::error::GreedError;
 use crate::platform::account::Account;
 use crate::platform::alpaca::factory::create_alpaca_client;
 use crate::platform::args::PlatformArgs;
+use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::FinancialPlatform;
 use apca::api::v2::{account, positions};
@@ -18,7 +20,6 @@ use apca::data::v2::last_quotes::LastQuotesReqInit;
 use apca::Client;
 use async_trait::async_trait;
 use itertools::Itertools;
-use crate::platform::position::Position;
 
 pub struct AlpacaPlatform {
     client: Client,
