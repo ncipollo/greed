@@ -3,6 +3,7 @@ mod alpaca;
 pub mod args;
 pub mod asset_class;
 mod id;
+mod order;
 pub mod position;
 pub mod quote;
 pub mod side;
@@ -13,10 +14,10 @@ use crate::error::GreedError;
 use crate::platform::account::Account;
 use crate::platform::alpaca::AlpacaPlatform;
 use crate::platform::args::PlatformArgs;
+use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use async_trait::async_trait;
 use log::info;
-use crate::platform::position::Position;
 
 #[async_trait]
 pub trait FinancialPlatform {
