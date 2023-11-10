@@ -47,3 +47,20 @@ pub enum Status {
     Held,
     Unknown,
 }
+
+impl Default for Status {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::platform::order::status::Status;
+
+    #[test]
+    fn default() {
+        let status: Status = Default::default();
+        assert_eq!(status, Status::Unknown)
+    }
+}
