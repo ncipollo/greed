@@ -4,15 +4,17 @@ use crate::platform::id::Id;
 use crate::platform::order::amount::Amount;
 use crate::platform::order::class::OrderClass;
 use crate::platform::order::order_type::OrderType;
+use crate::platform::order::status::Status;
 use crate::platform::order::time_in_force::TimeInForce;
-use crate::platform::side::Side;
 use chrono::{DateTime, Utc};
 use num_decimal::Num;
-use crate::platform::order::status::Status;
+use std::fmt::{Display, Formatter};
+use crate::platform::order::side::OrderSide;
 
 pub mod amount;
 pub mod class;
 pub mod order_type;
+pub mod side;
 pub mod status;
 pub mod time_in_force;
 
@@ -36,14 +38,18 @@ pub struct Order {
     pub canceled_at: Option<DateTime<Utc>>,
     /// The order's asset class.
     pub asset_class: AssetClass,
+    /// The symbol of the asset being traded in this order.
     pub symbol: AssetSymbol,
+    /// The amount of assets we are trading in this order.
     pub amount: Amount,
+    /// The amount we've filled in this order.
     pub filled_quantity: Num,
+    /// The type of order.
     pub order_type: OrderType,
     /// The order class.
     pub class: OrderClass,
     /// The side the order is on.
-    pub side: Side,
+    pub side: OrderSide,
     /// A representation of how long the order will be valid.
     pub time_in_force: TimeInForce,
     /// The limit price.
@@ -59,4 +65,35 @@ pub struct Order {
     /// If true, the order is eligible for execution outside regular
     /// trading hours.
     pub extended_hours: bool,
+}
+
+impl Display for Order {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {} of {}",
+            self.side, self.amount, self.symbol
+        )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use num_decimal::Num;
+    use crate::asset::AssetSymbol;
+    use crate::platform::order::amount::Amount;
+    use crate::platform::order::Order;
+    use crate::platform::order::side::OrderSide;
+
+    #[test]
+    fn display() {
+        let order = Order {
+            amount: Amount::Quantity(Num::from(10)),
+            side: OrderSide::Buy,
+            symbol: AssetSymbol::new("VTI"),
+            ..Default::default()
+        };
+        let display = order.to_string();
+        assert_eq!(display, "buy 10.00 units of VTI")
+    }
 }

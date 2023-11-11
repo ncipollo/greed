@@ -1,3 +1,6 @@
+use std::fmt::{Display, Formatter};
+use crate::lowercase_enum_display;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Status {
     New,
@@ -54,9 +57,17 @@ impl Default for Status {
     }
 }
 
+lowercase_enum_display!(Status);
+
 #[cfg(test)]
 mod test {
     use crate::platform::order::status::Status;
+
+    #[test]
+    fn display() {
+        let status_str = Status::New.to_string();
+        assert_eq!(status_str, "new")
+    }
 
     #[test]
     fn default() {
