@@ -2,7 +2,7 @@ pub mod account;
 mod alpaca;
 pub mod args;
 pub mod asset_class;
-mod id;
+pub mod id;
 pub mod order;
 pub mod position;
 pub mod quote;
