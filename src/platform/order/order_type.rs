@@ -1,5 +1,5 @@
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum OrderType {
+pub enum OrderType {
     /// A market order.
     Market,
     /// A limit order.
