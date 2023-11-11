@@ -1,4 +1,3 @@
-use crate::error::GreedError;
 use crate::greed_error_from;
 use crate::platform::id::Id;
 use crate::platform::position::Position;

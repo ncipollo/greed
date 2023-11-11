@@ -18,12 +18,14 @@ use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use async_trait::async_trait;
 use log::info;
+use crate::platform::order::Order;
 
 #[async_trait]
 pub trait FinancialPlatform {
     async fn account(&self) -> Result<Account, GreedError>;
     async fn latest_quotes(&self, symbols: &Vec<AssetSymbol>) -> Result<Vec<Quote>, GreedError>;
     async fn positions(&self) -> Result<Vec<Position>, GreedError>;
+    async fn open_orders(&self) -> Result<Vec<Order>, GreedError>;
 }
 
 pub fn for_type(

@@ -1,11 +1,13 @@
+use crate::greed_error_from;
 use crate::platform::id::Id;
 use crate::platform::order::Order;
+use apca::RequestError;
 
 mod convert_amount;
+mod convert_class;
 mod convert_status;
 mod convert_time;
 mod convert_type;
-mod convert_class;
 
 impl From<apca::api::v2::order::Order> for Order {
     fn from(value: apca::api::v2::order::Order) -> Self {
@@ -35,3 +37,5 @@ impl From<apca::api::v2::order::Order> for Order {
         }
     }
 }
+
+greed_error_from!(RequestError<apca::api::v2::orders::GetError>);

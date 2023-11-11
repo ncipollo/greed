@@ -7,6 +7,7 @@ use crate::platform::quote::Quote;
 use crate::platform::FinancialPlatform;
 use itertools::Itertools;
 use log::info;
+use crate::platform::order::Order;
 
 mod symbols;
 
@@ -19,6 +20,7 @@ pub async fn run(
     let symbols = symbols::from_config(config);
     let _ = fetch_quotes(symbols, platform).await?;
     let _ = fetch_positions(platform).await?;
+    let _ = fetch_open_orders(platform).await?;
     info!("----------");
     Ok(())
 }
@@ -52,6 +54,17 @@ async fn fetch_positions(
         info!("-- {}", position);
     }
     Ok(positions)
+}
+
+async fn fetch_open_orders(
+    platform: &Box<dyn FinancialPlatform>,
+) -> Result<Vec<Order>, GreedError> {
+    info!("- fetching open positions");
+    let orders = platform.open_orders().await?;
+    for order in &orders {
+        info!("-- {}", order);
+    }
+    Ok(orders)
 }
 
 fn symbols_string(symbols: &Vec<AssetSymbol>) -> String {
