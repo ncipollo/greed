@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 /// A rule which indicates what percent of the user's portfolio we want this asset or strategy to target.
 /// When merged with higher configuration rules they will multiply together. So if the strategy has
 /// a target of 50% and the stock has a target of 10%, then the resulting target would be 5%.
-#[derive(Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct PortfolioTargetRule {
     /// Percent out of 100
     pub percent: f32,

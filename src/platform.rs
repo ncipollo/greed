@@ -8,6 +8,7 @@ pub mod position;
 pub mod quote;
 pub mod side;
 
+use std::sync::Arc;
 use crate::asset::AssetSymbol;
 use crate::config::platform::PlatformType;
 use crate::error::GreedError;
@@ -31,10 +32,10 @@ pub trait FinancialPlatform {
 pub fn for_type(
     platform_type: &PlatformType,
     args: PlatformArgs,
-) -> Result<Box<dyn FinancialPlatform>, GreedError> {
+) -> Result<Arc<dyn FinancialPlatform>, GreedError> {
     info!("🏦 Using financial platform - {:?}", platform_type);
     let platform = match platform_type {
-        PlatformType::Alpaca => Box::new(AlpacaPlatform::new(&args)?),
+        PlatformType::Alpaca => Arc::new(AlpacaPlatform::new(&args)?),
     };
     Ok(platform)
 }

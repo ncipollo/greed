@@ -1,72 +1,76 @@
+use std::sync::Arc;
 use crate::asset::AssetSymbol;
 use crate::config::strategy::StrategyConfig;
 use crate::error::GreedError;
 use crate::platform::account::Account;
+use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::FinancialPlatform;
 use itertools::Itertools;
 use log::info;
-use crate::platform::order::Order;
 
 mod symbols;
 
-pub async fn run(
-    config: &StrategyConfig,
-    platform: &Box<dyn FinancialPlatform>,
-) -> Result<(), GreedError> {
-    info!("🧠 running strategy: {}", config.name);
-    let _ = fetch_account(platform).await?;
-    let symbols = symbols::from_config(config);
-    let _ = fetch_quotes(symbols, platform).await?;
-    let _ = fetch_positions(platform).await?;
-    let _ = fetch_open_orders(platform).await?;
-    info!("----------");
-    Ok(())
+pub struct StrategyRunner {
+    config: StrategyConfig,
+    platform: Arc<dyn FinancialPlatform>,
 }
 
-async fn fetch_account(platform: &Box<dyn FinancialPlatform>) -> Result<Account, GreedError> {
-    info!("- fetching account info");
-    let account = platform.account().await?;
-    info!("-- {}", account);
-    Ok(account)
-}
-
-async fn fetch_quotes(
-    symbols: Vec<AssetSymbol>,
-    platform: &Box<dyn FinancialPlatform>,
-) -> Result<Vec<Quote>, GreedError> {
-    let symbols_string = symbols_string(&symbols);
-    info!("- fetching quotes for {}", symbols_string);
-    let quotes = platform.latest_quotes(&symbols).await?;
-    for quote in &quotes {
-        info!("-- {}", quote);
+impl StrategyRunner {
+    pub fn new(config: StrategyConfig, platform: Arc<dyn FinancialPlatform>) -> Self {
+        Self {
+            config,
+            platform,
+        }
     }
-    Ok(quotes)
-}
-
-async fn fetch_positions(
-    platform: &Box<dyn FinancialPlatform>,
-) -> Result<Vec<Position>, GreedError> {
-    info!("- fetching open positions");
-    let positions = platform.positions().await?;
-    for position in &positions {
-        info!("-- {}", position);
+    pub async fn run(&self) -> Result<(), GreedError> {
+        info!("🧠 running strategy: {}", self.config.name);
+        let _ = self.fetch_account().await?;
+        let symbols = symbols::from_config(&self.config);
+        let _ = self.fetch_quotes(symbols).await?;
+        let _ = self.fetch_positions().await?;
+        let _ = self.fetch_open_orders().await?;
+        info!("----------");
+        Ok(())
     }
-    Ok(positions)
-}
 
-async fn fetch_open_orders(
-    platform: &Box<dyn FinancialPlatform>,
-) -> Result<Vec<Order>, GreedError> {
-    info!("- fetching open positions");
-    let orders = platform.open_orders().await?;
-    for order in &orders {
-        info!("-- {}", order);
+    async fn fetch_account(&self) -> Result<Account, GreedError> {
+        info!("- fetching account info");
+        let account = self.platform.account().await?;
+        info!("-- {}", account);
+        Ok(account)
     }
-    Ok(orders)
-}
 
-fn symbols_string(symbols: &Vec<AssetSymbol>) -> String {
-    symbols.iter().map(|s| s.symbol.clone()).join(",")
+    async fn fetch_quotes(&self, symbols: Vec<AssetSymbol>) -> Result<Vec<Quote>, GreedError> {
+        let symbols_string = Self::symbols_string(&symbols);
+        info!("- fetching quotes for {}", symbols_string);
+        let quotes = self.platform.latest_quotes(&symbols).await?;
+        for quote in &quotes {
+            info!("-- {}", quote);
+        }
+        Ok(quotes)
+    }
+
+    async fn fetch_positions(&self) -> Result<Vec<Position>, GreedError> {
+        info!("- fetching open positions");
+        let positions = self.platform.positions().await?;
+        for position in &positions {
+            info!("-- {}", position);
+        }
+        Ok(positions)
+    }
+
+    async fn fetch_open_orders(&self) -> Result<Vec<Order>, GreedError> {
+        info!("- fetching open positions");
+        let orders = self.platform.open_orders().await?;
+        for order in &orders {
+            info!("-- {}", order);
+        }
+        Ok(orders)
+    }
+
+    fn symbols_string(symbols: &Vec<AssetSymbol>) -> String {
+        symbols.iter().map(|s| s.symbol.clone()).join(",")
+    }
 }

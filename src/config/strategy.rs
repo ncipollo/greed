@@ -2,7 +2,7 @@ use crate::config::asset::AssetConfig;
 use crate::config::rules::{BuyRulesConfig, SellRulesConfig};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct StrategyConfig {
     #[serde(default)]
     pub assets: Vec<AssetConfig>,
