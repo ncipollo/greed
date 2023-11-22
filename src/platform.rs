@@ -7,6 +7,7 @@ pub mod order;
 pub mod position;
 pub mod quote;
 pub mod side;
+pub mod request;
 
 use std::sync::Arc;
 use crate::asset::AssetSymbol;

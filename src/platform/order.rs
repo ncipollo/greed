@@ -17,7 +17,6 @@ pub mod order_type;
 pub mod side;
 pub mod status;
 pub mod time_in_force;
-pub mod request;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Order {
