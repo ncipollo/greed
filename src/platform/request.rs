@@ -1,3 +1,5 @@
+pub mod StopLoss;
+
 use num_decimal::Num;
 use crate::platform::order::class::OrderClass;
 use crate::platform::order::order_type::OrderType;
