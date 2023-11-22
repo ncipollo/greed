@@ -7,6 +7,7 @@ pub mod order;
 pub mod position;
 pub mod quote;
 pub mod side;
+pub mod request;
 
 use std::sync::Arc;
 use crate::asset::AssetSymbol;
@@ -20,11 +21,13 @@ use crate::platform::quote::Quote;
 use async_trait::async_trait;
 use log::info;
 use crate::platform::order::Order;
+use crate::platform::request::OrderRequest;
 
 #[async_trait]
 pub trait FinancialPlatform {
     async fn account(&self) -> Result<Account, GreedError>;
     async fn latest_quotes(&self, symbols: &Vec<AssetSymbol>) -> Result<Vec<Quote>, GreedError>;
+    async fn place_order(&self, order_request: OrderRequest) -> Result<Order, GreedError>;
     async fn positions(&self) -> Result<Vec<Position>, GreedError>;
     async fn open_orders(&self) -> Result<Vec<Order>, GreedError>;
 }

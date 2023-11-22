@@ -1,3 +1,6 @@
+use std::fmt::{Display, Formatter};
+use crate::lowercase_enum_display;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum OrderType {
     /// A market order.
@@ -18,6 +21,8 @@ impl Default for OrderType {
     }
 }
 
+lowercase_enum_display!(OrderType);
+
 #[cfg(test)]
 mod test {
     use crate::platform::order::order_type::OrderType;
@@ -26,5 +31,15 @@ mod test {
     fn default() {
         let order_type: OrderType = Default::default();
         assert_eq!(order_type, OrderType::Market);
+    }
+
+    #[test]
+    fn display() {
+        let display = format!("{}, {}, {}, {}, {}", OrderType::Market,
+                              OrderType::Limit,
+                              OrderType::Stop,
+                              OrderType::StopLimit,
+                              OrderType::TrailingStop);
+        assert_eq!(display, "market, limit, stop, stoplimit, trailingstop")
     }
 }

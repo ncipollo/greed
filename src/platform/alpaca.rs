@@ -3,7 +3,9 @@ mod convert_asset_class;
 mod convert_order;
 mod convert_position;
 mod convert_quote;
+mod convert_request;
 mod convert_side;
+mod convert_symbol;
 mod factory;
 
 use crate::asset::AssetSymbol;
@@ -16,12 +18,14 @@ use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::FinancialPlatform;
 use apca::api::v2::orders::{OrdersReq, Status};
-use apca::api::v2::{account, orders, positions};
+use apca::api::v2::{account, order, orders, positions};
+use apca::api::v2::order::OrderReq;
 use apca::data::v2::last_quotes;
 use apca::data::v2::last_quotes::LastQuotesReqInit;
 use apca::Client;
 use async_trait::async_trait;
 use itertools::Itertools;
+use crate::platform::request::OrderRequest;
 
 pub struct AlpacaPlatform {
     client: Client,
@@ -52,6 +56,12 @@ impl FinancialPlatform for AlpacaPlatform {
         let result = self.client.issue::<last_quotes::Get>(&latest_req).await?;
         let quotes: Vec<Quote> = result.into_iter().map(|q| q.into()).collect();
         Ok(quotes)
+    }
+
+    async fn place_order(&self, order_request: OrderRequest) -> Result<Order, GreedError> {
+        let order_req: OrderReq = order_request.into();
+        let order = self.client.issue::<order::Post>(&order_req).await?;
+        Ok(order.into())
     }
 
     async fn positions(&self) -> Result<Vec<Position>, GreedError> {

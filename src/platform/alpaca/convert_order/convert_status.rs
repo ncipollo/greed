@@ -27,44 +27,40 @@ impl From<apca::api::v2::order::Status> for Status {
 
 #[cfg(test)]
 mod test {
+    use crate::assert;
     use crate::platform::order::status::Status;
 
     #[test]
     fn into() {
-        assert_conversion(apca::api::v2::order::Status::New, Status::New);
-        assert_conversion(apca::api::v2::order::Status::Replaced, Status::Replaced);
-        assert_conversion(
+        assert::conversion(apca::api::v2::order::Status::New, Status::New);
+        assert::conversion(apca::api::v2::order::Status::Replaced, Status::Replaced);
+        assert::conversion(
             apca::api::v2::order::Status::PartiallyFilled,
             Status::PartiallyFilled,
         );
-        assert_conversion(apca::api::v2::order::Status::Filled, Status::Filled);
-        assert_conversion(apca::api::v2::order::Status::DoneForDay, Status::DoneForDay);
-        assert_conversion(apca::api::v2::order::Status::Canceled, Status::Canceled);
-        assert_conversion(apca::api::v2::order::Status::Expired, Status::Expired);
-        assert_conversion(apca::api::v2::order::Status::Accepted, Status::Accepted);
-        assert_conversion(apca::api::v2::order::Status::PendingNew, Status::PendingNew);
-        assert_conversion(
+        assert::conversion(apca::api::v2::order::Status::Filled, Status::Filled);
+        assert::conversion(apca::api::v2::order::Status::DoneForDay, Status::DoneForDay);
+        assert::conversion(apca::api::v2::order::Status::Canceled, Status::Canceled);
+        assert::conversion(apca::api::v2::order::Status::Expired, Status::Expired);
+        assert::conversion(apca::api::v2::order::Status::Accepted, Status::Accepted);
+        assert::conversion(apca::api::v2::order::Status::PendingNew, Status::PendingNew);
+        assert::conversion(
             apca::api::v2::order::Status::AcceptedForBidding,
             Status::AcceptedForBidding,
         );
-        assert_conversion(
+        assert::conversion(
             apca::api::v2::order::Status::PendingCancel,
             Status::PendingCancel,
         );
-        assert_conversion(
+        assert::conversion(
             apca::api::v2::order::Status::PendingReplace,
             Status::PendingReplace,
         );
-        assert_conversion(apca::api::v2::order::Status::Stopped, Status::Stopped);
-        assert_conversion(apca::api::v2::order::Status::Rejected, Status::Rejected);
-        assert_conversion(apca::api::v2::order::Status::Suspended, Status::Suspended);
-        assert_conversion(apca::api::v2::order::Status::Calculated, Status::Calculated);
-        assert_conversion(apca::api::v2::order::Status::Held, Status::Held);
-        assert_conversion(apca::api::v2::order::Status::Unknown, Status::Unknown);
-    }
-
-    fn assert_conversion(alpaca_status: apca::api::v2::order::Status, expected: Status) {
-        let status: Status = alpaca_status.into();
-        assert_eq!(status, expected)
+        assert::conversion(apca::api::v2::order::Status::Stopped, Status::Stopped);
+        assert::conversion(apca::api::v2::order::Status::Rejected, Status::Rejected);
+        assert::conversion(apca::api::v2::order::Status::Suspended, Status::Suspended);
+        assert::conversion(apca::api::v2::order::Status::Calculated, Status::Calculated);
+        assert::conversion(apca::api::v2::order::Status::Held, Status::Held);
+        assert::conversion(apca::api::v2::order::Status::Unknown, Status::Unknown);
     }
 }

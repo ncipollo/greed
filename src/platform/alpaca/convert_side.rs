@@ -19,10 +19,31 @@ impl From<apca::api::v2::order::Side> for OrderSide {
     }
 }
 
+impl From<OrderSide> for apca::api::v2::order::Side {
+    fn from(value: OrderSide) -> apca::api::v2::order::Side {
+        match value {
+            OrderSide::Buy => Self::Buy,
+            OrderSide::Sell => Self::Sell,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::platform::order::side::OrderSide;
     use crate::platform::side::Side;
+
+    #[test]
+    fn alpaca_order_into_buy() {
+        let side: apca::api::v2::order::Side = OrderSide::Buy.into();
+        assert_eq!(side, apca::api::v2::order::Side::Buy)
+    }
+
+    #[test]
+    fn alpaca_order_into_sell() {
+        let side: apca::api::v2::order::Side = OrderSide::Sell.into();
+        assert_eq!(side, apca::api::v2::order::Side::Sell)
+    }
 
     #[test]
     fn order_into_buy() {

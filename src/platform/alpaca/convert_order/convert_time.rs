@@ -13,37 +13,71 @@ impl From<apca::api::v2::order::TimeInForce> for TimeInForce {
     }
 }
 
+impl From<TimeInForce> for apca::api::v2::order::TimeInForce {
+    fn from(value: TimeInForce) -> Self {
+        match value {
+            TimeInForce::Day => apca::api::v2::order::TimeInForce::Day,
+            TimeInForce::FillOrKill => apca::api::v2::order::TimeInForce::FillOrKill,
+            TimeInForce::ImmediateOrCancel => apca::api::v2::order::TimeInForce::ImmediateOrCancel,
+            TimeInForce::UntilCanceled => apca::api::v2::order::TimeInForce::UntilCanceled,
+            TimeInForce::UntilMarketOpen => apca::api::v2::order::TimeInForce::UntilMarketOpen,
+            TimeInForce::UntilMarketClose => apca::api::v2::order::TimeInForce::UntilMarketClose,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use crate::assert;
     use crate::platform::order::time_in_force::TimeInForce;
 
     #[test]
     fn into() {
-        assert_conversion(apca::api::v2::order::TimeInForce::Day, TimeInForce::Day);
-        assert_conversion(
+        assert::conversion(apca::api::v2::order::TimeInForce::Day, TimeInForce::Day);
+        assert::conversion(
             apca::api::v2::order::TimeInForce::FillOrKill,
             TimeInForce::FillOrKill,
         );
-        assert_conversion(
+        assert::conversion(
             apca::api::v2::order::TimeInForce::ImmediateOrCancel,
             TimeInForce::ImmediateOrCancel,
         );
-        assert_conversion(
+        assert::conversion(
             apca::api::v2::order::TimeInForce::UntilCanceled,
             TimeInForce::UntilCanceled,
         );
-        assert_conversion(
+        assert::conversion(
             apca::api::v2::order::TimeInForce::UntilMarketOpen,
             TimeInForce::UntilMarketOpen,
         );
-        assert_conversion(
+        assert::conversion(
             apca::api::v2::order::TimeInForce::UntilMarketClose,
             TimeInForce::UntilMarketClose,
         );
     }
 
-    fn assert_conversion(alpaca_time: apca::api::v2::order::TimeInForce, expected: TimeInForce) {
-        let time: TimeInForce = alpaca_time.into();
-        assert_eq!(time, expected)
+    #[test]
+    fn into_alpaca() {
+        assert::conversion(TimeInForce::Day, apca::api::v2::order::TimeInForce::Day);
+        assert::conversion(
+            TimeInForce::FillOrKill,
+            apca::api::v2::order::TimeInForce::FillOrKill,
+        );
+        assert::conversion(
+            TimeInForce::ImmediateOrCancel,
+            apca::api::v2::order::TimeInForce::ImmediateOrCancel,
+        );
+        assert::conversion(
+            TimeInForce::UntilCanceled,
+            apca::api::v2::order::TimeInForce::UntilCanceled,
+        );
+        assert::conversion(
+            TimeInForce::UntilMarketOpen,
+            apca::api::v2::order::TimeInForce::UntilMarketOpen,
+        );
+        assert::conversion(
+            TimeInForce::UntilMarketClose,
+            apca::api::v2::order::TimeInForce::UntilMarketClose,
+        );
     }
 }
