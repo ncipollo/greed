@@ -1,4 +1,5 @@
 pub mod stop_loss;
+pub mod take_profit;
 
 use crate::platform::order::class::OrderClass;
 use crate::platform::order::order_type::OrderType;
