@@ -15,35 +15,31 @@ impl From<apca::api::v2::order::TimeInForce> for TimeInForce {
 
 #[cfg(test)]
 mod test {
+    use crate::assert;
     use crate::platform::order::time_in_force::TimeInForce;
 
     #[test]
     fn into() {
-        assert_conversion(apca::api::v2::order::TimeInForce::Day, TimeInForce::Day);
-        assert_conversion(
+        assert::conversion(apca::api::v2::order::TimeInForce::Day, TimeInForce::Day);
+        assert::conversion(
             apca::api::v2::order::TimeInForce::FillOrKill,
             TimeInForce::FillOrKill,
         );
-        assert_conversion(
+        assert::conversion(
             apca::api::v2::order::TimeInForce::ImmediateOrCancel,
             TimeInForce::ImmediateOrCancel,
         );
-        assert_conversion(
+        assert::conversion(
             apca::api::v2::order::TimeInForce::UntilCanceled,
             TimeInForce::UntilCanceled,
         );
-        assert_conversion(
+        assert::conversion(
             apca::api::v2::order::TimeInForce::UntilMarketOpen,
             TimeInForce::UntilMarketOpen,
         );
-        assert_conversion(
+        assert::conversion(
             apca::api::v2::order::TimeInForce::UntilMarketClose,
             TimeInForce::UntilMarketClose,
         );
-    }
-
-    fn assert_conversion(alpaca_time: apca::api::v2::order::TimeInForce, expected: TimeInForce) {
-        let time: TimeInForce = alpaca_time.into();
-        assert_eq!(time, expected)
     }
 }

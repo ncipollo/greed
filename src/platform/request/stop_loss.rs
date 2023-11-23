@@ -1,5 +1,4 @@
 use num_decimal::Num;
-use crate::platform::request::StopLoss::StopLoss::Stop;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StopLoss {
@@ -11,14 +10,14 @@ pub enum StopLoss {
 
 impl Default for StopLoss {
     fn default() -> Self {
-        Stop(Num::from(0))
+        Self::Stop(Num::from(0))
     }
 }
 
 #[cfg(test)]
 mod test {
     use num_decimal::Num;
-    use crate::platform::request::StopLoss::StopLoss;
+    use crate::platform::request::stop_loss::StopLoss;
 
     #[test]
     fn default() {

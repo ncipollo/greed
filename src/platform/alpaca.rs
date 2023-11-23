@@ -3,6 +3,7 @@ mod convert_asset_class;
 mod convert_order;
 mod convert_position;
 mod convert_quote;
+mod convert_request;
 mod convert_side;
 mod factory;
 

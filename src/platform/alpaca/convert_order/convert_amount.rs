@@ -13,14 +13,14 @@ impl From<apca::api::v2::order::Amount> for Amount {
 mod test {
     use crate::platform::order::amount::Amount;
     use num_decimal::Num;
+    use crate::assert;
 
     #[test]
     fn from_notational() {
         let alpaca_amount = apca::api::v2::order::Amount::Notional {
             notional: Num::from(5),
         };
-        let amount: Amount = alpaca_amount.into();
-        assert_eq!(amount, Amount::Notional(Num::from(5)))
+        assert::conversion(alpaca_amount, Amount::Notional(Num::from(5)));
     }
 
     #[test]
@@ -28,7 +28,6 @@ mod test {
         let alpaca_amount = apca::api::v2::order::Amount::Quantity {
             quantity: Num::from(5),
         };
-        let amount: Amount = alpaca_amount.into();
-        assert_eq!(amount, Amount::Quantity(Num::from(5)))
+        assert::conversion(alpaca_amount, Amount::Quantity(Num::from(5)));
     }
 }

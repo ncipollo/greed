@@ -16,17 +16,13 @@ impl From<Class> for OrderClass {
 mod test {
     use crate::platform::order::class::OrderClass;
     use apca::api::v2::order::Class;
+    use crate::assert;
 
     #[test]
     fn from() {
-        assert_conversion(Class::Simple, OrderClass::Simple);
-        assert_conversion(Class::Bracket, OrderClass::Bracket);
-        assert_conversion(Class::OneCancelsOther, OrderClass::OneCancelsOther);
-        assert_conversion(Class::OneTriggersOther, OrderClass::OneTriggersOther);
-    }
-
-    fn assert_conversion(alpaca_class: Class, expected: OrderClass) {
-        let order_class: OrderClass = alpaca_class.into();
-        assert_eq!(order_class, expected)
+        assert::conversion(Class::Simple, OrderClass::Simple);
+        assert::conversion(Class::Bracket, OrderClass::Bracket);
+        assert::conversion(Class::OneCancelsOther, OrderClass::OneCancelsOther);
+        assert::conversion(Class::OneTriggersOther, OrderClass::OneTriggersOther);
     }
 }

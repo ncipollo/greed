@@ -1,9 +1,9 @@
-pub mod StopLoss;
+pub mod stop_loss;
 
-use num_decimal::Num;
 use crate::platform::order::class::OrderClass;
 use crate::platform::order::order_type::OrderType;
 use crate::platform::order::time_in_force::TimeInForce;
+use num_decimal::Num;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct OrderRequest {
@@ -14,5 +14,5 @@ struct OrderRequest {
     pub stop_price: Option<Num>,
     pub trail_price: Option<Num>,
     pub trail_percent: Option<Num>,
-    pub extended_hours: bool
+    pub extended_hours: bool,
 }
