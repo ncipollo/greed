@@ -13,7 +13,7 @@ use std::fmt::{Display, Formatter};
 use crate::asset::AssetSymbol;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct OrderRequest {
+pub struct OrderRequest {
     pub symbol: AssetSymbol,
     pub class: OrderClass,
     pub order_type: OrderType,
