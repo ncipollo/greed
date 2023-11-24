@@ -5,6 +5,7 @@ mod convert_position;
 mod convert_quote;
 mod convert_request;
 mod convert_side;
+mod convert_symbol;
 mod factory;
 
 use crate::asset::AssetSymbol;
