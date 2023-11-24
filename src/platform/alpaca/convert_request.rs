@@ -1,5 +1,7 @@
-use apca::api::v2::order::OrderReq;
+use crate::greed_error_from;
 use crate::platform::request::OrderRequest;
+use apca::api::v2::order::OrderReq;
+use apca::RequestError;
 
 mod convert_stop_loss;
 mod convert_take_profit;
@@ -27,18 +29,18 @@ impl From<OrderRequest> for OrderReq {
 
 #[cfg(test)]
 mod test {
-    use apca::api::v2::asset::Symbol;
-    use apca::api::v2::order::{Class, OrderReq, Side, Type};
-    use num_decimal::Num;
     use crate::asset::AssetSymbol;
     use crate::platform::order::amount::Amount;
     use crate::platform::order::class::OrderClass;
     use crate::platform::order::order_type::OrderType;
     use crate::platform::order::side::OrderSide;
     use crate::platform::order::time_in_force::TimeInForce;
-    use crate::platform::request::OrderRequest;
     use crate::platform::request::stop_loss::StopLoss;
     use crate::platform::request::take_profit::TakeProfit;
+    use crate::platform::request::OrderRequest;
+    use apca::api::v2::asset::Symbol;
+    use apca::api::v2::order::{Class, OrderReq, Side, Type};
+    use num_decimal::Num;
 
     #[test]
     fn into_alpaca() {
@@ -59,7 +61,9 @@ mod test {
         };
         let expected = OrderReq {
             symbol: Symbol::Sym("VTI".to_string()),
-            amount: apca::api::v2::order::Amount::Notional { notional: Num::from(1) },
+            amount: apca::api::v2::order::Amount::Notional {
+                notional: Num::from(1),
+            },
             side: Side::Buy,
             class: Class::Simple,
             type_: Type::Limit,
@@ -77,3 +81,5 @@ mod test {
         assert_eq!(alpaca_request, expected)
     }
 }
+
+greed_error_from!(RequestError<apca::api::v2::order::PostError>);
