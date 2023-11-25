@@ -7,6 +7,7 @@ mod convert_request;
 mod convert_side;
 mod convert_symbol;
 mod factory;
+mod convert_bar;
 
 use crate::asset::AssetSymbol;
 use crate::error::GreedError;

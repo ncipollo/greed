@@ -1,7 +1,6 @@
 use crate::asset::AssetSymbol;
 use chrono::{DateTime, Utc};
 use num_decimal::Num;
-use once_cell::sync::Lazy;
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -16,8 +15,13 @@ pub struct Bar {
     /// The lowest price.
     pub low: Num,
     /// The trading volume.
-    pub volume: usize,
+    pub volume: usize
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct Bars {
     pub symbol: AssetSymbol,
+    pub bars: Vec<Bar>
 }
 
 impl Display for Bar {
@@ -25,8 +29,8 @@ impl Display for Bar {
         let formatted_time = self.timestamp.format("%m/%d/%y %H:%M:%S %Z");
         write!(
             f,
-            "{} {} - open: {}, close: {}, high: {}, low: {}",
-            formatted_time, self.symbol, self.open, self.close, self.high, self.low
+            "{} - open: {}, close: {}, high: {}, low: {}",
+            formatted_time, self.open, self.close, self.high, self.low
         )
     }
 }
@@ -35,7 +39,6 @@ impl Display for Bar {
 mod test {
     use chrono::{DateTime, TimeZone, Utc};
     use num_decimal::Num;
-    use crate::asset::AssetSymbol;
     use crate::platform::bar::Bar;
 
     #[test]
@@ -47,10 +50,9 @@ mod test {
             close: Num::from(2),
             high: Num::from(4),
             low: Num::from(3),
-            symbol: AssetSymbol::new("VTI"),
             ..Default::default()
         };
-        let expected = "11/25/23 13:00:00 UTC VTI - open: 1, close: 2, high: 4, low: 3";
+        let expected = "11/25/23 13:00:00 UTC - open: 1, close: 2, high: 4, low: 3";
         assert_eq!(bar.to_string(), expected)
     }
 
