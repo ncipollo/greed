@@ -1,3 +1,4 @@
+mod convert_bar_request;
 mod convert_time_frame;
 
 use crate::platform::bar::{Bar, Bars};
