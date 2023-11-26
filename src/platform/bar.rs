@@ -1,3 +1,4 @@
+pub mod bar_request;
 pub mod time_frame;
 
 use crate::asset::AssetSymbol;
@@ -17,13 +18,13 @@ pub struct Bar {
     /// The lowest price.
     pub low: Num,
     /// The trading volume.
-    pub volume: usize
+    pub volume: usize,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Bars {
     pub symbol: AssetSymbol,
-    pub bars: Vec<Bar>
+    pub bars: Vec<Bar>,
 }
 
 impl Display for Bar {
@@ -39,9 +40,9 @@ impl Display for Bar {
 
 #[cfg(test)]
 mod test {
+    use crate::platform::bar::Bar;
     use chrono::{DateTime, TimeZone, Utc};
     use num_decimal::Num;
-    use crate::platform::bar::Bar;
 
     #[test]
     fn display() {
