@@ -13,6 +13,7 @@ mod fixture;
 pub mod platform;
 pub mod run;
 mod strategy;
+mod pager;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
     let runner = GreedRunner::from_args(args).await?;
