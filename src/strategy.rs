@@ -36,7 +36,6 @@ impl StrategyRunner {
         let _ = self.fetch_quotes(symbols).await?;
         let _ = self.fetch_positions().await?;
         let _ = self.fetch_open_orders().await?;
-        let _ = self.test_bars().await?;
         info!("----------");
         Ok(())
     }
