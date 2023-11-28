@@ -1,5 +1,6 @@
 use apca::data::v2::bars::Adjustment::Split;
 use apca::data::v2::bars::BarsReq;
+use apca::data::v2::Feed;
 use crate::platform::bar::bar_request::BarRequest;
 
 impl From<BarRequest> for BarsReq {
@@ -11,7 +12,7 @@ impl From<BarRequest> for BarsReq {
             end: value.end,
             timeframe: value.timeframe.into(),
             adjustment: Some(Split),
-            feed: None,
+            feed: Some(Feed::IEX),
             page_token: None,
         }
     }
