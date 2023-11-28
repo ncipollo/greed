@@ -12,6 +12,10 @@ use itertools::Itertools;
 use log::info;
 use num_decimal::Num;
 use std::sync::Arc;
+use chrono::{Duration, Utc};
+use crate::platform::bar::bar_request::BarRequest;
+use crate::platform::bar::Bars;
+use crate::platform::bar::time_frame::TimeFrame;
 
 mod symbols;
 
@@ -32,8 +36,23 @@ impl StrategyRunner {
         let _ = self.fetch_quotes(symbols).await?;
         let _ = self.fetch_positions().await?;
         let _ = self.fetch_open_orders().await?;
+        let _ = self.test_bars().await?;
         info!("----------");
         Ok(())
+    }
+
+    async fn test_bars(&self) -> Result<Bars, GreedError> {
+        info!("- test bars for VTI");
+        let request = BarRequest {
+            start: Utc::now() - Duration::hours(8),
+            end: Utc::now(),
+            symbol: AssetSymbol::new("VTI"),
+            timeframe: TimeFrame::OneMinute,
+            ..Default::default()
+        };
+        let bars = self.platform.bars(request).await?;
+        info!("-- bars {:?}", bars);
+        Ok(bars)
     }
 
     async fn test_buy(&self) -> Result<Order, GreedError> {

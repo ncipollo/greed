@@ -38,7 +38,7 @@ macro_rules! greed_error_from {
     ($err_type:ty) => {
         impl From<$err_type> for crate::error::GreedError {
             fn from(value: $err_type) -> Self {
-                crate::error::GreedError::from_display(value)
+                crate::error::GreedError::from_debug(value)
             }
         }
     };

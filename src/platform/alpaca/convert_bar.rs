@@ -1,6 +1,8 @@
-mod convert_bar_request;
+pub mod convert_bar_request;
 mod convert_time_frame;
 
+use apca::RequestError;
+use crate::greed_error_from;
 use crate::platform::bar::{Bar, Bars};
 
 impl From<apca::data::v2::bars::Bar> for Bar {
@@ -24,3 +26,5 @@ impl From<apca::data::v2::bars::Bars> for Bars {
         }
     }
 }
+
+greed_error_from!(RequestError<apca::data::v2::bars::GetError>);

@@ -23,10 +23,13 @@ use crate::platform::request::OrderRequest;
 use async_trait::async_trait;
 use log::info;
 use std::sync::Arc;
+use crate::platform::bar::bar_request::BarRequest;
+use crate::platform::bar::Bars;
 
 #[async_trait]
 pub trait FinancialPlatform {
     async fn account(&self) -> Result<Account, GreedError>;
+    async fn bars(&self, bars_request: BarRequest) -> Result<Bars, GreedError>;
     async fn latest_quotes(&self, symbols: &Vec<AssetSymbol>) -> Result<Vec<Quote>, GreedError>;
     async fn place_order(&self, order_request: OrderRequest) -> Result<Order, GreedError>;
     async fn positions(&self) -> Result<Vec<Position>, GreedError>;
