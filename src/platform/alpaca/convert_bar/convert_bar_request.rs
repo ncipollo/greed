@@ -20,6 +20,7 @@ impl From<BarRequest> for BarsReq {
 
 #[cfg(test)]
 mod tests {
+    use apca::data::v2::Feed::IEX;
     use chrono::{TimeZone, Utc};
     use crate::asset::AssetSymbol;
     use crate::platform::bar::time_frame::TimeFrame;
@@ -44,7 +45,7 @@ mod tests {
             end: end_time,
             timeframe: TimeFrame::OneDay.into(),
             adjustment: Some(Split),
-            feed: None,
+            feed: Some(IEX),
             page_token: None,
         };
         assert_eq!(alpaca_request, expected)
