@@ -2,20 +2,20 @@ use crate::asset::AssetSymbol;
 use crate::config::strategy::StrategyConfig;
 use crate::error::GreedError;
 use crate::platform::account::Account;
+use crate::platform::bar::bar_request::BarRequest;
+use crate::platform::bar::time_frame::TimeFrame;
+use crate::platform::bars::Bars;
 use crate::platform::order::amount::Amount;
 use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::request::OrderRequest;
 use crate::platform::FinancialPlatform;
+use chrono::{Duration, Utc};
 use itertools::Itertools;
 use log::info;
 use num_decimal::Num;
 use std::sync::Arc;
-use chrono::{Duration, Utc};
-use crate::platform::bar::bar_request::BarRequest;
-use crate::platform::bar::Bars;
-use crate::platform::bar::time_frame::TimeFrame;
 
 mod symbols;
 

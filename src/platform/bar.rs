@@ -1,7 +1,6 @@
 pub mod bar_request;
 pub mod time_frame;
 
-use crate::asset::AssetSymbol;
 use chrono::{DateTime, Utc};
 use num_decimal::Num;
 use std::fmt::{Display, Formatter};
@@ -21,10 +20,18 @@ pub struct Bar {
     pub volume: usize,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct Bars {
-    pub symbol: AssetSymbol,
-    pub bars: Vec<Bar>,
+impl Bar {
+    pub fn average(&self) -> Num {
+        (&self.low + &self.high) / 2
+    }
+
+    pub fn difference(&self) -> Num {
+        &self.close - &self.open
+    }
+
+    pub fn difference_percent(&self) -> Num {
+        (self.difference() / &self.open) * 100
+    }
 }
 
 impl Display for Bar {
@@ -43,6 +50,36 @@ mod test {
     use crate::platform::bar::Bar;
     use chrono::{DateTime, TimeZone, Utc};
     use num_decimal::Num;
+
+    #[test]
+    fn average() {
+        let bar = Bar {
+            low: Num::from(100),
+            high: Num::from(200),
+            ..Default::default()
+        };
+        assert_eq!(bar.average(), Num::from(150))
+    }
+
+    #[test]
+    fn difference() {
+        let bar = Bar {
+            open: Num::from(200),
+            close: Num::from(100),
+            ..Default::default()
+        };
+        assert_eq!(bar.difference(), Num::from(-100))
+    }
+
+    #[test]
+    fn difference_percent() {
+        let bar = Bar {
+            open: Num::from(200),
+            close: Num::from(100),
+            ..Default::default()
+        };
+        assert_eq!(bar.difference_percent(), Num::from(-50))
+    }
 
     #[test]
     fn display() {
