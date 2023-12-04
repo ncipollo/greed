@@ -26,14 +26,14 @@ mod tests {
 
     #[tokio::test]
     async fn fetch_all_fails() {
-        let results = pager::fetch_all::<(), _, _, ()>(|page| async { Err(GreedError::new("failed")) })
+        let results = pager::fetch_all::<(), _, _, ()>(|_| async { Err(GreedError::new("failed")) })
             .await
             .expect_err("expected an error");
     }
 
     #[tokio::test]
     async fn fetch_all_single_page() {
-        let results = pager::fetch_all::<_, _, _, ()>(|page| async { Ok((vec![1, 2], None)) })
+        let results = pager::fetch_all::<_, _, _, ()>(|_| async { Ok((vec![1, 2], None)) })
             .await
             .expect("failed to fetch results");
         assert_eq!(results, vec![1, 2])

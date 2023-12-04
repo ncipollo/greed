@@ -32,6 +32,23 @@ impl Bar {
     pub fn difference_percent(&self) -> Num {
         (self.difference() / &self.open) * 100
     }
+
+    pub fn join(self, other: Bar) -> Bar {
+        let (timestamp, open, close) = if self.timestamp < other.timestamp {
+            (self.timestamp, self.open, other.close)
+        } else {
+            (other.timestamp, other.open, self.close)
+        };
+
+        Self {
+            timestamp,
+            open,
+            close,
+            low: self.low.clone().min(other.low),
+            high: self.high.clone().max(other.high),
+            ..Default::default()
+        }
+    }
 }
 
 impl Display for Bar {
@@ -83,7 +100,7 @@ mod test {
 
     #[test]
     fn display() {
-        let timestamp = date();
+        let timestamp = date(1);
         let bar = Bar {
             timestamp,
             open: Num::from(1),
@@ -92,13 +109,58 @@ mod test {
             low: Num::from(3),
             ..Default::default()
         };
-        let expected = "11/25/23 13:00:00 UTC - open: 1, close: 2, high: 4, low: 3";
+        let expected = "11/01/23 13:00:00 UTC - open: 1, close: 2, high: 4, low: 3";
         assert_eq!(bar.to_string(), expected)
     }
 
-    fn date() -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(2023, 11, 25, 13, 0, 0)
+    #[test]
+    fn join_earlier_first() {
+        let joined = earlier_bar().join(later_bar());
+        assert_eq!(joined, join_expected())
+    }
+
+    #[test]
+    fn join_later_first() {
+        let joined = later_bar().join(earlier_bar());
+        assert_eq!(joined, join_expected())
+    }
+
+    fn date(day: u32) -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2023, 11, day, 13, 0, 0)
             .earliest()
             .expect("failed to create test date")
+    }
+
+    fn earlier_bar() -> Bar {
+        Bar {
+            timestamp: date(1),
+            open: Num::from(100),
+            close: Num::from(200),
+            low: Num::from(0),
+            high: Num::from(500),
+            volume: 0,
+        }
+    }
+
+    fn later_bar() -> Bar {
+        Bar {
+            timestamp: date(2),
+            open: Num::from(300),
+            close: Num::from(50),
+            low: Num::from(200),
+            high: Num::from(200),
+            volume: 0,
+        }
+    }
+
+    fn join_expected() -> Bar {
+        Bar {
+            timestamp: date(1),
+            open: Num::from(100),
+            close: Num::from(50),
+            low: Num::from(0),
+            high: Num::from(500),
+            volume: 0,
+        }
     }
 }
