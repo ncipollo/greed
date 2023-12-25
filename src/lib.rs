@@ -4,16 +4,18 @@ use crate::error::GreedError;
 use crate::platform::args::PlatformArgs;
 use crate::run::{GreedRunner, GreedRunnerArgs};
 
+mod analysis;
 mod assert;
 pub mod asset;
 pub mod config;
+mod date;
 mod enum_display;
 pub mod error;
 mod fixture;
+mod pager;
 pub mod platform;
 pub mod run;
 mod strategy;
-mod pager;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
     let runner = GreedRunner::from_args(args).await?;
@@ -39,4 +41,20 @@ fn print_price_explainer() {
     println!("ask price = lowest price where someone is willing to sell a share");
     println!("bid price = highest price someone is willing to pay for a share");
     println!("-----------");
+}
+
+pub async fn analyze_stocks(
+    assets: &Vec<AssetSymbol>,
+    platform_type: &PlatformType,
+    platform_args: PlatformArgs,
+) -> Result<(), GreedError> {
+    let platform = platform::for_type(platform_type, platform_args)?;
+    let bars_by_symbol = analysis::analyze_bars(platform.clone(), assets).await?;
+    for symbol in assets {
+        let bars = bars_by_symbol
+            .get(symbol)
+            .ok_or(GreedError::new("missing bars"))?;
+        println!("{}", bars)
+    }
+    Ok(())
 }

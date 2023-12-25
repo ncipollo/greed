@@ -33,19 +33,19 @@ impl Bar {
         (self.difference() / &self.open) * 100
     }
 
-    pub fn join(self, other: Bar) -> Bar {
+    pub fn join(&self, other: &Bar) -> Bar {
         let (timestamp, open, close) = if self.timestamp < other.timestamp {
-            (self.timestamp, self.open, other.close)
+            (self.timestamp, &self.open, &other.close)
         } else {
-            (other.timestamp, other.open, self.close)
+            (other.timestamp, &other.open, &self.close)
         };
 
         Self {
             timestamp,
-            open,
-            close,
-            low: self.low.clone().min(other.low),
-            high: self.high.clone().max(other.high),
+            open: open.clone(),
+            close: close.clone(),
+            low: self.low.clone().min(other.clone().low),
+            high: self.high.clone().max(other.clone().high),
             ..Default::default()
         }
     }
@@ -115,13 +115,13 @@ mod test {
 
     #[test]
     fn join_earlier_first() {
-        let joined = earlier_bar().join(later_bar());
+        let joined = earlier_bar().join(&later_bar());
         assert_eq!(joined, join_expected())
     }
 
     #[test]
     fn join_later_first() {
-        let joined = later_bar().join(earlier_bar());
+        let joined = later_bar().join(&earlier_bar());
         assert_eq!(joined, join_expected())
     }
 

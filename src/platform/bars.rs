@@ -31,6 +31,13 @@ impl Bars {
         return Some(sorted_bars[middle].clone().into_owned());
     }
 
+    pub fn period_bar(&self) -> Option<Bar> {
+        let first_bar = self.bars.first()?;
+        let last_bar = self.bars.last()?;
+        let joined = first_bar.join(last_bar);
+        Some(joined)
+    }
+
     pub fn is_empty(&self) -> bool {
         self.bars.is_empty()
     }
@@ -39,6 +46,7 @@ impl Bars {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::{DateTime, TimeZone, Utc};
 
     #[test]
     fn average_median() {
@@ -83,5 +91,44 @@ mod tests {
 
         let median = bars.close_median();
         assert_eq!(median, None)
+    }
+
+    #[test]
+    fn period_bar_empty() {
+        let bars = Bars {
+            ..Default::default()
+        };
+        let period_bar = bars.period_bar();
+        assert_eq!(period_bar, None)
+    }
+
+    #[test]
+    fn period_bar_several_bars() {
+        let bar_vec = (0..5)
+            .map(|index| Bar {
+                timestamp: date(index),
+                close: Num::from(index * 200),
+                open: Num::from(index * 100),
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
+        let bars = Bars {
+            bars: bar_vec,
+            ..Default::default()
+        };
+
+        let period_bar = bars.period_bar();
+        let expected = Bar {
+            timestamp: date(0),
+            open: Num::from(0),
+            close: Num::from(800),
+            ..Default::default()
+        };
+        assert_eq!(period_bar, Some(expected))
+    }
+    fn date(min: u32) -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2023, 12, 25, 0, min, 0)
+            .earliest()
+            .expect("failed to create test date")
     }
 }

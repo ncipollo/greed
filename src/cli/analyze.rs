@@ -22,3 +22,20 @@ impl From<&AnalyzeArgs> for PlatformArgs {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from() {
+        let analyze_args = AnalyzeArgs {
+            symbols: vec![],
+            is_simulated: true,
+            platform_type: Default::default(),
+        };
+        let platform_args: PlatformArgs = PlatformArgs::from(&analyze_args);
+        let expected = PlatformArgs { is_simulated: true };
+        assert_eq!(platform_args, expected)
+    }
+}

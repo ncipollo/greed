@@ -3,7 +3,7 @@ mod cli;
 use crate::cli::{Cli, Command};
 use clap::{CommandFactory, Parser};
 use greed::platform::args::PlatformArgs;
-use greed::{fetch_quote, greed_loop};
+use greed::{analyze_stocks, fetch_quote, greed_loop};
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode};
 
@@ -27,13 +27,13 @@ async fn async_main(log_config: Config) {
                 .expect("greed loop threw error");
         }
         Command::Analyze(args) => {
-            fetch_quote(
+            analyze_stocks(
                 &args.symbols,
                 &args.platform_type,
                 PlatformArgs::from(&args),
             )
             .await
-            .expect("stock analysis");
+            .expect("stock analysis failed");
         }
         Command::Quote(args) => {
             fetch_quote(

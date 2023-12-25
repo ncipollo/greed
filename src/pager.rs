@@ -26,7 +26,7 @@ mod tests {
 
     #[tokio::test]
     async fn fetch_all_fails() {
-        let results = pager::fetch_all::<(), _, _, ()>(|_| async { Err(GreedError::new("failed")) })
+        pager::fetch_all::<(), _, _, ()>(|_| async { Err(GreedError::new("failed")) })
             .await
             .expect_err("expected an error");
     }
