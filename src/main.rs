@@ -1,38 +1,39 @@
 mod cli;
 
 use crate::cli::{Cli, Command};
-use apca::api::v2::orders::{OrdersReq, Status};
-use apca::api::v2::{account, orders, positions};
-use apca::data::v2::last_quotes::LastQuotesReqInit;
-use apca::data::v2::quotes::QuotesReqInit;
-use apca::data::v2::{last_quotes, quotes};
-use apca::{ApiInfo, Client, RequestError};
-use chrono::{Duration, Utc};
 use clap::{CommandFactory, Parser};
 use greed::platform::args::PlatformArgs;
 use greed::{fetch_quote, greed_loop};
 use log::LevelFilter;
-use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, ConfigBuilder};
+use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode};
 
 fn main() {
-    setup_logging();
+    let config = create_log_config();
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(async {
-            async_main().await
-        });
+        .block_on(async { async_main(config).await });
 }
 
-async fn async_main() {
+async fn async_main(log_config: Config) {
     let cli = Cli::parse();
     let command = cli.command;
     match command {
         Command::Run(args) => {
+            setup_logging(log_config);
             greed_loop(args.into())
                 .await
                 .expect("greed loop threw error");
+        }
+        Command::Analyze(args) => {
+            fetch_quote(
+                &args.symbols,
+                &args.platform_type,
+                PlatformArgs::from(&args),
+            )
+            .await
+            .expect("stock analysis");
         }
         Command::Quote(args) => {
             fetch_quote(
@@ -40,99 +41,23 @@ async fn async_main() {
                 &args.platform_type,
                 PlatformArgs::from(&args),
             )
-                .await
-                .expect("quote fetch failed");
+            .await
+            .expect("quote fetch failed");
         }
-        Command::TestAlpaca => test_alpaca().await,
         Command::Completions { shell } => {
             shell.generate(&mut Cli::command(), &mut std::io::stdout());
         }
     }
 }
 
-async fn test_alpaca() {
-    let api_info = ApiInfo::from_env().expect("failed to load alpaca info from env");
-    let client = Client::new(api_info);
-    let account = client.issue::<account::Get>(&()).await.unwrap();
-    let power = account.buying_power;
-    println!("Hello buying power: {power}");
-
-    println!("VTI Historic Quotes: ---");
-    let end = Utc::now() - Duration::minutes(15);
-    let start = end - Duration::hours(2);
-    let quote_req = QuotesReqInit {
-        ..Default::default()
-    }
-    .init("VTI", start, end);
-    let quote_result = client.issue::<quotes::Get>(&quote_req).await;
-    if quote_result.is_err() {
-        let err = quote_result.unwrap_err();
-        println!("Endpoint err - {err}");
-        if let RequestError::Endpoint(get_err) = err {
-            println!("Get err - {get_err}")
-        }
-    } else {
-        let quote = quote_result.unwrap();
-        println!("VTI Historic Quote: {:?}", quote);
-    }
-
-    println!("Latest VTI: ---");
-    let latest_req = LastQuotesReqInit {
-        ..Default::default()
-    }
-    .init(vec!["VTI"]);
-
-    let latest = client.issue::<last_quotes::Get>(&latest_req).await.unwrap();
-    let quote = latest[0].clone().1;
-    let ask = quote.ask_price.to_f64().unwrap();
-    let bid = quote.bid_price.to_f64().unwrap();
-    println!("VTI Ask and bid: {ask} , {bid}");
-
-    // Uncomment 👇 to test buy order
-    // let buy_order_req = order::OrderReqInit {
-    //     type_: Type::Market,
-    //     ..Default::default()
-    // }
-    // .init("VTI", Side::Buy, order::Amount::notional(10));
-    //
-    // let buy_order = client.issue::<order::Post>(&buy_order_req).await.unwrap();
-    // println!("Order status: {:?}", buy_order.status);
-
-    let orders_req = OrdersReq {
-        status: Status::All,
-        ..OrdersReq::default()
-    };
-    let orders = client.issue::<orders::Get>(&orders_req).await.unwrap();
-
-    println!("Orders: ---");
-    orders.iter().for_each(|order| {
-        println!(
-            "Order - {}, amount - {:?}, status, {:?}",
-            order.symbol, order.amount, order.status
-        )
-    });
-
-    println!("Positions: ---");
-    let positions = client.issue::<positions::Get>(&()).await.unwrap();
-    positions.iter().for_each(|position| {
-        println!(
-            "Position - {}, amount - {:?}, unrealized gain percent - {:?}",
-            position.symbol,
-            position.quantity.to_f64(),
-            position
-                .unrealized_gain_total_percent
-                .clone()
-                .unwrap()
-                .to_f64()
-        )
-    });
-}
-
-fn setup_logging() {
-    let config  = ConfigBuilder::new()
+fn create_log_config() -> Config {
+    ConfigBuilder::new()
         .set_time_offset_to_local()
         .expect("failed to use local time for logs")
-        .build();
+        .build()
+}
+
+fn setup_logging(config: Config) {
     CombinedLogger::init(vec![TermLogger::new(
         LevelFilter::Info,
         config,
