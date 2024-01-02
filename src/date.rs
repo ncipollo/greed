@@ -23,14 +23,24 @@ impl NaiveDateTimeConvert for Range<NaiveDateTime> {
 }
 
 #[cfg(test)]
+use chrono::Local;
+
+#[cfg(test)]
 pub struct DateTimeFixture {}
 
 #[cfg(test)]
 impl DateTimeFixture {
+    pub fn local() -> DateTime<Local> {
+        Local
+            .with_ymd_and_hms(2023, 12, 01, 8, 0, 0)
+            .earliest()
+            .expect("failed to get local date")
+    }
+
     pub fn utc() -> DateTime<Utc> {
         Utc.with_ymd_and_hms(2023, 12, 01, 8, 0, 0)
             .earliest()
-            .expect("failed to get date")
+            .expect("failed to get utc date")
     }
 
     pub fn naive_utc() -> NaiveDateTime {

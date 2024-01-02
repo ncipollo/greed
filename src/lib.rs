@@ -1,3 +1,4 @@
+use crate::analysis::AssetAnalyzer;
 use crate::asset::AssetSymbol;
 use crate::config::platform::PlatformType;
 use crate::error::GreedError;
@@ -49,7 +50,8 @@ pub async fn analyze_stocks(
     platform_args: PlatformArgs,
 ) -> Result<(), GreedError> {
     let platform = platform::for_type(platform_type, platform_args)?;
-    let bars_by_symbol = analysis::analyze_bars(platform.clone(), assets).await?;
+    let analyzer = AssetAnalyzer::new(platform);
+    let bars_by_symbol = analyzer.analyze_bars(assets).await?;
     for symbol in assets {
         let bars = bars_by_symbol
             .get(symbol)
