@@ -13,12 +13,12 @@ mod time_range;
 pub async fn analyze_bars(
     platform: Arc<dyn FinancialPlatform>,
     assets: &Vec<AssetSymbol>,
-) -> Result<HashMap<&AssetSymbol, BarsResult>, GreedError> {
+) -> Result<HashMap<AssetSymbol, BarsResult>, GreedError> {
     let fetcher = BarsFetcher::new(platform.clone());
     let mut results_by_symbol = HashMap::new();
     for symbol in assets {
         let results = fetcher.fetch(symbol).await?;
-        results_by_symbol.insert(symbol, results);
+        results_by_symbol.insert(symbol.clone(), results);
     }
     Ok(results_by_symbol)
 }
