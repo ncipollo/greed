@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 pub mod fetcher;
 pub mod result;
+mod state;
 mod time_range;
 
 pub async fn analyze_bars(
