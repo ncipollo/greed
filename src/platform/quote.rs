@@ -43,6 +43,18 @@ impl Quote {
     pub fn valid_bid(&self) -> bool {
         self.bid_price > *ZERO_NUM
     }
+
+    #[cfg(test)]
+    pub fn fixture(symbol: AssetSymbol) -> Self {
+        Self {
+            time: Default::default(),
+            ask_price: Num::from(200),
+            ask_size: 1,
+            bid_price: Num::from(100),
+            bid_size: 1,
+            symbol,
+        }
+    }
 }
 
 impl Display for Quote {

@@ -44,6 +44,17 @@ trait NumFormatter {
     fn format_as_float(&self) -> String;
 }
 
+impl Position {
+    #[cfg(test)]
+    pub fn fixture(symbol: AssetSymbol) -> Self {
+        Self {
+            quantity: Num::from(50),
+            symbol,
+            ..Default::default()
+        }
+    }
+}
+
 impl NumFormatter for Option<Num> {
     fn format_as_float(&self) -> String {
         self.as_ref()
@@ -107,8 +118,7 @@ mod test {
             ..Default::default()
         };
         let display = position.to_string();
-        let expected =
-            "VTI quantity: 10.10, value: --, gains today: --%, gains total: --%";
+        let expected = "VTI quantity: 10.10, value: --, gains today: --%, gains total: --%";
         assert_eq!(display, expected)
     }
 }

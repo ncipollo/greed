@@ -41,6 +41,18 @@ impl Bars {
     pub fn is_empty(&self) -> bool {
         self.bars.is_empty()
     }
+
+    #[cfg(test)]
+    pub fn fixture(symbol: AssetSymbol, base_average: i64) -> Self {
+        Self {
+            symbol,
+            bars: vec![
+                Bar::fixture(base_average),
+                Bar::fixture(base_average + 100),
+                Bar::fixture(base_average + 200),
+            ],
+        }
+    }
 }
 
 #[cfg(test)]

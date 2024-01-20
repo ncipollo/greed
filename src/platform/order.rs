@@ -67,6 +67,17 @@ pub struct Order {
     pub extended_hours: bool,
 }
 
+impl Order {
+    #[cfg(test)]
+    pub fn fixture(symbol: AssetSymbol) -> Self {
+        Self {
+            amount: Amount::Quantity(Num::from(1)),
+            symbol,
+            ..Default::default()
+        }
+    }
+}
+
 impl Display for Order {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(

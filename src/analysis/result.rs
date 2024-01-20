@@ -10,6 +10,18 @@ pub struct BarsResult {
     pub thirty_day: Bars,
 }
 
+impl BarsResult {
+    #[cfg(test)]
+    pub fn fixture(symbol: AssetSymbol) -> Self {
+        Self {
+            symbol: symbol.clone(),
+            yesterday: Bars::fixture(symbol.clone(), 300),
+            seven_day: Bars::fixture(symbol.clone(), 200),
+            thirty_day: Bars::fixture(symbol.clone(), 100),
+        }
+    }
+}
+
 impl Display for BarsResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(

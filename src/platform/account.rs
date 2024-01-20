@@ -25,6 +25,18 @@ pub struct Account {
     pub equity: Num,
 }
 
+impl Account {
+    #[cfg(test)]
+    pub fn fixture() -> Self {
+        Self {
+            buying_power: Num::from(1000),
+            cash: Num::from(500),
+            equity: Num::from(500),
+            ..Default::default()
+        }
+    }
+}
+
 impl Display for Account {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let buying_power = self.buying_power.to_f64().unwrap_or(0.0);

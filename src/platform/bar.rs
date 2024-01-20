@@ -4,6 +4,8 @@ pub mod time_frame;
 use chrono::{DateTime, Utc};
 use num_decimal::Num;
 use std::fmt::{Display, Formatter};
+#[cfg(test)]
+use crate::date::DateTimeFixture;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Bar {
@@ -47,6 +49,18 @@ impl Bar {
             low: self.low.clone().min(other.clone().low),
             high: self.high.clone().max(other.clone().high),
             ..Default::default()
+        }
+    }
+
+    #[cfg(test)]
+    pub fn fixture(average: i64) -> Self {
+        Self {
+            timestamp: DateTimeFixture::utc(),
+            open: Num::from(average - 100),
+            close: Num::from(average + 100),
+            low: Num::from(average - 100),
+            high: Num::from(average + 100),
+            volume: 100
         }
     }
 }
