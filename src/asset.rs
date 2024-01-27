@@ -32,6 +32,12 @@ impl From<String> for AssetSymbol {
     }
 }
 
+impl From<&str> for AssetSymbol {
+    fn from(value: &str) -> Self {
+        AssetSymbol::from_str(value).expect("asset symbol from_str shouldn't fail")
+    }
+}
+
 struct AssetVisitor;
 
 impl<'de> Visitor<'de> for AssetVisitor {
@@ -89,17 +95,24 @@ mod test {
     }
 
     #[test]
-    fn from_str_no_dollar_sign() {
+    fn from_string_no_dollar_sign() {
         let asset = "vti".parse::<AssetSymbol>().expect("failed to parse asset");
         let expected = AssetSymbol::new("vti");
         assert_eq!(asset, expected);
     }
 
     #[test]
-    fn from_str_with_dollar_sign() {
+    fn from_string_with_dollar_sign() {
         let asset = "$vti"
             .parse::<AssetSymbol>()
             .expect("failed to parse asset");
+        let expected = AssetSymbol::new("vti");
+        assert_eq!(asset, expected);
+    }
+
+    #[test]
+    fn from_str_with_dollar_sign() {
+        let asset: AssetSymbol = "$vti".into();
         let expected = AssetSymbol::new("vti");
         assert_eq!(asset, expected);
     }

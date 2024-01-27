@@ -13,16 +13,3 @@ do = { buy_percent = 10 }
 for = { stock = "$VTI" }
 when = { gain_above_percent = 5.0 }
 do = { sell_all = true }
-
-[[strategies]]
-name = "Chaos"
-
-[strategies.buy]
-for = { stock = "$UVXY" }
-when = { below_1_day_percent = 2.0 }
-do = { buy_percent = 5 }
-
-[strategies.sell]
-for = { stock = "$UVXY" }
-when = { gain_above_percent = 3.0 }
-do = { sell_all = true }

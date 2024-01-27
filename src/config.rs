@@ -5,10 +5,8 @@ use crate::error::GreedError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-pub mod asset;
 pub mod platform;
 pub mod reader;
-pub mod rules;
 pub mod strategy;
 
 #[derive(Debug, Default, Deserialize, PartialEq, Serialize)]
@@ -17,8 +15,8 @@ pub struct Config {
     pub platform: PlatformType,
     #[serde(default)]
     pub strategies: Vec<StrategyConfig>,
-    #[serde(default="default_interval")]
-    pub interval: u64
+    #[serde(default = "default_interval")]
+    pub interval: u64,
 }
 
 fn default_interval() -> u64 {
@@ -33,11 +31,11 @@ impl Config {
 
 #[cfg(test)]
 mod test {
-    use crate::asset::AssetSymbol;
-    use crate::config::asset::AssetConfig;
     use crate::config::platform::PlatformType;
-    use crate::config::rules::target::PortfolioTargetRule;
-    use crate::config::rules::BuyRulesConfig;
+    use crate::config::strategy::r#do::DoConfig;
+    use crate::config::strategy::r#for::ForConfig;
+    use crate::config::strategy::rule::RuleConfig;
+    use crate::config::strategy::when::WhenConfig;
     use crate::config::strategy::StrategyConfig;
     use crate::config::Config;
     use crate::fixture;
@@ -48,7 +46,7 @@ mod test {
         let expected = Config {
             platform: PlatformType::Alpaca,
             strategies: vec![],
-            interval: 0
+            interval: 0,
         };
 
         assert_eq!(default, expected)
@@ -56,88 +54,97 @@ mod test {
 
     #[tokio::test]
     async fn deserialize_minimal_config() {
-        let path = fixture::path("config_minimal.toml");
-        let config = Config::from_path(path)
-            .await
-            .expect("config not found");
-
+        let config = fixture::config("config_minimal.toml").await;
         let expected = Config {
             platform: PlatformType::Alpaca,
             strategies: vec![],
-            interval: 60
+            interval: 60,
         };
-        assert_eq!(config, expected)
+        assert_eq!(expected, config)
     }
 
     #[tokio::test]
-    async fn deserialize_minimal_asset_config() {
-        let path = fixture::path("config_minimal_asset.toml");
-        let config = Config::from_path(path)
-            .await
-            .expect("config not found");
-
+    async fn deserialize_single_strategy() {
+        let config = fixture::config("config_single_strategy.toml").await;
         let expected = Config {
             platform: PlatformType::Alpaca,
             strategies: vec![StrategyConfig {
-                assets: vec![AssetConfig {
-                    buy_rules: Default::default(),
-                    sell_rules: Default::default(),
-                    symbol: AssetSymbol::new("VTI"),
-                }],
-                ..Default::default()
+                name: "ETF".to_string(),
+                buy: RuleConfig {
+                    for_config: ForConfig::Stock {
+                        stock: "VTI".into(),
+                    },
+                    when_config: WhenConfig::BelowOneDay {
+                        below_1_day_percent: 5.0,
+                    },
+                    do_config: DoConfig::Buy { buy_percent: 10.0 },
+                },
+                sell: RuleConfig {
+                    for_config: ForConfig::Stock {
+                        stock: "VTI".into(),
+                    },
+                    when_config: WhenConfig::GainAbove {
+                        gain_above_percent: 5.0,
+                    },
+                    do_config: DoConfig::SellAll { sell_all: true },
+                },
             }],
-            interval: 300
+            interval: 300,
         };
-        assert_eq!(config, expected)
+        assert_eq!(expected, config)
     }
 
     #[tokio::test]
     async fn deserialize_multi_strategy_config() {
-        let path = fixture::path("config_multi_strategy.toml");
-        let config = Config::from_path(path)
-            .await
-            .expect("config not found");
-
+        let config = fixture::config("config_multi_strategy.toml").await;
         let expected = Config {
             platform: PlatformType::Alpaca,
             strategies: vec![
                 StrategyConfig {
-                    assets: vec![
-                        AssetConfig {
-                            buy_rules: BuyRulesConfig {
-                                portfolio_target: Some(PortfolioTargetRule { percent: 25.0 }),
-                            },
-                            sell_rules: Default::default(),
-                            symbol: AssetSymbol::new("VTI"),
+                    name: "ETF".to_string(),
+                    buy: RuleConfig {
+                        for_config: ForConfig::Stock {
+                            stock: "VTI".into(),
                         },
-                        AssetConfig {
-                            buy_rules: BuyRulesConfig {
-                                portfolio_target: Some(PortfolioTargetRule { percent: 15.0 }),
-                            },
-                            sell_rules: Default::default(),
-                            symbol: AssetSymbol::new("VEA"),
+                        when_config: WhenConfig::BelowOneDay {
+                            below_1_day_percent: 5.0,
                         },
-                    ],
-                    buy_rules: BuyRulesConfig {
-                        portfolio_target: Some(PortfolioTargetRule { percent: 50.0 }),
+                        do_config: DoConfig::Buy { buy_percent: 10.0 },
                     },
-                    name: "ETFs".to_string(),
-                    ..Default::default()
+                    sell: RuleConfig {
+                        for_config: ForConfig::Stock {
+                            stock: "VTI".into(),
+                        },
+                        when_config: WhenConfig::GainAbove {
+                            gain_above_percent: 5.0,
+                        },
+                        do_config: DoConfig::SellAll { sell_all: true },
+                    },
                 },
                 StrategyConfig {
-                    assets: vec![
-                        AssetConfig {
-                            buy_rules: Default::default(),
-                            sell_rules: Default::default(),
-                            symbol: AssetSymbol::new("VIXY"),
-                        }
-                    ],
                     name: "Chaos".to_string(),
-                    ..Default::default()
+                    buy: RuleConfig {
+                        for_config: ForConfig::Stock {
+                            stock: "UVXY".into(),
+                        },
+                        when_config: WhenConfig::BelowOneDay {
+                            below_1_day_percent: 2.0,
+                        },
+                        do_config: DoConfig::Buy { buy_percent: 5.0 },
+                    },
+                    sell: RuleConfig {
+                        for_config: ForConfig::Stock {
+                            stock: "UVXY".into(),
+                        },
+                        when_config: WhenConfig::GainAbove {
+                            gain_above_percent: 3.0,
+                        },
+                        do_config: DoConfig::SellAll { sell_all: true },
+                    },
                 },
             ],
-            interval: 300
+            interval: 300,
         };
-        assert_eq!(config, expected)
+        assert_eq!(expected, config)
     }
 }

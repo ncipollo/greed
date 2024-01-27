@@ -1,6 +1,0 @@
-interval = 300
-
-[[strategies]]
-
-[[strategies.assets]]
-symbol = "VTI"

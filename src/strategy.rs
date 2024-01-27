@@ -17,7 +17,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 mod state;
-mod symbols;
 
 pub struct StrategyRunner {
     asset_analyzer: AssetAnalyzer,
@@ -36,7 +35,7 @@ impl StrategyRunner {
     pub async fn run(&self) -> Result<(), GreedError> {
         info!("🧠 running strategy: {}", self.config.name);
         let account = self.fetch_account().await?;
-        let symbols = symbols::from_config(&self.config);
+        let symbols = self.config.assets();
         let bar_analysis = self.asset_analyzer.analyze_bars(&symbols).await?;
         let quotes = self.fetch_quotes(&symbols).await?;
         let positions = self.fetch_positions().await?;
