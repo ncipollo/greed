@@ -15,8 +15,17 @@ use log::info;
 use num_decimal::Num;
 use std::collections::HashMap;
 use std::sync::Arc;
+use crate::strategy::rule::StrategyRuleset;
 
+mod action;
+mod r#do;
+mod r#for;
+mod null;
+mod rule;
+mod skip;
 mod state;
+mod target;
+mod when;
 
 pub struct StrategyRunner {
     asset_analyzer: AssetAnalyzer,
@@ -41,7 +50,8 @@ impl StrategyRunner {
         let positions = self.fetch_positions().await?;
         let open_orders = self.fetch_open_orders().await?;
 
-        let _ = StrategyState::new(account, bar_analysis, open_orders, positions, quotes);
+        let state = StrategyState::new(account, bar_analysis, open_orders, positions, quotes);
+        self.evaluate_rules(state).await?;
         info!("----------");
         Ok(())
     }
@@ -103,6 +113,16 @@ impl StrategyRunner {
             .map(|o| (o.symbol.clone(), o))
             .collect::<HashMap<_, _>>();
         Ok(by_symbol)
+    }
+
+    async fn evaluate_rules(&self, state: StrategyState) -> Result<(), GreedError> {
+        let rules = StrategyRuleset::from_config(self.config.clone());
+        let buy_result = rules.buy.evaluate(&state);
+        let sell_result = rules.sell.evaluate(&state);
+
+        info!("buy rule result: {:?}", buy_result);
+        info!("sell rule result: {:?}", sell_result);
+        Ok(())
     }
 
     fn symbols_string(symbols: &Vec<AssetSymbol>) -> String {

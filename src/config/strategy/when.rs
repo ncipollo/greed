@@ -7,6 +7,7 @@ pub enum WhenConfig {
     Always { always: bool },
     BelowOneDay { below_1_day_percent: f64 },
     GainAbove { gain_above_percent: f64 },
+    Never { never: bool },
 }
 
 impl Default for WhenConfig {
