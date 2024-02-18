@@ -16,7 +16,11 @@ use num_decimal::Num;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+mod r#do;
+mod r#for;
+mod rule;
 mod state;
+mod when;
 
 pub struct StrategyRunner {
     asset_analyzer: AssetAnalyzer,
