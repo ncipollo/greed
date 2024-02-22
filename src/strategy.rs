@@ -21,6 +21,8 @@ mod r#for;
 mod rule;
 mod state;
 mod when;
+mod target;
+mod nothing;
 
 pub struct StrategyRunner {
     asset_analyzer: AssetAnalyzer,

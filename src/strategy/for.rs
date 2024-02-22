@@ -1,25 +1,11 @@
-use crate::asset::AssetSymbol;
+use crate::strategy::state::StrategyState;
+use crate::strategy::target::TargetAsset;
 
 pub trait ForRule {
-
+    fn evaluate(&self, state: &StrategyState) -> ForResult;
 }
 
 #[derive(Debug, Default, PartialEq)]
-struct ForResult {
-    target_assets: Vec<TargetAsset>
-}
-
-#[derive(Debug, PartialEq)]
-struct TargetAsset {
-    symbol: AssetSymbol,
-    percent: f64
-}
-
-impl Default for TargetAsset {
-    fn default() -> Self {
-        Self {
-            symbol: AssetSymbol::default(),
-            percent: 1.0
-        }
-    }
+pub struct ForResult {
+    target_assets: Vec<TargetAsset>,
 }
