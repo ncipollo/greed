@@ -3,6 +3,7 @@ use crate::strategy::r#for::{ForResult, ForRule};
 use crate::strategy::state::StrategyState;
 use crate::strategy::when::{WhenResult, WhenRule};
 
+#[derive(Debug, PartialEq)]
 pub struct NullRule;
 
 impl ForRule for NullRule {

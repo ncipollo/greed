@@ -1,5 +1,7 @@
-use crate::strategy::r#do::DoRule;
+use crate::strategy::null::NullRule;
+use crate::strategy::r#do::{DoResult, DoRule};
 use crate::strategy::r#for::ForRule;
+use crate::strategy::state::StrategyState;
 use crate::strategy::when::WhenRule;
 
 struct RuleSet {
@@ -8,19 +10,35 @@ struct RuleSet {
     when_rule: Box<dyn WhenRule>
 }
 
-// impl Default for RuleSet {
-//     fn default() -> Self {
-//         Self {
-//             for_rule: Box::new(ForRule::default()),
-//             do_rule: Box::new(DoRule::default()),
-//             when_rule: Box::new(WhenRule::default())
-//         }
-//     }
-//
-// }
+impl Default for RuleSet {
+    fn default() -> Self {
+        Self {
+            for_rule: Box::new(NullRule),
+            do_rule: Box::new(NullRule),
+            when_rule: Box::new(NullRule)
+        }
+    }
+
+}
 
 impl RuleSet {
-    pub fn evaluate(&self) {
+    pub fn evaluate(&self, state: &StrategyState) -> DoResult {
+        let for_result = self.for_rule.evaluate(state);
+        if for_result.is_empty() {
+            return DoResult::default();
+        }
 
+        let when_result = self.when_rule.evaluate(state, for_result);
+        if !when_result.conditions_satisfied {
+            return DoResult::default();
+        }
+
+        self.do_rule.evaluate(state, when_result)
     }
+}
+
+mod tests {
+    use std::any::Any;
+    use std::ops::Deref;
+    use super::*;
 }

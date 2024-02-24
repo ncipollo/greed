@@ -8,6 +8,6 @@ pub trait WhenRule {
 
 #[derive(Debug, Default, PartialEq)]
 pub struct WhenResult {
-    conditions_satisfied: bool,
-    target_assets: Vec<TargetAsset>,
+    pub conditions_satisfied: bool,
+    pub target_assets: Vec<TargetAsset>,
 }
