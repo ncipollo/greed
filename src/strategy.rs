@@ -23,6 +23,7 @@ mod rule;
 mod state;
 mod target;
 mod when;
+mod action;
 
 pub struct StrategyRunner {
     asset_analyzer: AssetAnalyzer,

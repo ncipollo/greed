@@ -37,8 +37,4 @@ impl RuleSet {
     }
 }
 
-mod tests {
-    use std::any::Any;
-    use std::ops::Deref;
-    use super::*;
-}
+mod tests {}
