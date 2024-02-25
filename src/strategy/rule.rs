@@ -25,12 +25,12 @@ impl RuleSet {
     pub fn evaluate(&self, state: &StrategyState) -> DoResult {
         let for_result = self.for_rule.evaluate(state);
         if for_result.is_empty() {
-            return DoResult::default();
+            return DoResult::skip();
         }
 
         let when_result = self.when_rule.evaluate(state, for_result);
         if !when_result.conditions_satisfied {
-            return DoResult::default();
+            return DoResult::skip();
         }
 
         self.do_rule.evaluate(state, when_result)
