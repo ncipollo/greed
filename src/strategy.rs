@@ -16,6 +16,7 @@ use num_decimal::Num;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+mod action;
 mod r#do;
 mod r#for;
 mod null;
@@ -23,7 +24,6 @@ mod rule;
 mod state;
 mod target;
 mod when;
-mod action;
 
 pub struct StrategyRunner {
     asset_analyzer: AssetAnalyzer,
