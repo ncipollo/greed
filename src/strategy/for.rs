@@ -18,6 +18,13 @@ impl ForResult {
     pub fn is_empty(&self) -> bool {
         self.target_assets.is_empty()
     }
+
+    #[cfg(test)]
+    pub fn fixture() -> Self {
+        Self {
+            target_assets: vec![TargetAsset::fixture()],
+        }
+    }
 }
 
 #[cfg(test)]

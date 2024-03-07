@@ -1,3 +1,5 @@
+mod when_always;
+
 use crate::strategy::r#for::ForResult;
 use crate::strategy::state::StrategyState;
 use crate::strategy::target::TargetAsset;

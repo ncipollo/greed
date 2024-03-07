@@ -22,6 +22,11 @@ impl TargetAsset {
             percent: 100.0,
         }
     }
+
+    #[cfg(test)]
+    pub fn fixture() -> Self {
+        Self::full_percent(AssetSymbol::new("SPY"))
+    }
 }
 
 mod tests {
