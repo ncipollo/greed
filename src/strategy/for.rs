@@ -1,7 +1,9 @@
+mod for_factory;
 mod for_stock;
 
 use crate::strategy::state::StrategyState;
 use crate::strategy::target::TargetAsset;
+use std::fmt::Debug;
 
 pub trait ForRule {
     fn evaluate(&self, state: &StrategyState) -> ForResult;

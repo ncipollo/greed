@@ -4,8 +4,8 @@ use crate::strategy::state::StrategyState;
 use crate::strategy::target::TargetAsset;
 
 #[derive(Debug, Default, PartialEq)]
-struct ForStockRule {
-    stock: AssetSymbol,
+pub struct ForStockRule {
+    pub stock: AssetSymbol,
 }
 
 impl ForRule for ForStockRule {
