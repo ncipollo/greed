@@ -15,6 +15,15 @@ impl Default for TargetAsset {
     }
 }
 
+impl TargetAsset {
+    pub fn full_percent(symbol: AssetSymbol) -> Self {
+        Self {
+            symbol,
+            percent: 100.0,
+        }
+    }
+}
+
 mod tests {
     use super::*;
 
@@ -25,5 +34,15 @@ mod tests {
             percent: 0.0,
         };
         assert_eq!(expected, Default::default())
+    }
+
+    #[test]
+    fn full_percent() {
+        let target = TargetAsset::full_percent(AssetSymbol::new("SPY"));
+        let expected = TargetAsset {
+            symbol: AssetSymbol::new("SPY"),
+            percent: 100.0,
+        };
+        assert_eq!(expected, target)
     }
 }
