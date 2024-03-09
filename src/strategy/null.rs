@@ -33,7 +33,7 @@ impl NullRule {
         Box::new(NullRule {})
     }
 
-    pub fn do_boxed<T>() -> Box<dyn DoRule> {
+    pub fn do_boxed() -> Box<dyn DoRule> {
         Box::new(NullRule {})
     }
 }

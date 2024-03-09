@@ -2,8 +2,8 @@ use crate::asset::AssetSymbol;
 
 #[derive(Debug, PartialEq)]
 pub struct TargetAsset {
-    symbol: AssetSymbol,
-    percent: f64,
+    pub symbol: AssetSymbol,
+    pub percent: f64,
 }
 
 impl Default for TargetAsset {

@@ -10,13 +10,18 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn buy_percent(symbol: AssetSymbol, percent: Num) -> Self {
+    pub fn buy_notional(symbol: AssetSymbol, percent: Num) -> Self {
         let amount = Amount::Notional(percent);
         Self::Buy { symbol, amount }
     }
 
-    pub fn sell_percent(symbol: AssetSymbol, percent: Num) -> Self {
+    pub fn sell_notional(symbol: AssetSymbol, percent: Num) -> Self {
         let amount = Amount::Notional(percent);
+        Self::Sell { symbol, amount }
+    }
+
+    pub fn sell_quantity(symbol: AssetSymbol, quantity: Num) -> Self {
+        let amount = Amount::Quantity(quantity);
         Self::Sell { symbol, amount }
     }
 
@@ -34,7 +39,7 @@ mod tests {
 
     #[test]
     fn into_request_buy() {
-        let action = Action::buy_percent(AssetSymbol::new("VTI"), Num::from(10));
+        let action = Action::buy_notional(AssetSymbol::new("VTI"), Num::from(10));
         let request = action.into_request();
         let expected = OrderRequest::market_order_buy(
             AssetSymbol::new("VTI"),
@@ -45,7 +50,7 @@ mod tests {
 
     #[test]
     fn into_request_sell() {
-        let action = Action::sell_percent(AssetSymbol::new("VTI"), Num::from(10));
+        let action = Action::sell_notional(AssetSymbol::new("VTI"), Num::from(10));
         let request = action.into_request();
         let expected = OrderRequest::market_order_sell(
             AssetSymbol::new("VTI"),
