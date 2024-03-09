@@ -8,8 +8,8 @@ pub struct ForFactory;
 impl ForFactory {
     pub fn create_rule(config: ForConfig) -> Box<dyn ForRule> {
         match config {
-            ForConfig::Nothing { .. } => Box::new(NullRule {}),
-            ForConfig::Stock { stock } => Box::new(ForStockRule { stock }),
+            ForConfig::Nothing { .. } => NullRule::for_boxed(),
+            ForConfig::Stock { stock } => ForStockRule::boxed(stock),
         }
     }
 }
