@@ -23,3 +23,17 @@ impl DoRule for NullRule {
         DoResult::default()
     }
 }
+
+impl NullRule {
+    pub fn for_boxed<T>() -> Box<dyn ForRule> {
+        Box::new(NullRule {})
+    }
+
+    pub fn when_boxed() -> Box<dyn WhenRule> {
+        Box::new(NullRule {})
+    }
+
+    pub fn do_boxed<T>() -> Box<dyn DoRule> {
+        Box::new(NullRule {})
+    }
+}

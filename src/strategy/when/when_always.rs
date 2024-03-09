@@ -13,6 +13,12 @@ impl WhenRule for WhenAlwaysRule {
     }
 }
 
+impl WhenAlwaysRule {
+    pub fn boxed() -> Box<dyn WhenRule> {
+        Box::new(WhenAlwaysRule {})
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

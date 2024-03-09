@@ -1,4 +1,5 @@
 mod when_always;
+mod when_factory;
 
 use crate::strategy::r#for::ForResult;
 use crate::strategy::state::StrategyState;
