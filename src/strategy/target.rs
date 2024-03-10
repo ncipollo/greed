@@ -1,4 +1,7 @@
 use crate::asset::AssetSymbol;
+use crate::num::NumFromFloat;
+use num_decimal::Num;
+use std::ops::Div;
 
 #[derive(Debug, PartialEq)]
 pub struct TargetAsset {
@@ -23,6 +26,11 @@ impl TargetAsset {
         }
     }
 
+    pub fn apply_percent(&self, to_num: Num) -> Num {
+        let percent_num = Num::from_f64(self.percent / 100.0);
+        to_num * percent_num
+    }
+
     #[cfg(test)]
     pub fn fixture() -> Self {
         Self::full_percent(AssetSymbol::new("SPY"))
@@ -39,6 +47,16 @@ mod tests {
             percent: 0.0,
         };
         assert_eq!(expected, Default::default())
+    }
+
+    #[test]
+    fn apply_percent() {
+        let target_asset = TargetAsset {
+            symbol: AssetSymbol::new("SPY"),
+            percent: 50.0,
+        };
+        let result = target_asset.apply_percent(Num::from(100));
+        assert_eq!(Num::from(50), result)
     }
 
     #[test]

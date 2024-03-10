@@ -13,6 +13,7 @@ mod date;
 mod enum_display;
 pub mod error;
 mod fixture;
+mod num;
 mod pager;
 pub mod platform;
 pub mod run;
