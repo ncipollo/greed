@@ -22,6 +22,15 @@ impl Display for Amount {
     }
 }
 
+impl Amount {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Amount::Quantity(num) => num == &Num::from(0),
+            Amount::Notional(num) => num == &Num::from(0),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::platform::order::amount::Amount;
@@ -43,5 +52,29 @@ mod test {
     fn display_notional() {
         let display = Amount::Notional(Num::from(10)).to_string();
         assert_eq!("$10.00", display)
+    }
+
+    #[test]
+    fn is_empty_notational__empty() {
+        let amount = Amount::Notional(Num::from(0));
+        assert!(amount.is_empty())
+    }
+
+    #[test]
+    fn is_empty_notational__not_empty() {
+        let amount = Amount::Notional(Num::from(100));
+        assert!(!amount.is_empty())
+    }
+
+    #[test]
+    fn is_empty_quantity__empty() {
+        let amount = Amount::Quantity(Num::from(0));
+        assert!(amount.is_empty())
+    }
+
+    #[test]
+    fn is_empty_quantity__not_empty() {
+        let amount = Amount::Quantity(Num::from(100));
+        assert!(!amount.is_empty())
     }
 }

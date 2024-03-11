@@ -31,6 +31,19 @@ impl Action {
             Action::Sell { symbol, amount } => OrderRequest::market_order_sell(symbol, amount),
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Action::Buy {
+                symbol: _symbol,
+                amount,
+            } => amount.is_empty(),
+            Action::Sell {
+                symbol: _symbol,
+                amount,
+            } => amount.is_empty(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -57,5 +70,29 @@ mod tests {
             Amount::Notional(Num::from(10)),
         );
         assert_eq!(expected, request);
+    }
+
+    #[test]
+    fn is_empty_buy__empty() {
+        let action = Action::buy_notional(AssetSymbol::new("VTI"), Num::from(0));
+        assert!(action.is_empty())
+    }
+
+    #[test]
+    fn is_empty_buy__not_empty() {
+        let action = Action::buy_notional(AssetSymbol::new("VTI"), Num::from(1));
+        assert!(!action.is_empty())
+    }
+
+    #[test]
+    fn is_empty_sell__empty() {
+        let action = Action::sell_notional(AssetSymbol::new("VTI"), Num::from(0));
+        assert!(action.is_empty())
+    }
+
+    #[test]
+    fn is_empty_sell__not_empty() {
+        let action = Action::sell_notional(AssetSymbol::new("VTI"), Num::from(1));
+        assert!(!action.is_empty())
     }
 }
