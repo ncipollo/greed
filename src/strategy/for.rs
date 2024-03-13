@@ -1,5 +1,5 @@
-mod for_factory;
-mod for_stock;
+pub mod for_factory;
+pub mod for_stock;
 
 use crate::strategy::state::StrategyState;
 use crate::strategy::target::TargetAsset;

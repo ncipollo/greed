@@ -1,5 +1,5 @@
-mod do_factory;
-mod do_sellall;
+pub mod do_factory;
+pub mod do_sellall;
 
 use crate::strategy::action::Action;
 use crate::strategy::skip::SkipReason;
@@ -22,6 +22,13 @@ impl DoResult {
         Self {
             skipped: true,
             skip_reason: reason,
+            ..Default::default()
+        }
+    }
+
+    pub fn with_actions(actions: Vec<Action>) -> Self {
+        Self {
+            actions,
             ..Default::default()
         }
     }

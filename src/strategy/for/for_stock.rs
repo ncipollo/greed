@@ -1,5 +1,4 @@
 use crate::asset::AssetSymbol;
-use crate::strategy::action::Action::Sell;
 use crate::strategy::r#for::{ForResult, ForRule};
 use crate::strategy::state::StrategyState;
 use crate::strategy::target::TargetAsset;

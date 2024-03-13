@@ -1,7 +1,6 @@
 use crate::asset::AssetSymbol;
 use crate::num::NumFromFloat;
 use num_decimal::Num;
-use std::ops::Div;
 
 #[derive(Debug, PartialEq)]
 pub struct TargetAsset {
@@ -37,6 +36,7 @@ impl TargetAsset {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

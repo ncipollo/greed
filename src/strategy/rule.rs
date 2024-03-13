@@ -37,4 +37,43 @@ impl RuleSet {
     }
 }
 
-mod tests {}
+#[cfg(test)]
+mod tests {
+    use crate::strategy::action::Action;
+    use crate::strategy::r#do::do_sellall::DoSellAllRule;
+    use crate::strategy::r#for::for_stock::ForStockRule;
+    use crate::strategy::target::TargetAsset;
+    use crate::strategy::when::when_always::WhenAlwaysRule;
+    use super::*;
+
+    #[test]
+    fn evaluate_skip_no_assets() {
+        let rule_set = RuleSet::default();
+        let state = StrategyState::default();
+        let result = rule_set.evaluate(&state);
+        assert_eq!(DoResult::skip(SkipReason::NoTargetAssets), result);
+    }
+
+    #[test]
+    fn evaluate_skip_conditions_unsatisfied() {
+        let rule_set =  RuleSet {
+            for_rule: ForStockRule::boxed("SPY"),
+            ..Default::default()
+        };
+        let state = StrategyState::default();
+        let result = rule_set.evaluate(&state);
+        assert_eq!(DoResult::skip(SkipReason::ConditionsUnsatisfied), result);
+    }
+
+    #[test]
+    fn evaluate_successful() {
+        let rule_set =  RuleSet {
+            for_rule: ForStockRule::boxed("SPY"),
+            when_rule: WhenAlwaysRule::boxed(),
+            do_rule: DoSellAllRule::boxed(),
+        };
+        let state = StrategyState::default();
+        let result = rule_set.evaluate(&state);
+        assert_eq!(DoResult::default(), result);
+    }
+}
