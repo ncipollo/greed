@@ -1,27 +1,40 @@
+use crate::config::strategy::rule::RuleConfig;
+use crate::config::strategy::StrategyConfig;
 use crate::strategy::null::NullRule;
 use crate::strategy::r#do::{DoResult, DoRule};
+use crate::strategy::r#do::do_factory::DoFactory;
+use crate::strategy::r#for::for_factory::ForFactory;
 use crate::strategy::r#for::ForRule;
 use crate::strategy::skip::SkipReason;
 use crate::strategy::state::StrategyState;
+use crate::strategy::when::when_factory::WhenFactory;
 use crate::strategy::when::WhenRule;
 
-struct RuleSet {
+pub struct RuleSet {
     for_rule: Box<dyn ForRule>,
-    do_rule: Box<dyn DoRule>,
     when_rule: Box<dyn WhenRule>,
+    do_rule: Box<dyn DoRule>
 }
 
 impl Default for RuleSet {
     fn default() -> Self {
         Self {
             for_rule: Box::new(NullRule),
-            do_rule: Box::new(NullRule),
             when_rule: Box::new(NullRule),
+            do_rule: Box::new(NullRule)
         }
     }
 }
 
 impl RuleSet {
+    pub fn from_config(rule_config: RuleConfig) -> Self {
+        Self {
+            for_rule: ForFactory::create_rule(rule_config.for_config),
+            when_rule: WhenFactory::create_rule(rule_config.when_config),
+            do_rule: DoFactory::create_rule(rule_config.do_config)
+        }
+    }
+
     pub fn evaluate(&self, state: &StrategyState) -> DoResult {
         let for_result = self.for_rule.evaluate(state);
         if for_result.is_empty() {
@@ -37,13 +50,26 @@ impl RuleSet {
     }
 }
 
+pub struct StrategyRuleset {
+    pub buy: RuleSet,
+    pub sell: RuleSet
+}
+
+impl StrategyRuleset {
+    pub fn from_config(strategy_config: StrategyConfig) -> Self {
+        Self {
+            buy: RuleSet::from_config(strategy_config.buy),
+            sell: RuleSet::from_config(strategy_config.sell)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::strategy::action::Action;
     use crate::strategy::r#do::do_sellall::DoSellAllRule;
     use crate::strategy::r#for::for_stock::ForStockRule;
-    use crate::strategy::target::TargetAsset;
     use crate::strategy::when::when_always::WhenAlwaysRule;
+
     use super::*;
 
     #[test]
