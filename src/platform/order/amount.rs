@@ -55,25 +55,25 @@ mod test {
     }
 
     #[test]
-    fn is_empty_notational__empty() {
+    fn is_empty_notational_empty() {
         let amount = Amount::Notional(Num::from(0));
         assert!(amount.is_empty())
     }
 
     #[test]
-    fn is_empty_notational__not_empty() {
+    fn is_empty_notational_not_empty() {
         let amount = Amount::Notional(Num::from(100));
         assert!(!amount.is_empty())
     }
 
     #[test]
-    fn is_empty_quantity__empty() {
+    fn is_empty_quantity_empty() {
         let amount = Amount::Quantity(Num::from(0));
         assert!(amount.is_empty())
     }
 
     #[test]
-    fn is_empty_quantity__not_empty() {
+    fn is_empty_quantity_not_empty() {
         let amount = Amount::Quantity(Num::from(100));
         assert!(!amount.is_empty())
     }

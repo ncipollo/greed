@@ -73,25 +73,25 @@ mod tests {
     }
 
     #[test]
-    fn is_empty_buy__empty() {
+    fn is_empty_buy_empty() {
         let action = Action::buy_notional(AssetSymbol::new("VTI"), Num::from(0));
         assert!(action.is_empty())
     }
 
     #[test]
-    fn is_empty_buy__not_empty() {
+    fn is_empty_buy_not_empty() {
         let action = Action::buy_notional(AssetSymbol::new("VTI"), Num::from(1));
         assert!(!action.is_empty())
     }
 
     #[test]
-    fn is_empty_sell__empty() {
+    fn is_empty_sell_empty() {
         let action = Action::sell_notional(AssetSymbol::new("VTI"), Num::from(0));
         assert!(action.is_empty())
     }
 
     #[test]
-    fn is_empty_sell__not_empty() {
+    fn is_empty_sell_not_empty() {
         let action = Action::sell_notional(AssetSymbol::new("VTI"), Num::from(1));
         assert!(!action.is_empty())
     }
