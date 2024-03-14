@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum ForConfig {
+    AnyOf { any_of: Vec<AssetSymbol> },
     Nothing { nothing: bool },
     Stock { stock: AssetSymbol },
 }
@@ -11,6 +12,7 @@ pub enum ForConfig {
 impl ForConfig {
     pub fn assets(&self) -> Vec<AssetSymbol> {
         match self {
+            ForConfig::AnyOf { any_of } => any_of.clone(),
             ForConfig::Nothing { .. } =>  vec![],
             ForConfig::Stock { stock } => vec![stock.clone()]
         }
