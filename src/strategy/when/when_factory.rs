@@ -10,7 +10,7 @@ impl WhenFactory {
         match config {
             WhenConfig::AllOf { .. } => NullRule::when_boxed(),
             WhenConfig::Always { .. } => WhenAlwaysRule::boxed(),
-            WhenConfig::BelowOneDay { .. } => NullRule::when_boxed(),
+            WhenConfig::BelowMedian { .. } => NullRule::when_boxed(),
             WhenConfig::GainAbove { .. } => NullRule::when_boxed(),
             WhenConfig::Never { .. } => NullRule::when_boxed(),
         }

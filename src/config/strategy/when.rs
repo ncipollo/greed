@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub enum WhenConfig {
     AllOf { all_off: Vec<WhenConfig> },
     Always { always: bool },
-    BelowOneDay { below_1_day_percent: f64 },
+    BelowMedian { below_median_percent: f64 },
     GainAbove { gain_above_percent: f64 },
     Never { never: bool },
 }

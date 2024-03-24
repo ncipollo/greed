@@ -74,8 +74,8 @@ mod test {
                     for_config: ForConfig::Stock {
                         stock: "VTI".into(),
                     },
-                    when_config: WhenConfig::BelowOneDay {
-                        below_1_day_percent: 5.0,
+                    when_config: WhenConfig::BelowMedian {
+                        below_median_percent: 5.0,
                     },
                     do_config: DoConfig::Buy { buy_percent: 10.0 },
                 },
@@ -106,8 +106,8 @@ mod test {
                         for_config: ForConfig::Stock {
                             stock: "VTI".into(),
                         },
-                        when_config: WhenConfig::BelowOneDay {
-                            below_1_day_percent: 5.0,
+                        when_config: WhenConfig::BelowMedian {
+                            below_median_percent: 5.0,
                         },
                         do_config: DoConfig::Buy { buy_percent: 10.0 },
                     },
@@ -127,8 +127,8 @@ mod test {
                         for_config: ForConfig::Stock {
                             stock: "UVXY".into(),
                         },
-                        when_config: WhenConfig::BelowOneDay {
-                            below_1_day_percent: 2.0,
+                        when_config: WhenConfig::BelowMedian {
+                            below_median_percent: 2.0,
                         },
                         do_config: DoConfig::Buy { buy_percent: 5.0 },
                     },
