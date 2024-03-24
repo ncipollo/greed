@@ -1,13 +1,26 @@
+use crate::config::strategy::median::MedianPeriod;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum WhenConfig {
-    AllOf { all_off: Vec<WhenConfig> },
-    Always { always: bool },
-    BelowOneDay { below_1_day_percent: f64 },
-    GainAbove { gain_above_percent: f64 },
-    Never { never: bool },
+    AllOf {
+        all_off: Vec<WhenConfig>,
+    },
+    Always {
+        always: bool,
+    },
+    BelowMedian {
+        below_median_percent: f64,
+        #[serde(default)]
+        median_period: MedianPeriod,
+    },
+    GainAbove {
+        gain_above_percent: f64,
+    },
+    Never {
+        never: bool,
+    },
 }
 
 impl Default for WhenConfig {

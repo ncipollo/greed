@@ -13,6 +13,28 @@ impl NumFromFloat for Num {
     }
 }
 
+pub trait NumPercent {
+    fn percent_above(&self, target: Num) -> Self;
+
+    fn percent_below(&self, target: Num) -> Self;
+
+}
+
+impl NumPercent for Num {
+    fn percent_above(&self, target: Num) -> Self {
+        let difference = self - target.clone();
+        let percent = difference / target.clone();
+        percent * 100
+    }
+
+    fn percent_below(&self, target: Num) -> Self {
+        let difference = target.clone() - self;
+        let percent = difference / target.clone();
+        percent * 100
+    }
+
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -36,5 +58,23 @@ mod tests {
         let num = Num::from_f64(0.0);
         let expected = Num::from(0);
         assert_eq!(expected, num)
+    }
+
+    #[test]
+    fn percent_above() {
+        let num = Num::from_f64(15.0);
+        let target = Num::from_f64(10.0);
+        let percent = num.percent_above(target);
+        let expected = Num::from_f64(50.0);
+        assert_eq!(expected, percent)
+    }
+
+    #[test]
+    fn percent_below() {
+        let num = Num::from_f64(5.0);
+        let target = Num::from_f64(10.0);
+        let percent = num.percent_below(target);
+        let expected = Num::from_f64(50.0);
+        assert_eq!(expected, percent)
     }
 }

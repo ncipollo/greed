@@ -38,6 +38,7 @@ mod test {
     use crate::config::strategy::when::WhenConfig;
     use crate::config::strategy::StrategyConfig;
     use crate::config::Config;
+    use crate::config::strategy::median::MedianPeriod;
     use crate::fixture;
 
     #[test]
@@ -74,8 +75,9 @@ mod test {
                     for_config: ForConfig::Stock {
                         stock: "VTI".into(),
                     },
-                    when_config: WhenConfig::BelowOneDay {
-                        below_1_day_percent: 5.0,
+                    when_config: WhenConfig::BelowMedian {
+                        below_median_percent: 5.0,
+                        median_period: Default::default()
                     },
                     do_config: DoConfig::Buy { buy_percent: 10.0 },
                 },
@@ -106,8 +108,9 @@ mod test {
                         for_config: ForConfig::Stock {
                             stock: "VTI".into(),
                         },
-                        when_config: WhenConfig::BelowOneDay {
-                            below_1_day_percent: 5.0,
+                        when_config: WhenConfig::BelowMedian {
+                            below_median_percent: 5.0,
+                            median_period: Default::default()
                         },
                         do_config: DoConfig::Buy { buy_percent: 10.0 },
                     },
@@ -127,8 +130,9 @@ mod test {
                         for_config: ForConfig::Stock {
                             stock: "UVXY".into(),
                         },
-                        when_config: WhenConfig::BelowOneDay {
-                            below_1_day_percent: 2.0,
+                        when_config: WhenConfig::BelowMedian {
+                            below_median_percent: 2.0,
+                            median_period: MedianPeriod::Week,
                         },
                         do_config: DoConfig::Buy { buy_percent: 5.0 },
                     },

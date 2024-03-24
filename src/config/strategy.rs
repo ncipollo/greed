@@ -2,6 +2,7 @@ pub mod r#do;
 pub mod r#for;
 pub mod rule;
 pub mod when;
+pub mod median;
 
 use itertools::Itertools;
 use crate::asset::AssetSymbol;

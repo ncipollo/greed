@@ -2,7 +2,7 @@ use crate::asset::AssetSymbol;
 use crate::num::NumFromFloat;
 use num_decimal::Num;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TargetAsset {
     pub symbol: AssetSymbol,
     pub percent: f64,

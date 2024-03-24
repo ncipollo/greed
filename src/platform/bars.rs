@@ -11,6 +11,12 @@ pub struct Bars {
 }
 
 impl Bars {
+    pub fn with_bars(bars: Vec<Bar>) -> Self {
+        Self {
+            symbol: Default::default(),
+            bars,
+        }
+    }
     pub fn average_median(&self) -> Option<Num> {
         self.median(|b| Cow::Owned(b.average()))
     }

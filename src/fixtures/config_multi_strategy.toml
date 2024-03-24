@@ -6,7 +6,7 @@ name = "ETF"
 
 [strategies.buy]
 for = { stock = "$VTI" }
-when = { below_1_day_percent = 5.0 }
+when = { below_median_percent = 5.0 }
 do = { buy_percent = 10 }
 
 [strategies.sell]
@@ -19,7 +19,7 @@ name = "Chaos"
 
 [strategies.buy]
 for = { stock = "$UVXY" }
-when = { below_1_day_percent = 2.0 }
+when = { below_median_percent = 2.0, median_period = "week" }
 do = { buy_percent = 5 }
 
 [strategies.sell]
