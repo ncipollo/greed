@@ -38,6 +38,7 @@ mod test {
     use crate::config::strategy::when::WhenConfig;
     use crate::config::strategy::StrategyConfig;
     use crate::config::Config;
+    use crate::config::strategy::median::MedianPeriod;
     use crate::fixture;
 
     #[test]
@@ -76,6 +77,7 @@ mod test {
                     },
                     when_config: WhenConfig::BelowMedian {
                         below_median_percent: 5.0,
+                        median_period: Default::default()
                     },
                     do_config: DoConfig::Buy { buy_percent: 10.0 },
                 },
@@ -108,6 +110,7 @@ mod test {
                         },
                         when_config: WhenConfig::BelowMedian {
                             below_median_percent: 5.0,
+                            median_period: Default::default()
                         },
                         do_config: DoConfig::Buy { buy_percent: 10.0 },
                     },
@@ -129,6 +132,7 @@ mod test {
                         },
                         when_config: WhenConfig::BelowMedian {
                             below_median_percent: 2.0,
+                            median_period: MedianPeriod::Week,
                         },
                         do_config: DoConfig::Buy { buy_percent: 5.0 },
                     },
