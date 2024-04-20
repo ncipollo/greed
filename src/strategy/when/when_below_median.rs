@@ -1,3 +1,4 @@
+use log::{info, warn};
 use crate::analysis::result::BarsResult;
 use crate::config::strategy::median::MedianPeriod;
 use crate::num::{NumFromFloat, NumPercent};
@@ -46,10 +47,16 @@ impl WhenBelowMedianRule {
         F: Fn(&BarsResult) -> &Bars,
     {
         if self.is_state_valid(state, target_asset) {
+            warn!("when_below_median: state was not valid for: {}", target_asset.symbol);
             return false;
         }
 
         let quote = &state.quotes[&target_asset.symbol];
+        if !quote.valid_ask() {
+            warn!("when_below_median: Ask price is not valid for: {}", target_asset.symbol);
+            return false;
+        }
+
         let analysis = &state.bar_analysis[&target_asset.symbol];
         let median = func(analysis).average_median();
         median
@@ -92,6 +99,7 @@ mod tests {
     use crate::asset::AssetSymbol;
     use std::collections::HashMap;
     use std::rc::Rc;
+    use crate::platform::quote::Quote;
 
     #[test]
     fn evaluate_no_analysis() {
@@ -116,6 +124,30 @@ mod tests {
     fn evaluate_no_quote() {
         let state = StrategyState {
             quotes: HashMap::new(),
+            ..StrategyState::fixture()
+        };
+        let rule = WhenBelowMedianRule::boxed(10.0, MedianPeriod::Day);
+        let target_assets = target_assets();
+        let for_result = ForResult {
+            target_assets: target_assets.clone(),
+        };
+        let result = rule.evaluate(&state, for_result);
+        let expected = WhenResult {
+            conditions_satisfied: false,
+            target_assets: vec![],
+        };
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn evaluate_invalid_quote() {
+        let spy = AssetSymbol::new("SPY");
+        let quote = Quote {
+            ask_price: Num::from(0),
+            ..Default::default()
+        };
+        let state = StrategyState {
+            quotes: HashMap::from([(spy.clone(), quote)]),
             ..StrategyState::fixture()
         };
         let rule = WhenBelowMedianRule::boxed(10.0, MedianPeriod::Day);

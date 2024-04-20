@@ -1,3 +1,4 @@
+use std::ops::Mul;
 use crate::asset::AssetSymbol;
 use crate::num::NumFromFloat;
 use num_decimal::Num;
@@ -18,6 +19,9 @@ impl Default for TargetAsset {
 }
 
 impl TargetAsset {
+    pub  fn new(symbol: AssetSymbol, percent: f64) -> Self {
+        Self { symbol, percent }
+    }
     pub fn full_percent(symbol: AssetSymbol) -> Self {
         Self {
             symbol,
@@ -36,6 +40,17 @@ impl TargetAsset {
     }
 }
 
+impl Mul<f64> for TargetAsset {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self {
+            symbol: self.symbol,
+            percent: self.percent * rhs,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -47,6 +62,20 @@ mod tests {
             percent: 0.0,
         };
         assert_eq!(expected, Default::default())
+    }
+
+    #[test]
+    fn multiply_f64() {
+        let target_asset = TargetAsset {
+            symbol: AssetSymbol::new("SPY"),
+            percent: 50.0,
+        };
+        let result = target_asset * 0.5;
+        let expected = TargetAsset {
+            symbol: AssetSymbol::new("SPY"),
+            percent: 25.0,
+        };
+        assert_eq!(expected, result)
     }
 
     #[test]

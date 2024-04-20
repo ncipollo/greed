@@ -10,13 +10,13 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn buy_notional(symbol: AssetSymbol, percent: Num) -> Self {
-        let amount = Amount::Notional(percent);
+    pub fn buy_notional(symbol: AssetSymbol, notional: Num) -> Self {
+        let amount = Amount::Notional(notional);
         Self::Buy { symbol, amount }
     }
 
-    pub fn sell_notional(symbol: AssetSymbol, percent: Num) -> Self {
-        let amount = Amount::Notional(percent);
+    pub fn sell_notional(symbol: AssetSymbol, notional: Num) -> Self {
+        let amount = Amount::Notional(notional);
         Self::Sell { symbol, amount }
     }
 

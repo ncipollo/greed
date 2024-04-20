@@ -102,7 +102,7 @@ impl StrategyRunner {
         Ok(by_symbol)
     }
 
-    async fn fetch_open_orders(&self) -> Result<HashMap<AssetSymbol, Order>, GreedError> {
+    async fn fetch_open_orders(&self) -> Result<HashMap<AssetSymbol, Vec<Order>>, GreedError> {
         info!("- fetching open orders");
         let orders = self.platform.open_orders().await?;
         for order in &orders {
@@ -110,7 +110,9 @@ impl StrategyRunner {
         }
         let by_symbol = orders
             .into_iter()
-            .map(|o| (o.symbol.clone(), o))
+            .group_by(|o| o.symbol.clone())
+            .into_iter()
+            .map(|(sym, group)| (sym, group.collect::<Vec<_>>()))
             .collect::<HashMap<_, _>>();
         Ok(by_symbol)
     }

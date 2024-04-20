@@ -1,5 +1,6 @@
 pub mod do_factory;
 pub mod do_sellall;
+mod do_buy;
 
 use crate::strategy::action::Action;
 use crate::strategy::skip::SkipReason;
