@@ -14,13 +14,18 @@ impl NumFromFloat for Num {
 }
 
 pub trait NumPercent {
+    fn percent_of(&self, percent: f64) -> Self;
     fn percent_above(&self, target: Num) -> Self;
 
     fn percent_below(&self, target: Num) -> Self;
-
 }
 
 impl NumPercent for Num {
+    fn percent_of(&self, percent: f64) -> Self {
+        let percent_num = Num::from_f64(percent / 100.0);
+        self * percent_num
+    }
+
     fn percent_above(&self, target: Num) -> Self {
         let difference = self - target.clone();
         let percent = difference / target.clone();
@@ -32,7 +37,6 @@ impl NumPercent for Num {
         let percent = difference / target.clone();
         percent * 100
     }
-
 }
 
 #[cfg(test)]
@@ -58,6 +62,30 @@ mod tests {
         let num = Num::from_f64(0.0);
         let expected = Num::from(0);
         assert_eq!(expected, num)
+    }
+
+    #[test]
+    fn percent_of_percent_is_fraction() {
+        let num = Num::from_f64(10.0);
+        let percent = num.percent_of(10.5);
+        let expected = Num::from_f64(1.05);
+        assert_eq!(expected.to_f64().unwrap(), percent.to_f64().unwrap())
+    }
+
+    #[test]
+    fn percent_of_num_is_fraction() {
+        let num = Num::from_f64(10.50);
+        let percent = num.percent_of(50.0);
+        let expected = Num::from_f64(5.25);
+        assert_eq!(expected.to_f64().unwrap(), percent.to_f64().unwrap())
+    }
+
+    #[test]
+    fn percent_of_whole_number() {
+        let num = Num::from_f64(10.0);
+        let percent = num.percent_of(50.0);
+        let expected = Num::from_f64(5.0);
+        assert_eq!(expected, percent)
     }
 
     #[test]
