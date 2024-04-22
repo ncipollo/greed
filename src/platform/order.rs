@@ -68,6 +68,14 @@ pub struct Order {
 }
 
 impl Order {
+    /// Calculate the estimated value of this order given the ask price. Primarily useful for an
+    /// open order.
+    pub fn estimated_value(&self, ask_price: Num) -> Num {
+        match &self.amount {
+            Amount::Quantity(value) => value * ask_price,
+            Amount::Notional(value) => value.clone()
+        }
+    }
     #[cfg(test)]
     pub fn fixture(symbol: AssetSymbol) -> Self {
         Self {
@@ -95,6 +103,26 @@ mod test {
     use crate::platform::order::amount::Amount;
     use crate::platform::order::Order;
     use crate::platform::order::side::OrderSide;
+
+    #[test]
+    fn estimated_value_quantity() {
+        let order = Order {
+            amount: Amount::Quantity(Num::from(10)),
+            ..Default::default()
+        };
+        let estimated_value = order.estimated_value(Num::from(100));
+        assert_eq!(estimated_value, Num::from(1000))
+    }
+
+    #[test]
+    fn estimated_value_notational() {
+        let order = Order {
+            amount: Amount::Notional(Num::from(10)),
+            ..Default::default()
+        };
+        let estimated_value = order.estimated_value(Num::from(100));
+        assert_eq!(estimated_value, Num::from(10))
+    }
 
     #[test]
     fn display() {
