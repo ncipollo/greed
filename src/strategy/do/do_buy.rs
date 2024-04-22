@@ -1,11 +1,11 @@
 use crate::num::NumPercent;
 use crate::strategy::action::Action;
 use crate::strategy::r#do::{DoResult, DoRule};
+use crate::strategy::skip::SkipReason;
 use crate::strategy::state::StrategyState;
 use crate::strategy::target::TargetAsset;
 use crate::strategy::when::WhenResult;
 use num_decimal::Num;
-use crate::strategy::skip::SkipReason;
 
 pub struct DoBuyRule {
     buy_percent: f64,
@@ -17,10 +17,12 @@ impl DoBuyRule {
     }
 
     fn actions(&self, state: &StrategyState, assets: &Vec<TargetAsset>) -> Vec<Action> {
+        let mut remaining_cash = state.account.cash.clone();
         assets
             .iter()
             .filter_map(|asset| {
-                let amount = self.calculate_buy_amount(state, asset);
+                let amount = self.calculate_buy_amount(state, asset, remaining_cash.clone());
+                remaining_cash -= amount.clone();
                 if amount > Num::from(0) {
                     Some(Action::buy_notional(asset.symbol.clone(), amount))
                 } else {
@@ -30,8 +32,12 @@ impl DoBuyRule {
             .collect()
     }
 
-    fn calculate_buy_amount(&self, state: &StrategyState, target_asset: &TargetAsset) -> Num {
-        let cash = state.account.cash.clone();
+    fn calculate_buy_amount(
+        &self,
+        state: &StrategyState,
+        target_asset: &TargetAsset,
+        remaining_cash: Num,
+    ) -> Num {
         let equity = state.account.equity.clone();
         let target_percent = self.target_percent(target_asset);
 
@@ -40,7 +46,7 @@ impl DoBuyRule {
         let desired_value = equity.percent_of(target_percent);
 
         let total_amount_notational = desired_value - position_value - open_order_value;
-        total_amount_notational.clamp(Num::from(0), cash)
+        total_amount_notational.clamp(Num::from(0), remaining_cash)
     }
 
     fn target_percent(&self, target_asset: &TargetAsset) -> f64 {
@@ -64,5 +70,83 @@ impl DoRule for DoBuyRule {
             skipped,
             skip_reason: SkipReason::NoTargetAssets,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::asset::AssetSymbol;
+    use crate::platform::account::Account;
+
+    #[test]
+    fn evaluate() {
+        let rule = DoBuyRule::boxed(100.0);
+        let state = StrategyState::fixture();
+        let when_result = WhenResult {
+            target_assets: vec![
+                TargetAsset::new(AssetSymbol::new("VTI"), 50.0),
+                TargetAsset::new(AssetSymbol::new("SPY"), 50.0),
+            ],
+            ..Default::default()
+        };
+        let result = rule.evaluate(&state, when_result);
+        let expected = DoResult {
+            actions: vec![
+                Action::buy_notional(AssetSymbol::new("VTI"), Num::from(50)),
+                Action::buy_notional(AssetSymbol::new("SPY"), Num::from(50)),
+            ],
+            skipped: false,
+            skip_reason: SkipReason::NoTargetAssets,
+        };
+        assert_eq!(expected, result)
+    }
+
+    #[test]
+    fn evaluate_clamped_to_zero() {
+        let rule = DoBuyRule::boxed(-100.0);
+        let state = StrategyState::fixture();
+        let when_result = WhenResult {
+            target_assets: vec![
+                TargetAsset::new(AssetSymbol::new("VTI"), 50.0),
+                TargetAsset::new(AssetSymbol::new("SPY"), 50.0),
+            ],
+            ..Default::default()
+        };
+        let result = rule.evaluate(&state, when_result);
+        let expected = DoResult {
+            actions: vec![],
+            skipped: true,
+            skip_reason: SkipReason::NoTargetAssets,
+        };
+        assert_eq!(expected, result)
+    }
+
+    #[test]
+    fn evaluate_clamped_to_cash() {
+        let rule = DoBuyRule::boxed(100.0);
+        let state = StrategyState {
+            account: Account {
+                cash: Num::from(5),
+                ..Account::fixture()
+            },
+            ..StrategyState::fixture()
+        };
+        let when_result = WhenResult {
+            target_assets: vec![
+                TargetAsset::new(AssetSymbol::new("VTI"), 50.0),
+                TargetAsset::new(AssetSymbol::new("SPY"), 50.0),
+            ],
+            ..Default::default()
+        };
+        let result = rule.evaluate(&state, when_result);
+        let expected = DoResult {
+            actions: vec![
+                Action::buy_notional(AssetSymbol::new("VTI"), Num::from(5))
+            ],
+            skipped: false,
+            skip_reason: SkipReason::NoTargetAssets,
+        };
+        assert_eq!(expected, result)
     }
 }

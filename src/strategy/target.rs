@@ -19,6 +19,9 @@ impl Default for TargetAsset {
 }
 
 impl TargetAsset {
+    pub  fn new(symbol: AssetSymbol, percent: f64) -> Self {
+        Self { symbol, percent }
+    }
     pub fn full_percent(symbol: AssetSymbol) -> Self {
         Self {
             symbol,
