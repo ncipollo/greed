@@ -34,7 +34,7 @@ impl StrategyState {
         }
     }
 
-    pub fn open_order_value(&self, symbol: AssetSymbol) -> Num {
+    pub fn open_order_value(&self, symbol: &AssetSymbol) -> Num {
         let ask_price = self
             .quotes
             .get(&symbol)
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn open_order_value() {
         let state = StrategyState::fixture();
-        let open_order_value = state.open_order_value(AssetSymbol::new("SPY"));
+        let open_order_value = state.open_order_value(&AssetSymbol::new("SPY"));
         assert_eq!(open_order_value, Num::from(200))
     }
 
@@ -98,7 +98,7 @@ mod tests {
             open_orders: HashMap::new(),
             ..StrategyState::fixture()
         };
-        let open_order_value = state.open_order_value(AssetSymbol::new("SPY"));
+        let open_order_value = state.open_order_value(&AssetSymbol::new("SPY"));
         assert_eq!(open_order_value, Num::from(0))
     }
 
@@ -108,7 +108,7 @@ mod tests {
             open_orders: HashMap::new(),
             ..StrategyState::fixture()
         };
-        let open_order_value = state.open_order_value(AssetSymbol::new("SPY"));
+        let open_order_value = state.open_order_value(&AssetSymbol::new("SPY"));
         assert_eq!(open_order_value, Num::from(0))
     }
 }

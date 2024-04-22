@@ -39,7 +39,6 @@ impl NumPercent for Num {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
