@@ -1,17 +1,17 @@
-use serde::{Deserialize, Serialize};
 use crate::asset::AssetSymbol;
 use crate::config::strategy::r#do::DoConfig;
 use crate::config::strategy::r#for::ForConfig;
 use crate::config::strategy::when::WhenConfig;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct RuleConfig {
-    #[serde(rename = "for")]
+    #[serde(rename = "for", default)]
     pub for_config: ForConfig,
-    #[serde(rename = "when")]
+    #[serde(rename = "when", default)]
     pub when_config: WhenConfig,
-    #[serde(rename = "do")]
-    pub do_config: DoConfig
+    #[serde(rename = "do", default)]
+    pub do_config: DoConfig,
 }
 
 impl RuleConfig {
@@ -28,7 +28,9 @@ mod tests {
     fn assets() {
         let stock = AssetSymbol::new("VTI");
         let config = RuleConfig {
-            for_config: ForConfig::Stock { stock: stock.clone() },
+            for_config: ForConfig::Stock {
+                stock: stock.clone(),
+            },
             ..Default::default()
         };
         assert_eq!(vec![stock.clone()], config.assets())
