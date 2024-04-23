@@ -48,6 +48,7 @@ mod tests {
             adjustment: Some(Split),
             feed: Some(IEX),
             page_token: None,
+            _non_exhaustive: (),
         };
         assert_eq!(alpaca_request, expected)
     }

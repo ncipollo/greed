@@ -4,7 +4,9 @@ impl From<apca::api::v2::order::Amount> for Amount {
     fn from(value: apca::api::v2::order::Amount) -> Self {
         match value {
             apca::api::v2::order::Amount::Quantity { quantity } => Self::Quantity(quantity),
-            apca::api::v2::order::Amount::Notional { notional } => Self::Notional(notional),
+            apca::api::v2::order::Amount::Notional { notional } => {
+                Self::Notional(notional.round_with(2))
+            }
         }
     }
 }
@@ -13,7 +15,9 @@ impl From<Amount> for apca::api::v2::order::Amount {
     fn from(value: Amount) -> Self {
         match value {
             Amount::Quantity(quantity) => Self::Quantity { quantity },
-            Amount::Notional(notional) => Self::Notional { notional },
+            Amount::Notional(notional) => Self::Notional {
+                notional: notional.round_with(2),
+            },
         }
     }
 }

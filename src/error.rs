@@ -19,8 +19,8 @@ impl GreedError {
         Self::new(&message)
     }
 
-    pub fn from_display<T: Display>(display: T) -> Self {
-        let message = format!("error: {display}");
+    pub fn from_display<T: Display + Debug>(display: T) -> Self {
+        let message = format!("error: {display}\nDebug info: {:?}", display);
         Self::new(&message)
     }
 }

@@ -9,15 +9,15 @@ use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::request::OrderRequest;
 use crate::platform::FinancialPlatform;
-use crate::strategy::state::StrategyState;
-use itertools::Itertools;
-use log::info;
-use num_decimal::Num;
-use std::collections::HashMap;
-use std::sync::Arc;
 use crate::strategy::r#do::DoResult;
 use crate::strategy::rule::RuleType::{Buy, Sell};
 use crate::strategy::rule::{RuleType, StrategyRuleset};
+use crate::strategy::state::StrategyState;
+use itertools::Itertools;
+use log::{info, warn};
+use num_decimal::Num;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 mod action;
 mod r#do;
@@ -132,14 +132,25 @@ impl StrategyRunner {
         Ok(())
     }
 
-    async fn perform_resulting_actions(&self, rule_type: RuleType, result: DoResult) -> Result<(), GreedError> {
+    async fn perform_resulting_actions(
+        &self,
+        rule_type: RuleType,
+        result: DoResult,
+    ) -> Result<(), GreedError> {
         if result.skipped {
-            info!("Skipping {rule_type} actions. Reason: {}", result.skip_reason);
+            info!(
+                "Skipping {rule_type} actions. Reason: {}",
+                result.skip_reason
+            );
             return Ok(());
         }
         for action in result.actions {
             info!("performing action: {:?}", action);
-            self.platform.place_order(action.into_request()).await?;
+            let result = self.platform.place_order(action.into_request()).await;
+
+            if let Err(e) = result {
+                warn!("error placing order: {}", e);
+            }
         }
         Ok(())
     }
