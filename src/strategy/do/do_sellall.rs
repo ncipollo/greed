@@ -1,5 +1,7 @@
+use crate::num::NumFloor;
 use crate::strategy::action::Action;
 use crate::strategy::r#do::{DoResult, DoRule};
+use crate::strategy::skip::SkipReason;
 use crate::strategy::state::StrategyState;
 use crate::strategy::when::WhenResult;
 
@@ -19,15 +21,21 @@ impl DoRule for DoSellAllRule {
             .map(|target_asset| {
                 let symbol = &target_asset.symbol;
                 let position = state.positions.get(symbol);
-                let position_amount = position.map(|p| p.quantity.clone()).unwrap_or_default();
-                let sell_amount = target_asset.apply_percent(position_amount);
-                Action::sell_notional(symbol.clone(), sell_amount)
+                let position_amount = position
+                    .map(|p| p.quantity_available.clone())
+                    .unwrap_or_default();
+                // We need to round down after 7 significant digits because anything more than that
+                // does not serialize correctly in num.
+                let sell_amount = target_asset.apply_percent(position_amount).floor_with(7);
+                Action::sell_quantity(symbol.clone(), sell_amount)
             })
             .filter(|a| !a.is_empty())
             .collect::<Vec<_>>();
+        let skipped = actions.is_empty();
         DoResult {
             actions,
-            ..Default::default()
+            skipped,
+            skip_reason: SkipReason::NoTargetAssets,
         }
     }
 }
@@ -48,11 +56,12 @@ mod tests {
         let when_result = create_when_result();
         let do_result = rule.evaluate(&state, when_result);
         let expected_actions = vec![
-            Action::sell_notional(AssetSymbol::new("SPY"), Num::from(50)),
-            Action::sell_notional(AssetSymbol::new("VTI"), Num::from(25)),
+            Action::sell_quantity(AssetSymbol::new("SPY"), Num::from(50)),
+            Action::sell_quantity(AssetSymbol::new("VTI"), Num::from(25)),
         ];
         let expected = DoResult {
             actions: expected_actions,
+            skip_reason: SkipReason::NoTargetAssets,
             ..Default::default()
         };
         assert_eq!(expected, do_result)
@@ -64,10 +73,7 @@ mod tests {
         let state = StrategyState::default();
         let when_result = create_when_result();
         let do_result = rule.evaluate(&state, when_result);
-        let expected = DoResult {
-            actions: vec![],
-            ..Default::default()
-        };
+        let expected = DoResult::skip(SkipReason::NoTargetAssets);
         assert_eq!(expected, do_result)
     }
 
@@ -77,10 +83,7 @@ mod tests {
         let state = create_state();
         let when_result = WhenResult::default();
         let do_result = rule.evaluate(&state, when_result);
-        let expected = DoResult {
-            actions: vec![],
-            ..Default::default()
-        };
+        let expected = DoResult::skip(SkipReason::NoTargetAssets);
         assert_eq!(expected, do_result)
     }
 

@@ -38,4 +38,4 @@ impl From<apca::api::v2::order::Order> for Order {
     }
 }
 
-greed_error_from!(RequestError<apca::api::v2::orders::GetError>);
+greed_error_from!(RequestError<apca::api::v2::orders::ListError>);

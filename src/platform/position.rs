@@ -49,6 +49,7 @@ impl Position {
     pub fn fixture(symbol: AssetSymbol) -> Self {
         Self {
             quantity: Num::from(50),
+            quantity_available: Num::from(50),
             symbol,
             ..Default::default()
         }

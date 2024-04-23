@@ -4,6 +4,7 @@ impl From<apca::api::v2::order::TakeProfit> for TakeProfit {
     fn from(value: apca::api::v2::order::TakeProfit) -> Self {
         match value {
             apca::api::v2::order::TakeProfit::Limit(price) => Self::Limit(price),
+            _ => panic!("unknown stop take profit")
         }
     }
 }

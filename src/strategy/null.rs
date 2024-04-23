@@ -32,8 +32,4 @@ impl NullRule {
     pub fn when_boxed() -> Box<dyn WhenRule> {
         Box::new(NullRule {})
     }
-
-    pub fn do_boxed() -> Box<dyn DoRule> {
-        Box::new(NullRule {})
-    }
 }

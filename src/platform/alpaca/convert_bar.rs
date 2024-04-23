@@ -28,4 +28,4 @@ impl From<apca::data::v2::bars::Bars> for Bars {
     }
 }
 
-greed_error_from!(RequestError<apca::data::v2::bars::GetError>);
+greed_error_from!(RequestError<apca::data::v2::bars::ListError>);

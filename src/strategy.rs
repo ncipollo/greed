@@ -3,19 +3,18 @@ use crate::asset::AssetSymbol;
 use crate::config::strategy::StrategyConfig;
 use crate::error::GreedError;
 use crate::platform::account::Account;
-use crate::platform::order::amount::Amount;
 use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
-use crate::platform::request::OrderRequest;
 use crate::platform::FinancialPlatform;
+use crate::strategy::r#do::DoResult;
+use crate::strategy::rule::RuleType::{Buy, Sell};
+use crate::strategy::rule::{RuleType, StrategyRuleset};
 use crate::strategy::state::StrategyState;
 use itertools::Itertools;
-use log::info;
-use num_decimal::Num;
+use log::{info, warn};
 use std::collections::HashMap;
 use std::sync::Arc;
-use crate::strategy::rule::StrategyRuleset;
 
 mod action;
 mod r#do;
@@ -54,15 +53,6 @@ impl StrategyRunner {
         self.evaluate_rules(state).await?;
         info!("----------");
         Ok(())
-    }
-
-    async fn test_buy(&self) -> Result<Order, GreedError> {
-        info!("- test buy of VTI");
-        let request = OrderRequest::market_order_buy(
-            AssetSymbol::new("VTI"),
-            Amount::Notional(Num::from(10)),
-        );
-        self.platform.place_order(request).await
     }
 
     async fn fetch_account(&self) -> Result<Account, GreedError> {
@@ -124,6 +114,32 @@ impl StrategyRunner {
 
         info!("buy rule result: {:?}", buy_result);
         info!("sell rule result: {:?}", sell_result);
+
+        self.perform_resulting_actions(Buy, buy_result).await?;
+        self.perform_resulting_actions(Sell, sell_result).await?;
+        Ok(())
+    }
+
+    async fn perform_resulting_actions(
+        &self,
+        rule_type: RuleType,
+        result: DoResult,
+    ) -> Result<(), GreedError> {
+        if result.skipped {
+            info!(
+                "Skipping {rule_type} actions. Reason: {}",
+                result.skip_reason
+            );
+            return Ok(());
+        }
+        for action in result.actions {
+            info!("performing {rule_type} action: {action}");
+            let result = self.platform.place_order(action.into_request()).await;
+
+            if let Err(e) = result {
+                warn!("error placing order: {e}");
+            }
+        }
         Ok(())
     }
 

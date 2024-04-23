@@ -8,7 +8,8 @@ impl From<Type> for OrderType {
             Type::Limit => OrderType::Limit,
             Type::Stop => OrderType::Stop,
             Type::StopLimit => OrderType::StopLimit,
-            Type::TrailingStop => OrderType::TrailingStop
+            Type::TrailingStop => OrderType::TrailingStop,
+            _ => panic!("unknown stop order type")
         }
     }
 }

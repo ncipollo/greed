@@ -1,3 +1,4 @@
+use crate::num::NumFloor;
 use crate::platform::order::amount::Amount;
 
 impl From<apca::api::v2::order::Amount> for Amount {
@@ -12,8 +13,12 @@ impl From<apca::api::v2::order::Amount> for Amount {
 impl From<Amount> for apca::api::v2::order::Amount {
     fn from(value: Amount) -> Self {
         match value {
-            Amount::Quantity(quantity) => Self::Quantity { quantity },
-            Amount::Notional(notional) => Self::Notional { notional },
+            Amount::Quantity(quantity) => Self::Quantity {
+                quantity: quantity.floor_with(7)
+            },
+            Amount::Notional(notional) => Self::Notional {
+                notional: notional.floor_with(2),
+            },
         }
     }
 }
@@ -21,6 +26,7 @@ impl From<Amount> for apca::api::v2::order::Amount {
 #[cfg(test)]
 mod test {
     use crate::assert;
+    use crate::num::NumFromFloat;
     use crate::platform::order::amount::Amount;
     use num_decimal::Num;
 
@@ -41,6 +47,16 @@ mod test {
     }
 
     #[test]
+    fn from_notational_alpaca_rounding() {
+        let amount: apca::api::v2::order::Amount = Amount::Notional(Num::from_f64(5.559)).into();
+        if let apca::api::v2::order::Amount::Notional{notional} = amount {
+            assert_eq!(notional.to_f64(), Some(5.55));
+        } else {
+            panic!("wrong type was converted")
+        }
+    }
+
+    #[test]
     fn from_quantity() {
         let alpaca_amount = apca::api::v2::order::Amount::Quantity {
             quantity: Num::from(5),
@@ -54,5 +70,15 @@ mod test {
             quantity: Num::from(5),
         };
         assert::conversion(Amount::Quantity(Num::from(5)), alpaca_amount);
+    }
+
+    #[test]
+    fn from_quantity_alpaca_rounding() {
+        let amount: apca::api::v2::order::Amount = Amount::Quantity(Num::from_f64(5.123456789)).into();
+        if let apca::api::v2::order::Amount::Quantity{quantity} = amount {
+            assert_eq!(quantity.to_f64(), Some(5.1234567));
+        } else {
+            panic!("wrong type was converted")
+        }
     }
 }

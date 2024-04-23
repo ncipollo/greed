@@ -5,6 +5,7 @@ impl From<apca::api::v2::order::StopLoss> for StopLoss {
         match value {
             apca::api::v2::order::StopLoss::Stop(price) => Self::Stop(price),
             apca::api::v2::order::StopLoss::StopLimit(loss, limit) => Self::StopLimit(loss, limit),
+            _ => panic!("unknown stop loss type")
         }
     }
 }
@@ -20,9 +21,10 @@ impl From<StopLoss> for apca::api::v2::order::StopLoss {
 
 #[cfg(test)]
 mod test {
+    use num_decimal::Num;
+
     use crate::assert;
     use crate::platform::request::stop_loss::StopLoss;
-    use num_decimal::Num;
 
     #[test]
     fn into() {

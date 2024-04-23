@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use crate::asset::AssetSymbol;
 use crate::platform::order::amount::Amount;
 use crate::platform::request::OrderRequest;
@@ -15,6 +16,7 @@ impl Action {
         Self::Buy { symbol, amount }
     }
 
+    #[allow(dead_code)]
     pub fn sell_notional(symbol: AssetSymbol, notional: Num) -> Self {
         let amount = Amount::Notional(notional);
         Self::Sell { symbol, amount }
@@ -42,6 +44,19 @@ impl Action {
                 symbol: _symbol,
                 amount,
             } => amount.is_empty(),
+        }
+    }
+}
+
+impl Display for Action {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Action::Buy { symbol, amount } => {
+                write!(f, "💸buy {} - amount: {}", symbol, amount)
+            }
+            Action::Sell { symbol, amount } => {
+                write!(f, "💰sell {} - amount: {}", symbol, amount)
+            }
         }
     }
 }

@@ -1,4 +1,3 @@
-use std::fmt::{Display, Formatter};
 use crate::lowercase_enum_display;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

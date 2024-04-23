@@ -26,4 +26,4 @@ impl From<apca::api::v2::position::Position> for Position {
     }
 }
 
-greed_error_from!(RequestError<apca::api::v2::positions::GetError>);
+greed_error_from!(RequestError<apca::api::v2::positions::ListError>);

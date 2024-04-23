@@ -26,13 +26,6 @@ impl DoResult {
             ..Default::default()
         }
     }
-
-    pub fn with_actions(actions: Vec<Action>) -> Self {
-        Self {
-            actions,
-            ..Default::default()
-        }
-    }
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-use log::{info, warn};
+use log::{warn};
 use crate::analysis::result::BarsResult;
 use crate::config::strategy::median::MedianPeriod;
 use crate::num::{NumFromFloat, NumPercent};

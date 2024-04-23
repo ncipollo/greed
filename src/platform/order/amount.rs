@@ -25,8 +25,8 @@ impl Display for Amount {
 impl Amount {
     pub fn is_empty(&self) -> bool {
         match self {
-            Amount::Quantity(num) => num == &Num::from(0),
-            Amount::Notional(num) => num == &Num::from(0),
+            Amount::Quantity(num) => num.is_zero(),
+            Amount::Notional(num) => num.is_zero(),
         }
     }
 }

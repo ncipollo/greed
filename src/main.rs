@@ -1,11 +1,13 @@
-mod cli;
+use clap::{CommandFactory, Parser};
+use log::LevelFilter;
+use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TerminalMode, TermLogger};
+
+use greed::{analyze_stocks, fetch_quote, greed_loop};
+use greed::platform::args::PlatformArgs;
 
 use crate::cli::{Cli, Command};
-use clap::{CommandFactory, Parser};
-use greed::platform::args::PlatformArgs;
-use greed::{analyze_stocks, fetch_quote, greed_loop};
-use log::LevelFilter;
-use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode};
+
+mod cli;
 
 fn main() {
     let config = create_log_config();
@@ -22,9 +24,11 @@ async fn async_main(log_config: Config) {
     match command {
         Command::Run(args) => {
             setup_logging(log_config);
-            greed_loop(args.into())
-                .await
-                .expect("greed loop threw error");
+            let result = greed_loop(args.into()).await;
+            if let Err(e) = result {
+                panic!("{}", e);
+            }
+            ()
         }
         Command::Analyze(args) => {
             analyze_stocks(

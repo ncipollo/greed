@@ -1,10 +1,9 @@
-use std::fmt::{Display, Formatter};
 use crate::lowercase_enum_display;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum OrderSide {
     Buy,
-    Sell
+    Sell,
 }
 
 impl Default for OrderSide {

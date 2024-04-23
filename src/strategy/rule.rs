@@ -1,5 +1,6 @@
 use crate::config::strategy::rule::RuleConfig;
 use crate::config::strategy::StrategyConfig;
+use crate::lowercase_enum_display;
 use crate::strategy::null::NullRule;
 use crate::strategy::r#do::{DoResult, DoRule};
 use crate::strategy::r#do::do_factory::DoFactory;
@@ -64,6 +65,14 @@ impl StrategyRuleset {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum RuleType {
+    Buy,
+    Sell,
+}
+
+lowercase_enum_display!(RuleType);
+
 #[cfg(test)]
 mod tests {
     use crate::strategy::r#do::do_sellall::DoSellAllRule;
@@ -100,6 +109,11 @@ mod tests {
         };
         let state = StrategyState::default();
         let result = rule_set.evaluate(&state);
-        assert_eq!(DoResult::default(), result);
+        let expected = DoResult {
+            actions: vec![],
+            skipped: true,
+            skip_reason: SkipReason::NoTargetAssets
+        };
+        assert_eq!(expected, result);
     }
 }

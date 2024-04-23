@@ -1,9 +1,9 @@
 use apca::data::v2::bars::Adjustment::Split;
-use apca::data::v2::bars::BarsReq;
+use apca::data::v2::bars::ListReq;
 use apca::data::v2::Feed;
 use crate::platform::bar::bar_request::BarRequest;
 
-impl From<BarRequest> for BarsReq {
+impl From<BarRequest> for ListReq {
     fn from(value: BarRequest) -> Self {
         Self {
             symbol: value.symbol.to_string(),
@@ -14,6 +14,7 @@ impl From<BarRequest> for BarsReq {
             adjustment: Some(Split),
             feed: Some(Feed::IEX),
             page_token: None,
+            _non_exhaustive: (),
         }
     }
 }
@@ -37,8 +38,8 @@ mod tests {
             end: end_time,
             timeframe: TimeFrame::OneDay,
         };
-        let alpaca_request: BarsReq = request.into();
-        let expected = BarsReq {
+        let alpaca_request: ListReq = request.into();
+        let expected = ListReq {
             symbol: "VTI".to_string(),
             limit: Some(100),
             start: start_time,
@@ -47,6 +48,7 @@ mod tests {
             adjustment: Some(Split),
             feed: Some(IEX),
             page_token: None,
+            _non_exhaustive: (),
         };
         assert_eq!(alpaca_request, expected)
     }
