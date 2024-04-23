@@ -77,7 +77,7 @@ mod test {
         let io_error = std::io::Error::new(ErrorKind::NotFound, "not_found");
         let greed_error = GreedError::from(io_error);
         let expected = GreedError::new(
-            "error: not_found",
+            "error: not_found\nDebug info: Custom { kind: NotFound, error: \"not_found\" }",
         );
         assert_eq!(greed_error, expected)
     }

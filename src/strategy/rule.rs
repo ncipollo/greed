@@ -109,6 +109,11 @@ mod tests {
         };
         let state = StrategyState::default();
         let result = rule_set.evaluate(&state);
-        assert_eq!(DoResult::default(), result);
+        let expected = DoResult {
+            actions: vec![],
+            skipped: true,
+            skip_reason: SkipReason::NoTargetAssets
+        };
+        assert_eq!(expected, result);
     }
 }
