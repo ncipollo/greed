@@ -1,14 +1,14 @@
 use crate::greed_error_from;
 use crate::platform::request::OrderRequest;
-use apca::api::v2::order::OrderReq;
+use apca::api::v2::order::CreateReq;
 use apca::RequestError;
 
 mod convert_stop_loss;
 mod convert_take_profit;
 
-impl From<OrderRequest> for OrderReq {
+impl From<OrderRequest> for CreateReq {
     fn from(value: OrderRequest) -> Self {
-        OrderReq {
+        CreateReq {
             symbol: value.symbol.into(),
             amount: value.amount.into(),
             side: value.side.into(),
@@ -23,6 +23,7 @@ impl From<OrderRequest> for OrderReq {
             stop_loss: value.stop_loss.map(|val| val.into()),
             extended_hours: value.extended_hours,
             client_order_id: None,
+            _non_exhaustive: (),
         }
     }
 }
@@ -39,7 +40,7 @@ mod test {
     use crate::platform::request::take_profit::TakeProfit;
     use crate::platform::request::OrderRequest;
     use apca::api::v2::asset::Symbol;
-    use apca::api::v2::order::{Class, OrderReq, Side, Type};
+    use apca::api::v2::order::{Class, CreateReq, Side, Type};
     use num_decimal::Num;
 
     #[test]
@@ -59,7 +60,7 @@ mod test {
             stop_loss: Some(StopLoss::Stop(Num::from(7))),
             extended_hours: true,
         };
-        let expected = OrderReq {
+        let expected = CreateReq {
             symbol: Symbol::Sym("VTI".to_string()),
             amount: apca::api::v2::order::Amount::Notional {
                 notional: Num::from(1),
@@ -76,10 +77,11 @@ mod test {
             stop_loss: Some(apca::api::v2::order::StopLoss::Stop(Num::from(7))),
             extended_hours: true,
             client_order_id: None,
+            _non_exhaustive: (),
         };
-        let alpaca_request: OrderReq = request.into();
+        let alpaca_request: CreateReq = request.into();
         assert_eq!(alpaca_request, expected)
     }
 }
 
-greed_error_from!(RequestError<apca::api::v2::order::PostError>);
+greed_error_from!(RequestError<apca::api::v2::order::CreateError>);

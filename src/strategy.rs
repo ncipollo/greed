@@ -15,7 +15,6 @@ use log::info;
 use num_decimal::Num;
 use std::collections::HashMap;
 use std::sync::Arc;
-use crate::lowercase_enum_display;
 use crate::strategy::r#do::DoResult;
 use crate::strategy::rule::RuleType::{Buy, Sell};
 use crate::strategy::rule::{RuleType, StrategyRuleset};

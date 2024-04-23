@@ -9,6 +9,7 @@ impl From<apca::api::v2::order::TimeInForce> for TimeInForce {
             apca::api::v2::order::TimeInForce::UntilCanceled => TimeInForce::UntilCanceled,
             apca::api::v2::order::TimeInForce::UntilMarketOpen => TimeInForce::UntilMarketOpen,
             apca::api::v2::order::TimeInForce::UntilMarketClose => TimeInForce::UntilMarketClose,
+            _ => panic!("unknown stop time in force")
         }
     }
 }

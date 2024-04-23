@@ -8,6 +8,7 @@ impl From<Class> for OrderClass {
             Class::Bracket => OrderClass::Bracket,
             Class::OneCancelsOther => OrderClass::OneCancelsOther,
             Class::OneTriggersOther => OrderClass::OneTriggersOther,
+            _ => panic!("unknown stop order class")
         }
     }
 }
