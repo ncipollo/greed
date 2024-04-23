@@ -15,6 +15,7 @@ impl Action {
         Self::Buy { symbol, amount }
     }
 
+    #[allow(dead_code)]
     pub fn sell_notional(symbol: AssetSymbol, notional: Num) -> Self {
         let amount = Amount::Notional(notional);
         Self::Sell { symbol, amount }

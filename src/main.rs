@@ -1,12 +1,13 @@
-mod cli;
-
-use std::process::exit;
-use crate::cli::{Cli, Command};
 use clap::{CommandFactory, Parser};
-use greed::platform::args::PlatformArgs;
-use greed::{analyze_stocks, fetch_quote, greed_loop};
 use log::LevelFilter;
-use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode};
+use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TerminalMode, TermLogger};
+
+use greed::{analyze_stocks, fetch_quote, greed_loop};
+use greed::platform::args::PlatformArgs;
+
+use crate::cli::{Cli, Command};
+
+mod cli;
 
 fn main() {
     let config = create_log_config();
