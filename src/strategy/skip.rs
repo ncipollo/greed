@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, PartialEq)]
 pub enum SkipReason {
     ConditionsUnsatisfied,
@@ -18,6 +20,12 @@ impl SkipReason {
 impl Default for SkipReason {
     fn default() -> Self {
         Self::Unknown
+    }
+}
+
+impl Display for SkipReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 

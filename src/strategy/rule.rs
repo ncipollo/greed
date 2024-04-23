@@ -1,5 +1,6 @@
 use crate::config::strategy::rule::RuleConfig;
 use crate::config::strategy::StrategyConfig;
+use crate::lowercase_enum_display;
 use crate::strategy::null::NullRule;
 use crate::strategy::r#do::{DoResult, DoRule};
 use crate::strategy::r#do::do_factory::DoFactory;
@@ -63,6 +64,14 @@ impl StrategyRuleset {
         }
     }
 }
+
+#[derive(Debug, PartialEq)]
+pub enum RuleType {
+    Buy,
+    Sell,
+}
+
+lowercase_enum_display!(RuleType);
 
 #[cfg(test)]
 mod tests {

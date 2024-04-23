@@ -15,7 +15,10 @@ use log::info;
 use num_decimal::Num;
 use std::collections::HashMap;
 use std::sync::Arc;
-use crate::strategy::rule::StrategyRuleset;
+use crate::lowercase_enum_display;
+use crate::strategy::r#do::DoResult;
+use crate::strategy::rule::RuleType::{Buy, Sell};
+use crate::strategy::rule::{RuleType, StrategyRuleset};
 
 mod action;
 mod r#do;
@@ -124,6 +127,21 @@ impl StrategyRunner {
 
         info!("buy rule result: {:?}", buy_result);
         info!("sell rule result: {:?}", sell_result);
+
+        self.perform_resulting_actions(Buy, buy_result).await?;
+        self.perform_resulting_actions(Sell, sell_result).await?;
+        Ok(())
+    }
+
+    async fn perform_resulting_actions(&self, rule_type: RuleType, result: DoResult) -> Result<(), GreedError> {
+        if result.skipped {
+            info!("Skipping {rule_type} actions. Reason: {}", result.skip_reason);
+            return Ok(());
+        }
+        for action in result.actions {
+            info!("performing action: {:?}", action);
+            self.platform.place_order(action.into_request()).await?;
+        }
         Ok(())
     }
 
