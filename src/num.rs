@@ -10,6 +10,11 @@ pub trait NumFloor {
     fn floor_with(&self, precision: u32) -> Self;
 }
 
+pub trait NumAmountRounding {
+    fn round_for_notional(&self) -> Self;
+    fn round_for_quantity(&self) -> Self;
+}
+
 impl NumFromFloat for Num {
     fn from_f64(float: f64) -> Self {
         let rational: BigRational = BigRational::from_float(float).unwrap_or_default();
@@ -23,6 +28,16 @@ impl NumFloor for Num {
         let factor = BigInt::from(10).pow(precision);
         let value = self * factor.clone();
         value.trunc() / factor.clone()
+    }
+}
+
+impl NumAmountRounding for Num {
+    fn round_for_notional(&self) -> Self {
+        self.floor_with(2)
+    }
+
+    fn round_for_quantity(&self) -> Self {
+        self.floor_with(7)
     }
 }
 

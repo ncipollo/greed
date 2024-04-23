@@ -1,4 +1,4 @@
-use crate::num::NumFloor;
+use crate::num::{NumAmountRounding};
 use crate::platform::order::amount::Amount;
 
 impl From<apca::api::v2::order::Amount> for Amount {
@@ -14,10 +14,10 @@ impl From<Amount> for apca::api::v2::order::Amount {
     fn from(value: Amount) -> Self {
         match value {
             Amount::Quantity(quantity) => Self::Quantity {
-                quantity: quantity.floor_with(7)
+                quantity: quantity.round_for_quantity()
             },
             Amount::Notional(notional) => Self::Notional {
-                notional: notional.floor_with(2),
+                notional: notional.round_for_notional(),
             },
         }
     }
