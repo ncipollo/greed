@@ -4,9 +4,7 @@ impl From<apca::api::v2::order::Amount> for Amount {
     fn from(value: apca::api::v2::order::Amount) -> Self {
         match value {
             apca::api::v2::order::Amount::Quantity { quantity } => Self::Quantity(quantity),
-            apca::api::v2::order::Amount::Notional { notional } => {
-                Self::Notional(notional.round_with(2))
-            }
+            apca::api::v2::order::Amount::Notional { notional } => Self::Notional(notional),
         }
     }
 }
@@ -25,6 +23,7 @@ impl From<Amount> for apca::api::v2::order::Amount {
 #[cfg(test)]
 mod test {
     use crate::assert;
+    use crate::num::NumFromFloat;
     use crate::platform::order::amount::Amount;
     use num_decimal::Num;
 
@@ -42,6 +41,16 @@ mod test {
             notional: Num::from(5),
         };
         assert::conversion(Amount::Notional(Num::from(5)), alpaca_amount);
+    }
+
+    #[test]
+    fn from_notational_alpaca_rounding() {
+        let amount: apca::api::v2::order::Amount = Amount::Notional(Num::from_f64(5.559)).into();
+        if let apca::api::v2::order::Amount::Notional{notional} = amount {
+            assert_eq!(notional.to_f64(), Some(5.56));
+        } else {
+            panic!("wrong type was converted")
+        }
     }
 
     #[test]

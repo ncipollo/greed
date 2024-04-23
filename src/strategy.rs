@@ -58,15 +58,6 @@ impl StrategyRunner {
         Ok(())
     }
 
-    async fn test_buy(&self) -> Result<Order, GreedError> {
-        info!("- test buy of VTI");
-        let request = OrderRequest::market_order_buy(
-            AssetSymbol::new("VTI"),
-            Amount::Notional(Num::from(10)),
-        );
-        self.platform.place_order(request).await
-    }
-
     async fn fetch_account(&self) -> Result<Account, GreedError> {
         info!("- fetching account info");
         let account = self.platform.account().await?;

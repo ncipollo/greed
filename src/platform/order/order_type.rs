@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use crate::lowercase_enum_display;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -36,11 +34,14 @@ mod test {
 
     #[test]
     fn display() {
-        let display = format!("{}, {}, {}, {}, {}", OrderType::Market,
-                              OrderType::Limit,
-                              OrderType::Stop,
-                              OrderType::StopLimit,
-                              OrderType::TrailingStop);
+        let display = format!(
+            "{}, {}, {}, {}, {}",
+            OrderType::Market,
+            OrderType::Limit,
+            OrderType::Stop,
+            OrderType::StopLimit,
+            OrderType::TrailingStop
+        );
         assert_eq!(display, "market, limit, stop, stoplimit, trailingstop")
     }
 }

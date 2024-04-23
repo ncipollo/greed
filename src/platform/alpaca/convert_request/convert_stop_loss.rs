@@ -1,4 +1,3 @@
-use crate::platform::order::order_type::OrderType;
 use crate::platform::request::stop_loss::StopLoss;
 
 impl From<apca::api::v2::order::StopLoss> for StopLoss {
@@ -22,9 +21,10 @@ impl From<StopLoss> for apca::api::v2::order::StopLoss {
 
 #[cfg(test)]
 mod test {
+    use num_decimal::Num;
+
     use crate::assert;
     use crate::platform::request::stop_loss::StopLoss;
-    use num_decimal::Num;
 
     #[test]
     fn into() {
