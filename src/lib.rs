@@ -18,6 +18,7 @@ mod pager;
 pub mod platform;
 pub mod run;
 mod strategy;
+mod trading_days;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
     let runner = GreedRunner::from_args(args).await?;
