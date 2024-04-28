@@ -1,6 +1,7 @@
 use crate::date::NaiveDateTimeConvert;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use std::ops::Range;
+use crate::trading_days::TradingDaysOffset;
 
 pub struct FetcherTimeRanges {
     now: DateTime<Utc>,
@@ -12,10 +13,10 @@ impl FetcherTimeRanges {
     }
 
     /// Yesterday from 00:00:00 to 23:59:00
-    pub fn yesterday_range(&self) -> Range<DateTime<Utc>> {
+    pub fn last_trading_day_range(&self) -> Range<DateTime<Utc>> {
         let now_date = self.now.date_naive();
-        let yesterday_date = now_date - Duration::days(1);
-        Self::create_date_time_range(yesterday_date, yesterday_date)
+        let last_trading_date = now_date.previous_trading_day();
+        Self::create_date_time_range(last_trading_date, last_trading_date)
     }
 
     /// X days in the past until yesterday at 23:59:00
@@ -43,26 +44,26 @@ mod tests {
     fn yesterday_range() {
         let ranges = create_ranges();
         let expected_start = Utc
-            .with_ymd_and_hms(2023, 11, 30, 0, 0, 0)
+            .with_ymd_and_hms(2023, 12, 01, 0, 0, 0)
             .earliest()
             .unwrap();
         let expected_end = Utc
-            .with_ymd_and_hms(2023, 11, 30, 23, 59, 0)
+            .with_ymd_and_hms(2023, 12, 01, 23, 59, 0)
             .earliest()
             .unwrap();
         let expected = expected_start..expected_end;
-        assert_eq!(expected, ranges.yesterday_range())
+        assert_eq!(expected, ranges.last_trading_day_range())
     }
 
     #[test]
     fn last_x_days() {
         let ranges = create_ranges();
         let expected_start = Utc
-            .with_ymd_and_hms(2023, 11, 21, 0, 0, 0)
+            .with_ymd_and_hms(2023, 11, 24, 0, 0, 0)
             .earliest()
             .unwrap();
         let expected_end = Utc
-            .with_ymd_and_hms(2023, 11, 30, 23, 59, 0)
+            .with_ymd_and_hms(2023, 12, 03, 23, 59, 0)
             .earliest()
             .unwrap();
         let expected = expected_start..expected_end;
