@@ -24,15 +24,15 @@ impl BarsFetcher {
     pub async fn fetch(&self, symbol: &AssetSymbol) -> Result<BarsResult, GreedError> {
         let bars_result = BarsResult {
             symbol: symbol.clone(),
-            yesterday: self.fetch_yesterday(symbol.clone()).await?,
+            last_trading_day: self.fetch_last_trading_day(symbol.clone()).await?,
             seven_day: self.fetch_seven_day(symbol.clone()).await?,
             thirty_day: self.fetch_thirty_day(symbol.clone()).await?,
         };
         Ok(bars_result)
     }
 
-    async fn fetch_yesterday(&self, symbol: AssetSymbol) -> Result<Bars, GreedError> {
-        let time_range = self.time_ranges.yesterday_range();
+    async fn fetch_last_trading_day(&self, symbol: AssetSymbol) -> Result<Bars, GreedError> {
+        let time_range = self.time_ranges.last_trading_day_range();
         self.platform
             .bars(BarRequest {
                 symbol,

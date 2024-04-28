@@ -12,7 +12,7 @@ impl FetcherTimeRanges {
     }
 
     /// Yesterday from 00:00:00 to 23:59:00
-    pub fn yesterday_range(&self) -> Range<DateTime<Utc>> {
+    pub fn last_trading_day_range(&self) -> Range<DateTime<Utc>> {
         let now_date = self.now.date_naive();
         let yesterday_date = now_date - Duration::days(1);
         Self::create_date_time_range(yesterday_date, yesterday_date)
@@ -51,7 +51,7 @@ mod tests {
             .earliest()
             .unwrap();
         let expected = expected_start..expected_end;
-        assert_eq!(expected, ranges.yesterday_range())
+        assert_eq!(expected, ranges.last_trading_day_range())
     }
 
     #[test]

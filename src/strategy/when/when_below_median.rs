@@ -1,4 +1,3 @@
-use log::{warn};
 use crate::analysis::result::BarsResult;
 use crate::config::strategy::median::MedianPeriod;
 use crate::num::{NumFromFloat, NumPercent};
@@ -7,6 +6,7 @@ use crate::strategy::r#for::ForResult;
 use crate::strategy::state::StrategyState;
 use crate::strategy::target::TargetAsset;
 use crate::strategy::when::{WhenResult, WhenRule};
+use log::warn;
 use num_decimal::Num;
 
 #[derive(Debug, Default, PartialEq)]
@@ -25,9 +25,9 @@ impl WhenBelowMedianRule {
 
     fn is_below_median(&self, state: &StrategyState, target_asset: &TargetAsset) -> bool {
         match self.median_period {
-            MedianPeriod::Day => {
-                self.is_below_median_for_func(state, target_asset, |analysis| &analysis.yesterday)
-            }
+            MedianPeriod::Day => self.is_below_median_for_func(state, target_asset, |analysis| {
+                &analysis.last_trading_day
+            }),
             MedianPeriod::Week => {
                 self.is_below_median_for_func(state, target_asset, |analysis| &analysis.seven_day)
             }
@@ -47,13 +47,19 @@ impl WhenBelowMedianRule {
         F: Fn(&BarsResult) -> &Bars,
     {
         if self.is_state_valid(state, target_asset) {
-            warn!("when_below_median: state was not valid for: {}", target_asset.symbol);
+            warn!(
+                "when_below_median: state was not valid for: {}",
+                target_asset.symbol
+            );
             return false;
         }
 
         let quote = &state.quotes[&target_asset.symbol];
         if !quote.valid_ask() {
-            warn!("when_below_median: Ask price is not valid for: {}", target_asset.symbol);
+            warn!(
+                "when_below_median: Ask price is not valid for: {}",
+                target_asset.symbol
+            );
             return false;
         }
 
@@ -97,9 +103,9 @@ impl WhenRule for WhenBelowMedianRule {
 mod tests {
     use super::*;
     use crate::asset::AssetSymbol;
+    use crate::platform::quote::Quote;
     use std::collections::HashMap;
     use std::rc::Rc;
-    use crate::platform::quote::Quote;
 
     #[test]
     fn evaluate_no_analysis() {
@@ -190,7 +196,7 @@ mod tests {
     fn evaluate_zero_median() {
         let spy = AssetSymbol::new("SPY");
         let bar_result = BarsResult {
-            yesterday: Bars::with_bars(vec![Default::default()]),
+            last_trading_day: Bars::with_bars(vec![Default::default()]),
             ..Default::default()
         };
         let state = StrategyState {

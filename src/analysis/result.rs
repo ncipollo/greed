@@ -5,7 +5,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BarsResult {
     pub symbol: AssetSymbol,
-    pub yesterday: Bars,
+    pub last_trading_day: Bars,
     pub seven_day: Bars,
     pub thirty_day: Bars,
 }
@@ -15,7 +15,7 @@ impl BarsResult {
     pub fn fixture(symbol: AssetSymbol) -> Self {
         Self {
             symbol: symbol.clone(),
-            yesterday: Bars::fixture(symbol.clone(), 300),
+            last_trading_day: Bars::fixture(symbol.clone(), 300),
             seven_day: Bars::fixture(symbol.clone(), 200),
             thirty_day: Bars::fixture(symbol.clone(), 100),
         }
@@ -34,7 +34,7 @@ impl Display for BarsResult {
             ----------
         ",
             self.symbol,
-            self.yesterday.average_median().unwrap_or_default(),
+            self.last_trading_day.average_median().unwrap_or_default(),
             self.seven_day.average_median().unwrap_or_default(),
             self.thirty_day.average_median().unwrap_or_default(),
         )
