@@ -5,6 +5,7 @@ use apca::Client;
 use apca::data::v2::{bars, last_quotes};
 use apca::data::v2::bars::ListReq as BarsReq;
 use async_trait::async_trait;
+use chrono::Utc;
 use itertools::Itertools;
 
 use crate::asset::AssetSymbol;
@@ -15,6 +16,7 @@ use crate::platform::alpaca::factory::create_alpaca_client;
 use crate::platform::args::PlatformArgs;
 use crate::platform::bar::Bar;
 use crate::platform::bar::bar_request::BarRequest;
+use crate::platform::bar::time_frame::TimeFrame;
 use crate::platform::bars::Bars;
 use crate::platform::FinancialPlatform;
 use crate::platform::order::Order;
@@ -42,6 +44,33 @@ impl AlpacaPlatform {
         Ok(Self {
             client: create_alpaca_client(runner_args.is_simulated)?,
         })
+    }
+
+    async fn replace_invalid_quotes(&self, quotes: Vec<Quote>) -> Vec<Quote> {
+        let mut valid_quotes = Vec::new();
+        for quote in quotes {
+            let valid_quote = self.replace_invalid_quote(quote).await;
+            valid_quotes.push(valid_quote);
+        }
+        valid_quotes
+    }
+
+    async fn replace_invalid_quote(&self, quote: Quote) -> Quote {
+        if quote.valid_ask() && quote.valid_bid() {
+            return quote;
+        }
+        let end_time = Utc::now();
+        let start_time = end_time - chrono::Duration::minutes(1);
+        let bars_request = BarRequest {
+            symbol: quote.symbol.clone(),
+            limit: Some(1),
+            start: start_time,
+            end: end_time,
+            timeframe: TimeFrame::OneMinute,
+        };
+        self.bars(bars_request).await
+            .map(|b| Quote::from(b))
+            .unwrap_or(quote)
     }
 }
 
@@ -82,7 +111,8 @@ impl FinancialPlatform for AlpacaPlatform {
 
         let result = self.client.issue::<last_quotes::Get>(&latest_req).await?;
         let quotes: Vec<Quote> = result.into_iter().map(|q| q.into()).collect();
-        Ok(quotes)
+        let valid_quotes = self.replace_invalid_quotes(quotes).await;
+        Ok(valid_quotes)
     }
 
     async fn place_order(&self, order_request: OrderRequest) -> Result<Order, GreedError> {
