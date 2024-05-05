@@ -7,6 +7,7 @@ use apca::data::v2::bars::ListReq as BarsReq;
 use async_trait::async_trait;
 use chrono::Utc;
 use itertools::Itertools;
+use log::info;
 
 use crate::asset::AssetSymbol;
 use crate::error::GreedError;
@@ -59,6 +60,9 @@ impl AlpacaPlatform {
         if quote.valid_ask() && quote.valid_bid() {
             return quote;
         }
+
+        info!("invalid quote {}, attempting to fetch prices from bar", quote.symbol.symbol);
+
         let end_time = Utc::now();
         let start_time = end_time - chrono::Duration::minutes(1);
         let bars_request = BarRequest {
