@@ -21,8 +21,8 @@ impl WhenGainAboveRule {
         }
 
         let position = &state.positions[&target_asset.symbol];
-        let gain = position.unrealized_gain_today_percent.clone();
-        gain.map(|g| g * 100 >= Num::from_f64(self.gain_above_percent))
+        let gain = position.unrealized_gain_total_percent.clone();
+        gain.map(|g| g  >= Num::from_f64(self.gain_above_percent))
             .unwrap_or(false)
     }
 
@@ -124,7 +124,7 @@ mod tests {
     fn evaluate_satisfied() {
         let spy = AssetSymbol::new("SPY");
         let position = Position {
-            unrealized_gain_today_percent: Some(Num::from_f64(0.1)),
+            unrealized_gain_total_percent: Some(Num::from_f64(10.0)),
             ..Position::fixture(spy.clone())
         };
         let state = StrategyState {

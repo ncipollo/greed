@@ -19,9 +19,9 @@ impl From<apca::api::v2::position::Position> for Position {
             side: value.side.into(),
             symbol: value.symbol.parse().unwrap(),
             unrealized_gain_today: value.unrealized_gain_today,
-            unrealized_gain_today_percent: value.unrealized_gain_today_percent,
+            unrealized_gain_today_percent: value.unrealized_gain_today_percent.map(|p| p * 100),
             unrealized_gain_total: value.unrealized_gain_total,
-            unrealized_gain_total_percent: value.unrealized_gain_total_percent,
+            unrealized_gain_total_percent: value.unrealized_gain_total_percent.map(|p| p * 100),
         }
     }
 }
