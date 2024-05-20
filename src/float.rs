@@ -4,7 +4,7 @@ pub trait PrecisionFloor {
 
 impl PrecisionFloor for f64 {
     fn floor_with(&self, precision: i32) -> Self {
-        let factor = 10.0_f64.powi(precision );
+        let factor = 10.0_f64.powi(precision);
         (self * factor).floor() / factor
     }
 }
@@ -47,5 +47,61 @@ impl PercentOps for f64 {
         let difference = target.clone() - self;
         let percent = difference / target;
         percent * 100.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+    use super::*;
+
+    #[test]
+    fn floor_with_precision() {
+        let num = 10.129;
+        let floored = num.floor_with(2);
+        let expected = 10.12;
+        assert_relative_eq!(expected, floored, max_relative = 0.001)
+    }
+
+    #[test]
+    fn percent_of_percent_is_fraction() {
+        let num = 10.0;
+        let percent = num.percent_of(10.5);
+        let expected = 1.05;
+        assert_relative_eq!(expected, percent, max_relative = 0.001)
+    }
+
+    #[test]
+    fn percent_of_num_is_fraction() {
+        let num = 10.50;
+        let percent = num.percent_of(50.0);
+        let expected = 5.25;
+        assert_relative_eq!(expected, percent, max_relative = 0.001)
+    }
+
+    #[test]
+    fn percent_of_whole_number() {
+        let num = 10.0;
+        let percent = num.percent_of(50.0);
+        let expected = 5.0;
+        assert_relative_eq!(expected, percent, max_relative = 0.001)
+    }
+
+    #[test]
+    fn percent_above() {
+        let num = 15.0;
+        let target = 10.0;
+        let percent = num.percent_above(target);
+        let expected = 50.0;
+        assert_relative_eq!(expected, percent, max_relative = 0.001)
+    }
+
+    #[test]
+    fn percent_below() {
+        let num = 5.0;
+        let target = 10.0;
+        let percent = num.percent_below(target);
+        let expected = 50.0;
+        assert_relative_eq!(expected, percent, max_relative = 0.001)
     }
 }
