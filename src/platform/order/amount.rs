@@ -1,15 +1,14 @@
-use num_decimal::Num;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Amount {
-    Quantity(Num),
-    Notional(Num),
+    Quantity(f64),
+    Notional(f64),
 }
 
 impl Default for Amount {
     fn default() -> Self {
-        Self::Quantity(Num::from(0))
+        Self::Quantity(0.0)
     }
 }
 
@@ -25,8 +24,8 @@ impl Display for Amount {
 impl Amount {
     pub fn is_empty(&self) -> bool {
         match self {
-            Amount::Quantity(num) => num.is_zero(),
-            Amount::Notional(num) => num.is_zero(),
+            Amount::Quantity(num) => *num == 0.0,
+            Amount::Notional(num) => *num == 0.0,
         }
     }
 }
@@ -34,47 +33,46 @@ impl Amount {
 #[cfg(test)]
 mod test {
     use crate::platform::order::amount::Amount;
-    use num_decimal::Num;
 
     #[test]
     fn default() {
         let default: Amount = Default::default();
-        assert_eq!(default, Amount::Quantity(Num::from(0)))
+        assert_eq!(default, Amount::Quantity(0.0))
     }
 
     #[test]
     fn display_quantity() {
-        let display = Amount::Quantity(Num::from(5)).to_string();
+        let display = Amount::Quantity(5.0).to_string();
         assert_eq!("5.00 units", display)
     }
 
     #[test]
     fn display_notional() {
-        let display = Amount::Notional(Num::from(10)).to_string();
+        let display = Amount::Notional(10.0).to_string();
         assert_eq!("$10.00", display)
     }
 
     #[test]
     fn is_empty_notational_empty() {
-        let amount = Amount::Notional(Num::from(0));
+        let amount = Amount::Notional(0.0);
         assert!(amount.is_empty())
     }
 
     #[test]
     fn is_empty_notational_not_empty() {
-        let amount = Amount::Notional(Num::from(100));
+        let amount = Amount::Notional(100.0);
         assert!(!amount.is_empty())
     }
 
     #[test]
     fn is_empty_quantity_empty() {
-        let amount = Amount::Quantity(Num::from(0));
+        let amount = Amount::Quantity(0.0);
         assert!(amount.is_empty())
     }
 
     #[test]
     fn is_empty_quantity_not_empty() {
-        let amount = Amount::Quantity(Num::from(100));
+        let amount = Amount::Quantity(100.0);
         assert!(!amount.is_empty())
     }
 }

@@ -4,7 +4,7 @@ use chrono::{DateTime, Local};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-#[derive(Default, Eq, PartialEq)]
+#[derive(Default, PartialEq)]
 pub struct AnalysisState {
     pub bars_by_symbol: Rc<HashMap<AssetSymbol, BarsResult>>,
     last_fetch_time: DateTime<Local>,

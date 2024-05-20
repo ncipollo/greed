@@ -1,11 +1,10 @@
-use crate::num::NumPercent;
+use crate::float::PercentOps;
 use crate::strategy::action::Action;
 use crate::strategy::r#do::{DoResult, DoRule};
 use crate::strategy::skip::SkipReason;
 use crate::strategy::state::StrategyState;
 use crate::strategy::target::TargetAsset;
 use crate::strategy::when::WhenResult;
-use num_decimal::Num;
 
 pub struct DoBuyRule {
     buy_percent: f64,
@@ -23,7 +22,7 @@ impl DoBuyRule {
             .filter_map(|asset| {
                 let amount = self.calculate_buy_amount(state, asset, remaining_cash.clone());
                 remaining_cash -= amount.clone();
-                if amount > Num::from(0) {
+                if amount > 0.0 {
                     Some(Action::buy_notional(asset.symbol.clone(), amount))
                 } else {
                     None
@@ -36,8 +35,8 @@ impl DoBuyRule {
         &self,
         state: &StrategyState,
         target_asset: &TargetAsset,
-        remaining_cash: Num,
-    ) -> Num {
+        remaining_cash: f64,
+    ) -> f64 {
         let equity = state.account.equity.clone();
         let target_percent = self.target_percent(target_asset);
 
@@ -46,18 +45,18 @@ impl DoBuyRule {
         let desired_value = equity.percent_of(target_percent);
 
         let total_amount_notational = desired_value - position_value - open_order_value;
-        total_amount_notational.clamp(Num::from(0), remaining_cash)
+        total_amount_notational.clamp(0.0, remaining_cash)
     }
 
     fn target_percent(&self, target_asset: &TargetAsset) -> f64 {
         (target_asset.percent * self.buy_percent) / 100.0
     }
 
-    fn position_value(&self, state: &StrategyState, target_asset: &TargetAsset) -> Num {
+    fn position_value(&self, state: &StrategyState, target_asset: &TargetAsset) -> f64 {
         let position = state.positions.get(&target_asset.symbol);
         position
             .map(|p| p.average_entry_price.clone() * p.quantity.clone())
-            .unwrap_or(Num::from(0))
+            .unwrap_or(0.0)
     }
 }
 
@@ -75,9 +74,10 @@ impl DoRule for DoBuyRule {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::asset::AssetSymbol;
     use crate::platform::account::Account;
+
+    use super::*;
 
     #[test]
     fn evaluate() {
@@ -93,8 +93,8 @@ mod tests {
         let result = rule.evaluate(&state, when_result);
         let expected = DoResult {
             actions: vec![
-                Action::buy_notional(AssetSymbol::new("VTI"), Num::from(50)),
-                Action::buy_notional(AssetSymbol::new("SPY"), Num::from(50)),
+                Action::buy_notional(AssetSymbol::new("VTI"), 50.0),
+                Action::buy_notional(AssetSymbol::new("SPY"), 50.0),
             ],
             skipped: false,
             skip_reason: SkipReason::NoTargetAssets,
@@ -127,7 +127,7 @@ mod tests {
         let rule = DoBuyRule::boxed(100.0);
         let state = StrategyState {
             account: Account {
-                cash: Num::from(5),
+                cash: 5.0,
                 ..Account::fixture()
             },
             ..StrategyState::fixture()
@@ -142,7 +142,7 @@ mod tests {
         let result = rule.evaluate(&state, when_result);
         let expected = DoResult {
             actions: vec![
-                Action::buy_notional(AssetSymbol::new("VTI"), Num::from(5))
+                Action::buy_notional(AssetSymbol::new("VTI"), 5.0)
             ],
             skipped: false,
             skip_reason: SkipReason::NoTargetAssets,

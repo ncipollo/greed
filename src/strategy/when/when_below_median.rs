@@ -1,13 +1,12 @@
 use crate::analysis::result::BarsResult;
 use crate::config::strategy::median::MedianPeriod;
-use crate::num::{NumFromFloat, NumPercent};
 use crate::platform::bars::Bars;
 use crate::strategy::r#for::ForResult;
 use crate::strategy::state::StrategyState;
 use crate::strategy::target::TargetAsset;
 use crate::strategy::when::{WhenResult, WhenRule};
 use log::warn;
-use num_decimal::Num;
+use crate::float::PercentOps;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct WhenBelowMedianRule {
@@ -69,7 +68,7 @@ impl WhenBelowMedianRule {
             .filter(Self::is_median_valid)
             .map(|m| {
                 let difference_percent = quote.clone().ask_price.percent_below(m);
-                difference_percent >= Num::from_f64(self.below_median_percent)
+                difference_percent >= self.below_median_percent
             })
             .unwrap_or(false)
     }
@@ -79,8 +78,8 @@ impl WhenBelowMedianRule {
             || !state.bar_analysis.contains_key(&target_asset.symbol)
     }
 
-    fn is_median_valid(median: &Num) -> bool {
-        *median > Num::from(0)
+    fn is_median_valid(median: &f64) -> bool {
+        *median > 0.0
     }
 }
 
@@ -149,7 +148,7 @@ mod tests {
     fn evaluate_invalid_quote() {
         let spy = AssetSymbol::new("SPY");
         let quote = Quote {
-            ask_price: Num::from(0),
+            ask_price: 0.0,
             ..Default::default()
         };
         let state = StrategyState {

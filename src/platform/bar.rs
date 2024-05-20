@@ -1,38 +1,37 @@
 pub mod bar_request;
 pub mod time_frame;
 
-use chrono::{DateTime, Utc};
-use num_decimal::Num;
-use std::fmt::{Display, Formatter};
 #[cfg(test)]
 use crate::date::DateTimeFixture;
+use chrono::{DateTime, Utc};
+use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Bar {
     pub timestamp: DateTime<Utc>,
     /// The open price.
-    pub open: Num,
+    pub open: f64,
     /// The close price.
-    pub close: Num,
+    pub close: f64,
     /// The highest price.
-    pub high: Num,
+    pub high: f64,
     /// The lowest price.
-    pub low: Num,
+    pub low: f64,
     /// The trading volume.
     pub volume: usize,
 }
 
 impl Bar {
-    pub fn average(&self) -> Num {
-        (&self.low + &self.high) / 2
+    pub fn average(&self) -> f64 {
+        (&self.low + &self.high) / 2.0
     }
 
-    pub fn difference(&self) -> Num {
+    pub fn difference(&self) -> f64 {
         &self.close - &self.open
     }
 
-    pub fn difference_percent(&self) -> Num {
-        (self.difference() / &self.open) * 100
+    pub fn difference_percent(&self) -> f64 {
+        (self.difference() / &self.open) * 100.0
     }
 
     pub fn join(&self, other: &Bar) -> Bar {
@@ -53,14 +52,14 @@ impl Bar {
     }
 
     #[cfg(test)]
-    pub fn fixture(average: i64) -> Self {
+    pub fn fixture(average: f64) -> Self {
         Self {
             timestamp: DateTimeFixture::utc(),
-            open: Num::from(average - 100),
-            close: Num::from(average + 100),
-            low: Num::from(average - 100),
-            high: Num::from(average + 100),
-            volume: 100
+            open: average - 100.0,
+            close: average + 100.0,
+            low: average - 100.0,
+            high: average + 100.0,
+            volume: 100,
         }
     }
 }
@@ -80,36 +79,35 @@ impl Display for Bar {
 mod test {
     use crate::platform::bar::Bar;
     use chrono::{DateTime, TimeZone, Utc};
-    use num_decimal::Num;
 
     #[test]
     fn average() {
         let bar = Bar {
-            low: Num::from(100),
-            high: Num::from(200),
+            low: 100.0,
+            high: 200.0,
             ..Default::default()
         };
-        assert_eq!(bar.average(), Num::from(150))
+        assert_eq!(bar.average(), 150.0)
     }
 
     #[test]
     fn difference() {
         let bar = Bar {
-            open: Num::from(200),
-            close: Num::from(100),
+            open: 200.0,
+            close: 100.0,
             ..Default::default()
         };
-        assert_eq!(bar.difference(), Num::from(-100))
+        assert_eq!(bar.difference(), -100.0)
     }
 
     #[test]
     fn difference_percent() {
         let bar = Bar {
-            open: Num::from(200),
-            close: Num::from(100),
+            open: 200.0,
+            close: 100.0,
             ..Default::default()
         };
-        assert_eq!(bar.difference_percent(), Num::from(-50))
+        assert_eq!(bar.difference_percent(), -50.0)
     }
 
     #[test]
@@ -117,10 +115,10 @@ mod test {
         let timestamp = date(1);
         let bar = Bar {
             timestamp,
-            open: Num::from(1),
-            close: Num::from(2),
-            high: Num::from(4),
-            low: Num::from(3),
+            open: 1.0,
+            close: 2.0,
+            high: 4.0,
+            low: 3.0,
             ..Default::default()
         };
         let expected = "11/01/23 13:00:00 UTC - open: 1, close: 2, high: 4, low: 3";
@@ -148,10 +146,10 @@ mod test {
     fn earlier_bar() -> Bar {
         Bar {
             timestamp: date(1),
-            open: Num::from(100),
-            close: Num::from(200),
-            low: Num::from(0),
-            high: Num::from(500),
+            open: 100.0,
+            close: 200.0,
+            low: 0.0,
+            high: 500.0,
             volume: 0,
         }
     }
@@ -159,10 +157,10 @@ mod test {
     fn later_bar() -> Bar {
         Bar {
             timestamp: date(2),
-            open: Num::from(300),
-            close: Num::from(50),
-            low: Num::from(200),
-            high: Num::from(200),
+            open: 300.0,
+            close: 50.0,
+            low: 200.0,
+            high: 200.0,
             volume: 0,
         }
     }
@@ -170,10 +168,10 @@ mod test {
     fn join_expected() -> Bar {
         Bar {
             timestamp: date(1),
-            open: Num::from(100),
-            close: Num::from(50),
-            low: Num::from(0),
-            high: Num::from(500),
+            open: 100.0,
+            close: 50.0,
+            low: 0.0,
+            high: 500.0,
             volume: 0,
         }
     }

@@ -1,14 +1,14 @@
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use crate::analysis::result::BarsResult;
 use crate::asset::AssetSymbol;
 use crate::platform::account::Account;
 use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
-use num_decimal::Num;
-use std::collections::HashMap;
-use std::rc::Rc;
 
-#[derive(Default, Eq, PartialEq)]
+#[derive(Default, PartialEq)]
 pub struct StrategyState {
     pub account: Account,
     pub bar_analysis: Rc<HashMap<AssetSymbol, BarsResult>>,
@@ -34,20 +34,18 @@ impl StrategyState {
         }
     }
 
-    pub fn open_order_value(&self, symbol: &AssetSymbol) -> Num {
+    pub fn open_order_value(&self, symbol: &AssetSymbol) -> f64 {
         let ask_price = self
             .quotes
             .get(&symbol)
-            .map_or(Num::from(0), |quote| quote.ask_price.clone());
-        self.open_orders
-            .get(&symbol)
-            .map_or(Num::from(0), |orders| {
-                orders
-                    .iter()
-                    .map(|order| order.estimated_value(ask_price.clone()))
-                    .reduce(|a, b| a + b)
-                    .unwrap_or(Num::from(0))
-            })
+            .map_or(0.0, |quote| quote.ask_price.clone());
+        self.open_orders.get(&symbol).map_or(0.0, |orders| {
+            orders
+                .iter()
+                .map(|order| order.estimated_value(ask_price.clone()))
+                .reduce(|a, b| a + b)
+                .unwrap_or(0.0)
+        })
     }
 
     #[cfg(test)]
@@ -89,7 +87,7 @@ mod tests {
     fn open_order_value() {
         let state = StrategyState::fixture();
         let open_order_value = state.open_order_value(&AssetSymbol::new("SPY"));
-        assert_eq!(open_order_value, Num::from(200))
+        assert_eq!(open_order_value, 200.0)
     }
 
     #[test]
@@ -99,7 +97,7 @@ mod tests {
             ..StrategyState::fixture()
         };
         let open_order_value = state.open_order_value(&AssetSymbol::new("SPY"));
-        assert_eq!(open_order_value, Num::from(0))
+        assert_eq!(open_order_value, 0.0)
     }
 
     #[test]
@@ -109,6 +107,6 @@ mod tests {
             ..StrategyState::fixture()
         };
         let open_order_value = state.open_order_value(&AssetSymbol::new("SPY"));
-        assert_eq!(open_order_value, Num::from(0))
+        assert_eq!(open_order_value, 0.0)
     }
 }

@@ -2,7 +2,7 @@ use crate::asset::AssetSymbol;
 use crate::platform::bars::Bars;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BarsResult {
     pub symbol: AssetSymbol,
     pub last_trading_day: Bars,
@@ -15,9 +15,9 @@ impl BarsResult {
     pub fn fixture(symbol: AssetSymbol) -> Self {
         Self {
             symbol: symbol.clone(),
-            last_trading_day: Bars::fixture(symbol.clone(), 300),
-            seven_day: Bars::fixture(symbol.clone(), 200),
-            thirty_day: Bars::fixture(symbol.clone(), 100),
+            last_trading_day: Bars::fixture(symbol.clone(), 300.0),
+            seven_day: Bars::fixture(symbol.clone(), 200.0),
+            thirty_day: Bars::fixture(symbol.clone(), 100.0),
         }
     }
 }

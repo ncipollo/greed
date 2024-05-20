@@ -12,7 +12,7 @@ use num_decimal::Num;
 use std::fmt::{Display, Formatter};
 use crate::asset::AssetSymbol;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct OrderRequest {
     pub symbol: AssetSymbol,
     pub class: OrderClass,
@@ -61,7 +61,6 @@ impl Display for OrderRequest {
 
 #[cfg(test)]
 mod test {
-    use num_decimal::Num;
     use crate::asset::AssetSymbol;
     use crate::platform::order::amount::Amount;
     use crate::platform::order::side::OrderSide;
@@ -81,7 +80,7 @@ mod test {
                                                      Amount::Quantity(1.into()));
         let expected = OrderRequest {
             symbol: AssetSymbol::new("VTI"),
-            amount: Amount::Quantity(Num::from(1)),
+            amount: Amount::Quantity(1.0),
             side: OrderSide::Buy,
             ..Default::default()
         };
@@ -94,7 +93,7 @@ mod test {
                                                      Amount::Quantity(1.into()));
         let expected = OrderRequest {
             symbol: AssetSymbol::new("VTI"),
-            amount: Amount::Quantity(Num::from(1)),
+            amount: Amount::Quantity(1.0),
             side: OrderSide::Sell,
             ..Default::default()
         };

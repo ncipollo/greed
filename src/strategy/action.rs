@@ -1,8 +1,8 @@
 use std::fmt::{Display, Formatter};
+
 use crate::asset::AssetSymbol;
 use crate::platform::order::amount::Amount;
 use crate::platform::request::OrderRequest;
-use num_decimal::Num;
 
 #[derive(Debug, PartialEq)]
 pub enum Action {
@@ -11,18 +11,18 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn buy_notional(symbol: AssetSymbol, notional: Num) -> Self {
+    pub fn buy_notional(symbol: AssetSymbol, notional: f64) -> Self {
         let amount = Amount::Notional(notional);
         Self::Buy { symbol, amount }
     }
 
     #[allow(dead_code)]
-    pub fn sell_notional(symbol: AssetSymbol, notional: Num) -> Self {
+    pub fn sell_notional(symbol: AssetSymbol, notional: f64) -> Self {
         let amount = Amount::Notional(notional);
         Self::Sell { symbol, amount }
     }
 
-    pub fn sell_quantity(symbol: AssetSymbol, quantity: Num) -> Self {
+    pub fn sell_quantity(symbol: AssetSymbol, quantity: f64) -> Self {
         let amount = Amount::Quantity(quantity);
         Self::Sell { symbol, amount }
     }
@@ -67,47 +67,43 @@ mod tests {
 
     #[test]
     fn into_request_buy() {
-        let action = Action::buy_notional(AssetSymbol::new("VTI"), Num::from(10));
+        let action = Action::buy_notional(AssetSymbol::new("VTI"), 10.0);
         let request = action.into_request();
-        let expected = OrderRequest::market_order_buy(
-            AssetSymbol::new("VTI"),
-            Amount::Notional(Num::from(10)),
-        );
+        let expected =
+            OrderRequest::market_order_buy(AssetSymbol::new("VTI"), Amount::Notional(10.0));
         assert_eq!(expected, request);
     }
 
     #[test]
     fn into_request_sell() {
-        let action = Action::sell_notional(AssetSymbol::new("VTI"), Num::from(10));
+        let action = Action::sell_notional(AssetSymbol::new("VTI"), 10.0);
         let request = action.into_request();
-        let expected = OrderRequest::market_order_sell(
-            AssetSymbol::new("VTI"),
-            Amount::Notional(Num::from(10)),
-        );
+        let expected =
+            OrderRequest::market_order_sell(AssetSymbol::new("VTI"), Amount::Notional(10.0));
         assert_eq!(expected, request);
     }
 
     #[test]
     fn is_empty_buy_empty() {
-        let action = Action::buy_notional(AssetSymbol::new("VTI"), Num::from(0));
+        let action = Action::buy_notional(AssetSymbol::new("VTI"), 0.0);
         assert!(action.is_empty())
     }
 
     #[test]
     fn is_empty_buy_not_empty() {
-        let action = Action::buy_notional(AssetSymbol::new("VTI"), Num::from(1));
+        let action = Action::buy_notional(AssetSymbol::new("VTI"), 1.0);
         assert!(!action.is_empty())
     }
 
     #[test]
     fn is_empty_sell_empty() {
-        let action = Action::sell_notional(AssetSymbol::new("VTI"), Num::from(0));
+        let action = Action::sell_notional(AssetSymbol::new("VTI"), 0.0);
         assert!(action.is_empty())
     }
 
     #[test]
     fn is_empty_sell_not_empty() {
-        let action = Action::sell_notional(AssetSymbol::new("VTI"), Num::from(1));
+        let action = Action::sell_notional(AssetSymbol::new("VTI"), 1.0);
         assert!(!action.is_empty())
     }
 }

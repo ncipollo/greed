@@ -1,56 +1,54 @@
-use crate::asset::AssetSymbol;
-use chrono::{DateTime, Utc};
-use num_decimal::Num;
 use std::fmt::{Display, Formatter};
-use once_cell::sync::Lazy;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+use chrono::{DateTime, Utc};
+
+use crate::asset::AssetSymbol;
+
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Quote {
     pub time: DateTime<Utc>,
     /// The ask price.
     /// The ask is the lowest price where someone is willing to sell a share.
-    pub ask_price: Num,
+    pub ask_price: f64,
     /// The ask size.
     pub ask_size: u64,
     /// The bid price.
     /// The bid represents the highest price someone is willing to pay for a share.
-    pub bid_price: Num,
+    pub bid_price: f64,
     /// The bid size.
     pub bid_size: u64,
     pub symbol: AssetSymbol,
 }
 
-static ZERO_NUM: Lazy<Num> = Lazy::new(|| Num::from(0));
-
 impl Quote {
-    pub fn spread(&self) -> Num {
+    pub fn spread(&self) -> f64 {
         &self.ask_price - &self.bid_price
     }
 
-    pub fn spread_percent(&self) -> Num {
+    pub fn spread_percent(&self) -> f64 {
         if !self.valid_ask() {
-            return Default::default()
+            return Default::default();
         }
 
         let spread = self.spread();
-        (spread / &self.ask_price) * 100
+        (spread / &self.ask_price) * 100.0
     }
 
     pub fn valid_ask(&self) -> bool {
-        self.ask_price > *ZERO_NUM
+        self.ask_price > 0.0
     }
 
     pub fn valid_bid(&self) -> bool {
-        self.bid_price > *ZERO_NUM
+        self.bid_price > 0.0
     }
 
     #[cfg(test)]
     pub fn fixture(symbol: AssetSymbol) -> Self {
         Self {
             time: Default::default(),
-            ask_price: Num::from(200),
+            ask_price: 200.0,
             ask_size: 1,
-            bid_price: Num::from(100),
+            bid_price: 100.0,
             bid_size: 1,
             symbol,
         }
@@ -59,10 +57,10 @@ impl Quote {
 
 impl Display for Quote {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let ask = self.ask_price.to_f64().unwrap_or(0.0);
-        let bid = self.bid_price.to_f64().unwrap_or(0.0);
-        let spread = self.spread().to_f64().unwrap_or(0.0);
-        let spread_percent = self.spread_percent().to_f64().unwrap_or(0.0);
+        let ask = self.ask_price;
+        let bid = self.bid_price;
+        let spread = self.spread();
+        let spread_percent = self.spread_percent();
         write!(
             f,
             "{} ask: {:.2}, bid: {:.2}, spread: {:.2} ({:.2}%)",
@@ -73,16 +71,15 @@ impl Display for Quote {
 
 #[cfg(test)]
 mod test {
+    use approx::{assert_relative_eq};
     use crate::asset::AssetSymbol;
     use crate::platform::quote::Quote;
-    use num_decimal::Num;
-    use std::str::FromStr;
 
     #[test]
     fn display() {
         let quote = Quote {
-            ask_price: Num::from_str("200.456").expect("failed to parse num"),
-            bid_price: Num::from_str("100.123").expect("failed to parse num"),
+            ask_price: 200.456,
+            bid_price: 100.123,
             symbol: AssetSymbol::new("vti"),
             ..Default::default()
         };
@@ -94,15 +91,15 @@ mod test {
     #[test]
     fn spread() {
         let quote = create_spread_quote();
-        let expected = Num::from_str("0.05").expect("failed to parse num");
-        assert_eq!(quote.spread(), expected)
+        let expected = 0.05;
+        assert_relative_eq!(quote.spread(), expected, max_relative = 0.001);
     }
 
     #[test]
     fn spread_percent() {
         let quote = create_spread_quote();
-        let expected = Num::from_str("0.5").expect("failed to parse num");
-        assert_eq!(quote.spread_percent(), expected)
+        let expected = 0.5;
+        assert_relative_eq!(quote.spread_percent(), expected, max_relative = 0.001)
     }
 
     #[test]
@@ -110,14 +107,14 @@ mod test {
         let mut quote = create_spread_quote();
         quote.ask_price = Default::default();
 
-        let expected = Num::from_str("0.0").expect("failed to parse num");
+        let expected = 0.0;
         assert_eq!(quote.spread_percent(), expected)
     }
 
     #[test]
     fn valid_ask_invalid() {
         let quote = Quote {
-            ask_price: Num::from_str("0.0").expect("failed to parse num"),
+            ask_price: 0.0,
             ..Default::default()
         };
         assert!(!quote.valid_ask())
@@ -126,7 +123,7 @@ mod test {
     #[test]
     fn valid_ask_valid() {
         let quote = Quote {
-            ask_price: Num::from_str("10.0").expect("failed to parse num"),
+            ask_price: 10.0,
             ..Default::default()
         };
         assert!(quote.valid_ask())
@@ -135,7 +132,7 @@ mod test {
     #[test]
     fn valid_bid_invalid() {
         let quote = Quote {
-            bid_price: Num::from_str("0.0").expect("failed to parse num"),
+            bid_price: 0.0,
             ..Default::default()
         };
         assert!(!quote.valid_bid())
@@ -144,7 +141,7 @@ mod test {
     #[test]
     fn valid_bid_valid() {
         let quote = Quote {
-            bid_price: Num::from_str("10.0").expect("failed to parse num"),
+            bid_price: 10.0,
             ..Default::default()
         };
         assert!(quote.valid_bid())
@@ -152,8 +149,8 @@ mod test {
 
     fn create_spread_quote() -> Quote {
         Quote {
-            ask_price: Num::from_str("10.0").expect("failed to parse num"),
-            bid_price: Num::from_str("9.95").expect("failed to parse num"),
+            ask_price: 10.0,
+            bid_price: 9.95,
             ..Default::default()
         }
     }

@@ -1,4 +1,4 @@
-use crate::num::{NumAmountRounding};
+use crate::float::FloatAmountRounding;
 use crate::strategy::action::Action;
 use crate::strategy::r#do::{DoResult, DoRule};
 use crate::strategy::skip::SkipReason;
@@ -26,7 +26,9 @@ impl DoRule for DoSellAllRule {
                     .unwrap_or_default();
                 // We need to round down after 7 significant digits because anything more than that
                 // does not serialize correctly in num.
-                let sell_amount = target_asset.apply_percent(position_amount).round_for_quantity();
+                let sell_amount = target_asset
+                    .apply_percent(position_amount)
+                    .round_for_quantity();
                 Action::sell_quantity(symbol.clone(), sell_amount)
             })
             .filter(|a| !a.is_empty())
@@ -42,12 +44,13 @@ impl DoRule for DoSellAllRule {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::collections::HashMap;
+
     use crate::asset::AssetSymbol;
     use crate::platform::position::Position;
     use crate::strategy::target::TargetAsset;
-    use num_decimal::Num;
-    use std::collections::HashMap;
+
+    use super::*;
 
     #[test]
     fn evaluate() {
@@ -56,8 +59,8 @@ mod tests {
         let when_result = create_when_result();
         let do_result = rule.evaluate(&state, when_result);
         let expected_actions = vec![
-            Action::sell_quantity(AssetSymbol::new("SPY"), Num::from(50)),
-            Action::sell_quantity(AssetSymbol::new("VTI"), Num::from(25)),
+            Action::sell_quantity(AssetSymbol::new("SPY"), 50.0),
+            Action::sell_quantity(AssetSymbol::new("VTI"), 25.0),
         ];
         let expected = DoResult {
             actions: expected_actions,

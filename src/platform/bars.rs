@@ -1,10 +1,9 @@
 use crate::asset::AssetSymbol;
 use crate::platform::bar::Bar;
 use itertools::Itertools;
-use num_decimal::Num;
 use std::borrow::Cow;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Bars {
     pub symbol: AssetSymbol,
     pub bars: Vec<Bar>,
@@ -17,22 +16,27 @@ impl Bars {
             bars,
         }
     }
-    pub fn average_median(&self) -> Option<Num> {
+    pub fn average_median(&self) -> Option<f64> {
         self.median(|b| Cow::Owned(b.average()))
     }
 
-    pub fn close_median(&self) -> Option<Num> {
+    pub fn close_median(&self) -> Option<f64> {
         self.median(|b| Cow::Borrowed(&b.close))
     }
 
-    fn median<F>(&self, func: F) -> Option<Num>
+    fn median<F>(&self, func: F) -> Option<f64>
     where
-        F: FnMut(&Bar) -> Cow<Num>,
+        F: FnMut(&Bar) -> Cow<f64>,
     {
         if self.is_empty() {
             return None;
         }
-        let sorted_bars = self.bars.iter().map(func).sorted().collect::<Vec<_>>();
+        let sorted_bars = self
+            .bars
+            .iter()
+            .map(func)
+            .sorted_by(|a, b| a.partial_cmp(b).unwrap())
+            .collect::<Vec<_>>();
         let middle = sorted_bars.len() / 2;
         return Some(sorted_bars[middle].clone().into_owned());
     }
@@ -49,13 +53,13 @@ impl Bars {
     }
 
     #[cfg(test)]
-    pub fn fixture(symbol: AssetSymbol, base_average: i64) -> Self {
+    pub fn fixture(symbol: AssetSymbol, base_average: f64) -> Self {
         Self {
             symbol,
             bars: vec![
                 Bar::fixture(base_average),
-                Bar::fixture(base_average + 100),
-                Bar::fixture(base_average + 200),
+                Bar::fixture(base_average + 100.0),
+                Bar::fixture(base_average + 200.0),
             ],
         }
     }
@@ -70,8 +74,8 @@ mod tests {
     fn average_median() {
         let bar_vec = (0..5)
             .map(|index| Bar {
-                low: Num::from(index * 100),
-                high: Num::from(index * 200),
+                low: f64::from(index) * 100.0,
+                high: f64::from(index) * 200.0,
                 ..Default::default()
             })
             .collect::<Vec<_>>();
@@ -81,14 +85,14 @@ mod tests {
         };
 
         let median = bars.average_median();
-        assert_eq!(median, Some(Num::from(300)))
+        assert_eq!(median, Some(300.0))
     }
 
     #[test]
     fn close_median() {
         let bar_vec = (1..=5)
             .map(|index| Bar {
-                close: Num::from(index * 100),
+                close: f64::from(index) * 100.0,
                 ..Default::default()
             })
             .collect::<Vec<_>>();
@@ -98,7 +102,7 @@ mod tests {
         };
 
         let median = bars.close_median();
-        assert_eq!(median, Some(Num::from(300)))
+        assert_eq!(median, Some(300.0))
     }
 
     #[test]
@@ -125,8 +129,8 @@ mod tests {
         let bar_vec = (0..5)
             .map(|index| Bar {
                 timestamp: date(index),
-                close: Num::from(index * 200),
-                open: Num::from(index * 100),
+                close: (index as f64) * 200.0,
+                open: (index as f64) * 100.0,
                 ..Default::default()
             })
             .collect::<Vec<_>>();
@@ -138,8 +142,8 @@ mod tests {
         let period_bar = bars.period_bar();
         let expected = Bar {
             timestamp: date(0),
-            open: Num::from(0),
-            close: Num::from(800),
+            open: 0.0,
+            close: 800.0,
             ..Default::default()
         };
         assert_eq!(period_bar, Some(expected))

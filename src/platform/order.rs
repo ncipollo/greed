@@ -4,12 +4,12 @@ use crate::platform::id::Id;
 use crate::platform::order::amount::Amount;
 use crate::platform::order::class::OrderClass;
 use crate::platform::order::order_type::OrderType;
+use crate::platform::order::side::OrderSide;
 use crate::platform::order::status::Status;
 use crate::platform::order::time_in_force::TimeInForce;
 use chrono::{DateTime, Utc};
 use num_decimal::Num;
 use std::fmt::{Display, Formatter};
-use crate::platform::order::side::OrderSide;
 
 pub mod amount;
 pub mod class;
@@ -18,7 +18,7 @@ pub mod side;
 pub mod status;
 pub mod time_in_force;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Order {
     /// The identifier associated with the order.
     pub id: Id,
@@ -70,16 +70,16 @@ pub struct Order {
 impl Order {
     /// Calculate the estimated value of this order given the ask price. Primarily useful for an
     /// open order.
-    pub fn estimated_value(&self, ask_price: Num) -> Num {
+    pub fn estimated_value(&self, ask_price: f64) -> f64 {
         match &self.amount {
             Amount::Quantity(value) => value * ask_price,
-            Amount::Notional(value) => value.clone()
+            Amount::Notional(value) => *value,
         }
     }
     #[cfg(test)]
     pub fn fixture(symbol: AssetSymbol) -> Self {
         Self {
-            amount: Amount::Quantity(Num::from(1)),
+            amount: Amount::Quantity(1.0),
             symbol,
             ..Default::default()
         }
@@ -88,46 +88,41 @@ impl Order {
 
 impl Display for Order {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} {} of {}",
-            self.side, self.amount, self.symbol
-        )
+        write!(f, "{} {} of {}", self.side, self.amount, self.symbol)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use num_decimal::Num;
     use crate::asset::AssetSymbol;
     use crate::platform::order::amount::Amount;
-    use crate::platform::order::Order;
     use crate::platform::order::side::OrderSide;
+    use crate::platform::order::Order;
 
     #[test]
     fn estimated_value_quantity() {
         let order = Order {
-            amount: Amount::Quantity(Num::from(10)),
+            amount: Amount::Quantity(10.0),
             ..Default::default()
         };
-        let estimated_value = order.estimated_value(Num::from(100));
-        assert_eq!(estimated_value, Num::from(1000))
+        let estimated_value = order.estimated_value(100.0);
+        assert_eq!(estimated_value, 1000.0)
     }
 
     #[test]
     fn estimated_value_notational() {
         let order = Order {
-            amount: Amount::Notional(Num::from(10)),
+            amount: Amount::Notional(10.0),
             ..Default::default()
         };
-        let estimated_value = order.estimated_value(Num::from(100));
-        assert_eq!(estimated_value, Num::from(10))
+        let estimated_value = order.estimated_value(100.0);
+        assert_eq!(estimated_value, 10.0)
     }
 
     #[test]
     fn display() {
         let order = Order {
-            amount: Amount::Quantity(Num::from(10)),
+            amount: Amount::Quantity(10.0),
             side: OrderSide::Buy,
             symbol: AssetSymbol::new("VTI"),
             ..Default::default()

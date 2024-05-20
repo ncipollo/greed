@@ -49,7 +49,7 @@ mod test {
             symbol: AssetSymbol::new("VTI"),
             class: OrderClass::Simple,
             order_type: OrderType::Limit,
-            amount: Amount::Notional(Num::from(1)),
+            amount: Amount::Notional(1.0),
             side: OrderSide::Buy,
             time_in_force: TimeInForce::Day,
             limit_price: Some(Num::from(2)),

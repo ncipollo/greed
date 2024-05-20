@@ -10,10 +10,10 @@ impl From<apca::data::v2::bars::Bar> for Bar {
     fn from(value: apca::data::v2::bars::Bar) -> Self {
         Self {
             timestamp: value.time,
-            open: value.open,
-            close: value.close,
-            high: value.high,
-            low: value.low,
+            open: value.open.to_f64().unwrap_or(0.0),
+            close: value.close.to_f64().unwrap_or(0.0),
+            high: value.high.to_f64().unwrap_or(0.0),
+            low: value.low.to_f64().unwrap(),
             volume: value.volume,
         }
     }
