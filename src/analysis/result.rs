@@ -33,12 +33,16 @@ impl Display for BarsResult {
             yesterday median: {:.2}\n\
             7 day median: {:.2}\n\
             30 day median: {:.2}\n\
+            Median Positive Change: {:.2}%\n\
+            Median Negative Change: {:.2}%\n\
             ----------
         ",
             self.symbol,
             self.last_trading_day.average_median().unwrap_or_default(),
             self.seven_day.average_median().unwrap_or_default(),
             self.thirty_day.average_median().unwrap_or_default(),
+            self.thirty_day_hourly.positive_percent_median().unwrap_or_default(),
+            self.thirty_day_hourly.negative_percent_median().unwrap_or_default(),
         )
     }
 }

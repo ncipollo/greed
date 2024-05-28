@@ -1,7 +1,6 @@
-use itertools::Itertools;
-
 use crate::asset::AssetSymbol;
 use crate::platform::bar::Bar;
+use crate::statistics::median;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Bars {
@@ -31,14 +30,28 @@ impl Bars {
         if self.is_empty() {
             return None;
         }
-        let sorted_bars = self
+        let values = self.bars.iter().map(func).collect::<Vec<_>>();
+        return median(values);
+    }
+
+    pub fn positive_percent_median(&self) -> Option<f64> {
+        let positive_percents = self
             .bars
             .iter()
-            .map(func)
-            .sorted_by(|a, b| a.partial_cmp(b).unwrap())
+            .map(|b| b.difference_percent())
+            .filter(|&p| p >= 0.0)
             .collect::<Vec<_>>();
-        let middle = sorted_bars.len() / 2;
-        return Some(sorted_bars[middle]);
+        median(positive_percents)
+    }
+
+    pub fn negative_percent_median(&self) -> Option<f64> {
+        let negative_percents = self
+            .bars
+            .iter()
+            .map(|b| b.difference_percent())
+            .filter(|&p| p <= 0.0)
+            .collect::<Vec<_>>();
+        median(negative_percents)
     }
 
     pub fn period_bar(&self) -> Option<Bar> {
@@ -113,6 +126,60 @@ mod tests {
         };
 
         let median = bars.close_median();
+        assert_eq!(median, None)
+    }
+
+    #[test]
+    fn positive_percent_median() {
+        let bar_vec = (0..5)
+            .map(|index| Bar {
+                open: f64::from(index) * 100.0,
+                close: f64::from(index) * 200.0,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
+        let bars = Bars {
+            bars: bar_vec,
+            ..Default::default()
+        };
+
+        let median = bars.positive_percent_median();
+        assert_eq!(median, Some(100.0))
+    }
+
+    #[test]
+    fn positive_negative_median() {
+        let bar_vec = (0..5)
+            .map(|index| Bar {
+                open: f64::from(index) * 200.0,
+                close: f64::from(index) * 100.0,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
+        let bars = Bars {
+            bars: bar_vec,
+            ..Default::default()
+        };
+
+        let median = bars.negative_percent_median();
+        assert_eq!(median, Some(-50.0))
+    }
+
+    #[test]
+    fn positive_negative_median_all_positive() {
+        let bar_vec = (0..6)
+            .map(|index| Bar {
+                open: f64::from(index) * 100.0,
+                close: f64::from(index) * 200.0,
+                ..Default::default()
+            })
+            .collect::<Vec<_>>();
+        let bars = Bars {
+            bars: bar_vec,
+            ..Default::default()
+        };
+
+        let median = bars.negative_percent_median();
         assert_eq!(median, None)
     }
 
