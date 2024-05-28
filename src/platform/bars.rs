@@ -1,7 +1,7 @@
+use itertools::Itertools;
+
 use crate::asset::AssetSymbol;
 use crate::platform::bar::Bar;
-use itertools::Itertools;
-use std::borrow::Cow;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Bars {
@@ -17,16 +17,16 @@ impl Bars {
         }
     }
     pub fn average_median(&self) -> Option<f64> {
-        self.median(|b| Cow::Owned(b.average()))
+        self.median(|b| b.average())
     }
 
     pub fn close_median(&self) -> Option<f64> {
-        self.median(|b| Cow::Borrowed(&b.close))
+        self.median(|b| b.close)
     }
 
     fn median<F>(&self, func: F) -> Option<f64>
     where
-        F: FnMut(&Bar) -> Cow<f64>,
+        F: FnMut(&Bar) -> f64,
     {
         if self.is_empty() {
             return None;
@@ -38,7 +38,7 @@ impl Bars {
             .sorted_by(|a, b| a.partial_cmp(b).unwrap())
             .collect::<Vec<_>>();
         let middle = sorted_bars.len() / 2;
-        return Some(sorted_bars[middle].clone().into_owned());
+        return Some(sorted_bars[middle]);
     }
 
     pub fn period_bar(&self) -> Option<Bar> {
@@ -67,8 +67,9 @@ impl Bars {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use chrono::{DateTime, TimeZone, Utc};
+
+    use super::*;
 
     #[test]
     fn average_median() {

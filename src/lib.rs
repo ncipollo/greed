@@ -20,6 +20,7 @@ pub mod run;
 mod strategy;
 mod trading_days;
 mod float;
+mod statistics;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
     let runner = GreedRunner::from_args(args).await?;
