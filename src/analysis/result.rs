@@ -8,6 +8,7 @@ pub struct BarsResult {
     pub last_trading_day: Bars,
     pub seven_day: Bars,
     pub thirty_day: Bars,
+    pub thirty_day_hourly: Bars,
 }
 
 impl BarsResult {
@@ -18,6 +19,7 @@ impl BarsResult {
             last_trading_day: Bars::fixture(symbol.clone(), 300.0),
             seven_day: Bars::fixture(symbol.clone(), 200.0),
             thirty_day: Bars::fixture(symbol.clone(), 100.0),
+            thirty_day_hourly: Bars::fixture(symbol.clone(), 400.0),
         }
     }
 }

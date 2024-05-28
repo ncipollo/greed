@@ -27,6 +27,7 @@ impl BarsFetcher {
             last_trading_day: self.fetch_last_trading_day(symbol.clone()).await?,
             seven_day: self.fetch_seven_day(symbol.clone()).await?,
             thirty_day: self.fetch_thirty_day(symbol.clone()).await?,
+            thirty_day_hourly: self.fetch_thirty_day_hourly(symbol.clone()).await?,
         };
         Ok(bars_result)
     }
@@ -68,5 +69,20 @@ impl BarsFetcher {
                 ..Default::default()
             })
             .await
+    }
+
+    async fn fetch_thirty_day_hourly(&self, symbol: AssetSymbol) -> Result<Bars, GreedError> {
+        let time_range = self.time_ranges.last_x_days(30);
+        let bars = self.platform
+            .bars(BarRequest {
+                symbol,
+                start: time_range.start,
+                end: time_range.end,
+                timeframe: TimeFrame::OneHour,
+                ..Default::default()
+            })
+            .await?;
+
+        Ok(bars)
     }
 }
