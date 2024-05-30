@@ -35,20 +35,22 @@ impl Bars {
     }
 
     pub fn positive_percent_median(&self) -> Option<f64> {
+        let average_median = self.average_median().unwrap_or_default();
         let positive_percents = self
             .bars
             .iter()
-            .map(|b| b.difference_percent())
+            .map(|b| b.displacement_from_value_percent(average_median))
             .filter(|&p| p >= 0.0)
             .collect::<Vec<_>>();
         median(positive_percents)
     }
 
     pub fn negative_percent_median(&self) -> Option<f64> {
+        let average_median = self.average_median().unwrap_or_default();
         let negative_percents = self
             .bars
             .iter()
-            .map(|b| b.difference_percent())
+            .map(|b| b.displacement_from_value_percent(average_median))
             .filter(|&p| p <= 0.0)
             .collect::<Vec<_>>();
         median(negative_percents)
@@ -133,8 +135,9 @@ mod tests {
     fn positive_percent_median() {
         let bar_vec = (0..5)
             .map(|index| Bar {
-                open: f64::from(index) * 100.0,
-                close: f64::from(index) * 200.0,
+                close: f64::from(index) * 150.0,
+                low: f64::from(index) * 100.0,
+                high: f64::from(index) * 200.0,
                 ..Default::default()
             })
             .collect::<Vec<_>>();
@@ -144,15 +147,15 @@ mod tests {
         };
 
         let median = bars.positive_percent_median();
-        assert_eq!(median, Some(100.0))
+        assert_eq!(median, Some(50.0))
     }
 
     #[test]
-    fn positive_negative_median() {
+    fn negative_percent_median() {
         let bar_vec = (0..5)
             .map(|index| Bar {
-                open: f64::from(index) * 200.0,
-                close: f64::from(index) * 100.0,
+                low: f64::from(index + 1) * 200.0,
+                high: f64::from(index + 1) * 100.0,
                 ..Default::default()
             })
             .collect::<Vec<_>>();
@@ -162,15 +165,16 @@ mod tests {
         };
 
         let median = bars.negative_percent_median();
-        assert_eq!(median, Some(-50.0))
+        assert_eq!(median, Some(-100.0))
     }
 
     #[test]
-    fn positive_negative_median_all_positive() {
-        let bar_vec = (0..6)
+    fn positive_negative_median() {
+        let bar_vec = (0..5)
             .map(|index| Bar {
-                open: f64::from(index) * 100.0,
-                close: f64::from(index) * 200.0,
+                close: f64::from(5 + index) * 200.0,
+                low: f64::from(index) * 200.0,
+                high: f64::from(index) * 100.0,
                 ..Default::default()
             })
             .collect::<Vec<_>>();
