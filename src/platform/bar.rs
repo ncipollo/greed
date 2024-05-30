@@ -34,6 +34,14 @@ impl Bar {
         (self.difference() / &self.open) * 100.0
     }
 
+    pub fn displacement_from_value(&self, value: f64) -> f64 {
+        self.close - value
+    }
+
+    pub fn displacement_from_value_percent(&self, value: f64) -> f64 {
+        (self.displacement_from_value(value) / value) * 100.0
+    }
+
     pub fn join(&self, other: &Bar) -> Bar {
         let (timestamp, open, close) = if self.timestamp < other.timestamp {
             (self.timestamp, &self.open, &other.close)
@@ -108,6 +116,24 @@ mod test {
             ..Default::default()
         };
         assert_eq!(bar.difference_percent(), -50.0)
+    }
+
+    #[test]
+    fn  displacement_from_value() {
+        let bar = Bar {
+            close: 100.0,
+            ..Default::default()
+        };
+        assert_eq!(bar.displacement_from_value(50.0), 50.0)
+    }
+
+    #[test]
+    fn displacement_from_value_percent() {
+        let bar = Bar {
+            close: 300.0,
+            ..Default::default()
+        };
+        assert_eq!(bar.displacement_from_value_percent(200.0), 50.0)
     }
 
     #[test]
