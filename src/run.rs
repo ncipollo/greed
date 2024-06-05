@@ -6,6 +6,7 @@ use crate::platform;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+use log::warn;
 use tokio::time::sleep;
 
 #[derive(Debug, Default, PartialEq)]
@@ -42,7 +43,8 @@ impl GreedRunner {
         let loop_interval = Duration::from_secs(self.run_interval);
         let mut strategy_index = 0;
         loop {
-            let _ = self.strategy_runners[strategy_index].run().await?;
+            let _ = self.strategy_runners[strategy_index].run().await
+                .inspect_err(|e| warn!("{e}"));
             strategy_index = (strategy_index + 1) % self.strategy_runners.len();
             sleep(loop_interval).await;
         }
