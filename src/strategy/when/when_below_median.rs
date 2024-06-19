@@ -1,12 +1,13 @@
 use crate::analysis::result::BarsResult;
+use crate::bool::BooleanWhen;
 use crate::config::strategy::median::MedianPeriod;
+use crate::float::PercentOps;
 use crate::platform::bars::Bars;
 use crate::strategy::r#for::ForResult;
 use crate::strategy::state::StrategyState;
 use crate::strategy::target::TargetAsset;
 use crate::strategy::when::{WhenResult, WhenRule};
-use log::warn;
-use crate::float::PercentOps;
+use log::{info, warn};
 
 #[derive(Debug, Default, PartialEq)]
 pub struct WhenBelowMedianRule {
@@ -68,9 +69,17 @@ impl WhenBelowMedianRule {
             .filter(Self::is_median_valid)
             .map(|m| {
                 let difference_percent = quote.clone().ask_price.percent_below(m);
-                difference_percent >= self.below_median_percent
+                (difference_percent >= self.below_median_percent)
+                    .when_false(|| self.log_quote_is_not_below_median(difference_percent))
             })
             .unwrap_or(false)
+    }
+
+    fn log_quote_is_not_below_median(&self, difference_percent: f64) {
+        info!(
+            "when_below_median: quote is not {} below median by {}",
+            difference_percent, self.below_median_percent
+        )
     }
 
     fn is_state_valid(&self, state: &StrategyState, target_asset: &TargetAsset) -> bool {

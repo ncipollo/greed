@@ -8,19 +8,20 @@ use crate::run::{GreedRunner, GreedRunnerArgs};
 mod analysis;
 mod assert;
 pub mod asset;
+mod bool;
 pub mod config;
 mod date;
 mod enum_display;
 pub mod error;
 mod fixture;
+mod float;
 mod num;
 mod pager;
 pub mod platform;
 pub mod run;
+mod statistics;
 mod strategy;
 mod trading_days;
-mod float;
-mod statistics;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
     let runner = GreedRunner::from_args(args).await?;
