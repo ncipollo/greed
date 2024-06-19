@@ -77,7 +77,7 @@ impl WhenBelowMedianRule {
 
     fn log_quote_is_not_below_median(&self, difference_percent: f64) {
         info!(
-            "when_below_median: quote is not {} below median by {}",
+            "when_below_median: quote was {:.2} below median, expecting {:.2}.",
             difference_percent, self.below_median_percent
         )
     }

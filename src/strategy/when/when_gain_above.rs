@@ -27,7 +27,7 @@ impl WhenGainAboveRule {
 
     fn log_gain_not_above(&self, g: f64) {
         log::info!(
-            "when_gain_above: Gain {} not above percent {} ",
+            "when_gain_above: Gain was {:.2}, expecting {}",
             g,
             self.gain_above_percent
         )
