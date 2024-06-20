@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 pub enum MedianPeriod {
     Day,
     Week,
-    Month
+    Month,
 }
 
 impl Default for MedianPeriod {
     fn default() -> Self {
-        Self::Day
+        Self::Month
     }
 }
 
@@ -20,6 +20,6 @@ mod tests {
 
     #[test]
     fn default() {
-        assert_eq!(MedianPeriod::Day, Default::default())
+        assert_eq!(MedianPeriod::Month, Default::default())
     }
 }
