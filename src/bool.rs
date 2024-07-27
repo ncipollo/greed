@@ -1,5 +1,6 @@
 pub trait BooleanWhen {
     fn when_false<F: FnOnce()>(self, f: F) -> Self;
+    #[allow(dead_code)]
     fn when_true<F: FnOnce()>(self, f: F) -> Self;
 }
 

@@ -10,6 +10,7 @@ pub trait NumFloor {
     fn floor_with(&self, precision: u32) -> Self;
 }
 
+#[allow(dead_code)]
 pub trait NumAmountRounding {
     fn round_for_notional(&self) -> Self;
     fn round_for_quantity(&self) -> Self;
@@ -41,6 +42,7 @@ impl NumAmountRounding for Num {
     }
 }
 
+#[allow(dead_code)]
 pub trait NumPercent {
     fn percent_of(&self, percent: f64) -> Self;
     fn percent_above(&self, target: Num) -> Self;

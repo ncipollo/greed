@@ -26,6 +26,7 @@ impl FloatAmountRounding for f64 {
 
 pub trait PercentOps {
     fn percent_of(&self, percent: f64) -> Self;
+    #[allow(dead_code)]
     fn percent_above(&self, target: f64) -> Self;
 
     fn percent_below(&self, target: f64) -> Self;
