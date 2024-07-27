@@ -1,11 +1,11 @@
 use std::path::Path;
-
+use csv::Trim;
 use crate::config::simple::strategy::SimpleStrategyConfig;
 use crate::config::simple::SimpleConfig;
 use crate::error::GreedError;
 
 pub async fn read_config<P: AsRef<Path>>(path: P) -> Result<SimpleConfig, GreedError> {
-    let mut reader = csv::Reader::from_path(path)?;
+    let mut reader = csv::ReaderBuilder::new().trim(Trim::All).from_path(path)?;
     let mut strategies = Vec::new();
     for result in reader.deserialize() {
         let strategy: SimpleStrategyConfig = result?;
