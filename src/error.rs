@@ -44,6 +44,7 @@ macro_rules! greed_error_from {
     };
 }
 
+greed_error_from!(csv::Error);
 greed_error_from!(std::io::Error);
 greed_error_from!(toml::de::Error);
 greed_error_from!(VarError);

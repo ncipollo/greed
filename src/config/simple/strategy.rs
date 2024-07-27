@@ -1,8 +1,9 @@
+use crate::asset::AssetSymbol;
 use serde::{Deserialize, Serialize};
 
-use crate::config::strategy::StrategyConfig;
-
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-struct SimpleStrategyConfig {
-    strategies: Vec<StrategyConfig>,
+pub struct SimpleStrategyConfig {
+    asset: AssetSymbol,
+    buy: Option<f64>,
+    sell: Option<f64>,
 }
