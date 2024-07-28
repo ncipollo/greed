@@ -1,13 +1,14 @@
+use crate::config::platform::PlatformType;
+use crate::config::simple::strategy::SimpleStrategyConfig;
+use crate::config::Config;
+use crate::error::GreedError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-
-use crate::config::simple::strategy::SimpleStrategyConfig;
-use crate::error::GreedError;
 
 mod reader;
 mod strategy;
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 struct SimpleConfig {
     strategies: Vec<SimpleStrategyConfig>,
 }
@@ -18,11 +19,23 @@ impl SimpleConfig {
     }
 }
 
+impl From<SimpleConfig> for Config {
+    fn from(value: SimpleConfig) -> Self {
+        Config {
+            platform: PlatformType::Alpaca,
+            strategies: value.strategies.into_iter().map(Into::into).collect(),
+            interval: 1,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use crate::config::platform::PlatformType;
     use crate::config::simple::reader::read_config;
     use crate::config::simple::strategy::SimpleStrategyConfig;
     use crate::config::simple::SimpleConfig;
+    use crate::config::Config;
     use crate::fixture;
 
     #[tokio::test]
@@ -55,5 +68,45 @@ mod test {
             ],
         };
         assert_eq!(config, expected)
+    }
+
+    #[test]
+    fn from_minimal_config() {
+        let simple_config: SimpleConfig = Default::default();
+        let expected = Config {
+            platform: PlatformType::Alpaca,
+            strategies: vec![],
+            interval: 1,
+        };
+        assert_eq!(expected, Config::from(simple_config))
+    }
+
+    #[test]
+    fn from_full_config() {
+        let simple_strategy_1 = SimpleStrategyConfig {
+            asset: "VTI".into(),
+            amount: 50.0,
+            buy: Some(5.0),
+            sell: Some(1.0),
+            skip: false,
+        };
+        let simple_strategy_2 = SimpleStrategyConfig {
+            asset: "SPY".into(),
+            amount: 25.0,
+            buy: Some(1.0),
+            sell: None,
+            skip: false,
+        };
+        let expected = Config {
+            platform: PlatformType::Alpaca,
+            strategies: vec![simple_strategy_1.clone().into(), simple_strategy_2.clone().into()],
+            interval: 1,
+        };
+        assert_eq!(
+            expected,
+            Config::from(SimpleConfig {
+                strategies: vec![simple_strategy_1, simple_strategy_2],
+            })
+        )
     }
 }
