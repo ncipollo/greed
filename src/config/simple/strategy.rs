@@ -8,10 +8,15 @@ use serde::{de, Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct SimpleStrategyConfig {
+    /// The Asset to buy and sell.
     pub asset: AssetSymbol,
+    /// The amount as a percent of your total portfolio to buy.
     pub amount: f64,
+    /// The percent below the monthly median the price of the asset must hit for us to buy.
     pub buy: Option<f64>,
+    /// The gains percent we must hit before we will sell.
     pub sell: Option<f64>,
+    /// Set to true in to skip this row in the config.
     #[serde(default, deserialize_with = "deserialize_bool")]
     pub skip: bool,
 }
