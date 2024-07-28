@@ -51,7 +51,7 @@ asset,amount,buy,sell,skip
 $VTI ,50.0  ,5.0,1.0 ,false
 SPY  ,25.0  ,1.0,    ,false
 SKIP ,30.0  ,1.0,1.0 ,true
-VEA  ,25.0  ,		 ,2.0 ,
+VEA  ,25.0  ,   ,2.0 ,
 ```
 
 The following columns are supported:
@@ -65,6 +65,7 @@ The following columns are supported:
 
 ## Advanced Configuration
 
+For more advanced configurations, Greed supports a TOML configuration file. The following is an example configuration:
 ```toml
 # The interval between each strategy run in seconds
 interval = 300
