@@ -4,7 +4,7 @@ use crate::config::strategy::r#for::ForConfig;
 use crate::config::strategy::rule::RuleConfig;
 use crate::config::strategy::when::WhenConfig;
 use crate::config::strategy::StrategyConfig;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct SimpleStrategyConfig {
@@ -12,8 +12,20 @@ pub struct SimpleStrategyConfig {
     pub amount: f64,
     pub buy: Option<f64>,
     pub sell: Option<f64>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bool")]
     pub skip: bool,
+}
+
+fn deserialize_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let field: &str = de::Deserialize::deserialize(deserializer)?;
+    let lower_field = field.to_lowercase();
+    match lower_field.as_str() {
+        "true" | "yes" | "1" => Ok(true),
+        _ => Ok(false),
+    }
 }
 
 impl From<SimpleStrategyConfig> for StrategyConfig {
@@ -98,9 +110,7 @@ mod tests {
                     below_median_percent: 0.1,
                     median_period: Default::default(),
                 },
-                do_config: DoConfig::Buy {
-                    buy_percent: 0.5,
-                },
+                do_config: DoConfig::Buy { buy_percent: 0.5 },
             },
             sell: RuleConfig {
                 for_config: ForConfig::Stock {
