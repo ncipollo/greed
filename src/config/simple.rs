@@ -33,16 +33,19 @@ mod test {
             strategies: vec![
                 SimpleStrategyConfig {
                     asset: "VTI".into(),
+                    amount: 50.0,
                     buy: Some(5.0),
                     sell: Some(1.0),
                 },
                 SimpleStrategyConfig {
                     asset: "SPY".into(),
+                    amount: 25.0,
                     buy: Some(1.0),
                     sell: None,
                 },
                 SimpleStrategyConfig {
                     asset: "VEA".into(),
+                    amount: 25.0,
                     buy: None,
                     sell: Some(2.0),
                 },

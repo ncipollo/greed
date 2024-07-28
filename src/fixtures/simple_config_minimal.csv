@@ -1,4 +1,4 @@
-asset,buy,sell
-VTI  ,5.0,1.0
-SPY  ,1.0,
-VEA  ,		 ,2.0
+asset,amount,buy,sell
+VTI  ,50.0   ,5.0,1.0
+SPY  ,25.0   ,1.0,
+VEA  ,25.0   ,		 ,2.0
