@@ -36,18 +36,21 @@ mod test {
                     amount: 50.0,
                     buy: Some(5.0),
                     sell: Some(1.0),
+                    skip: false,
                 },
                 SimpleStrategyConfig {
                     asset: "SPY".into(),
                     amount: 25.0,
                     buy: Some(1.0),
                     sell: None,
+                    skip: false,
                 },
                 SimpleStrategyConfig {
                     asset: "VEA".into(),
                     amount: 25.0,
                     buy: None,
                     sell: Some(2.0),
+                    skip: false,
                 },
             ],
         };

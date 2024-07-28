@@ -7,4 +7,6 @@ pub struct SimpleStrategyConfig {
     pub amount: f64,
     pub buy: Option<f64>,
     pub sell: Option<f64>,
+    #[serde(default)]
+    pub skip: bool
 }
