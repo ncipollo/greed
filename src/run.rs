@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use crate::config::Config;
 use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
@@ -8,6 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use log::warn;
 use tokio::time::sleep;
+use crate::config::simple::SimpleConfig;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct GreedRunnerArgs {
@@ -34,9 +36,19 @@ impl GreedRunner {
     }
 
     pub async fn from_args(args: GreedRunnerArgs) -> Result<GreedRunner, GreedError> {
-        let config = Config::from_path(&args.config_path).await?;
+        let config = GreedRunner::read_config(&args).await?;
         let platform = platform::for_type(&config.platform, args.into())?;
         Ok(Self::new(config, platform))
+    }
+
+    async fn read_config(args: &GreedRunnerArgs) -> Result<Config, GreedError> {
+        let ext = args.config_path.extension();
+        if Some(OsStr::new("csv")) == ext {
+            let simple_config = SimpleConfig::from_path(&args.config_path).await?;
+            Ok(simple_config.into())
+        } else {
+            Config::from_path(&args.config_path).await
+        }
     }
 
     pub async fn run_loop(&self) -> Result<(), GreedError> {

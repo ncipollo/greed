@@ -8,7 +8,7 @@ use std::path::Path;
 pub mod platform;
 pub mod reader;
 pub mod strategy;
-mod simple;
+pub mod simple;
 
 #[derive(Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct Config {

@@ -9,7 +9,7 @@ mod reader;
 mod strategy;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-struct SimpleConfig {
+pub struct SimpleConfig {
     strategies: Vec<SimpleStrategyConfig>,
 }
 
