@@ -56,9 +56,7 @@ impl StrategyRunner {
     }
 
     async fn fetch_account(&self) -> Result<Account, GreedError> {
-        info!("- fetching account info");
         let account = self.platform.account().await?;
-        info!("-- {}", account);
         Ok(account)
     }
 
@@ -80,11 +78,7 @@ impl StrategyRunner {
     }
 
     async fn fetch_positions(&self) -> Result<HashMap<AssetSymbol, Position>, GreedError> {
-        info!("- fetching open positions");
         let positions = self.platform.positions().await?;
-        for position in &positions {
-            info!("-- {}", position);
-        }
         let by_symbol = positions
             .into_iter()
             .map(|p| (p.symbol.clone(), p))

@@ -1,6 +1,7 @@
 pub mod analyze;
 pub mod quote;
 pub mod run;
+mod status;
 
 use crate::cli::analyze::AnalyzeArgs;
 use crate::cli::quote::QuoteArgs;
@@ -16,12 +17,14 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    #[command(about = "Run the main greed loop")]
-    Run(RunCommandArgs),
     #[command(about = "Analyze stocks")]
     Analyze(AnalyzeArgs),
     #[command(about = "Fetch quote")]
     Quote(QuoteArgs),
+    #[command(about = "Run the main greed loop")]
+    Run(RunCommandArgs),
+    #[command(about = "Get your current creed status")]
+    Status(status::StatusArgs),
     #[command(about = "prints out completions for the provided shell")]
     Completions {
         #[arg(value_enum)]

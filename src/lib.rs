@@ -43,6 +43,29 @@ pub async fn fetch_quote(
     Ok(())
 }
 
+pub async fn fetch_status(
+    platform_args: PlatformArgs,
+    platform_type: &PlatformType,
+) -> Result<(), GreedError> {
+    let platform = platform::for_type(platform_type, platform_args)?;
+    // Fetch account info
+    let account = platform.account().await?;
+    println!("Account Info: {}", account);
+    // Fetch Open Positions
+    println!("Open Positions:");
+    let positions = platform.positions().await?;
+    positions.iter()
+        .filter(|p| p.market_value.unwrap_or(0.0).abs() > 0.0)
+        .for_each(|p| println!("-- {}", p));
+    // Fetch Open Orders
+    println!("Open Orders:");
+    let orders = platform.open_orders().await?;
+    for order in &orders {
+        println!("-- {}", order);
+    }
+    Ok(())
+}
+
 fn print_price_explainer() {
     println!("ask price = lowest price where someone is willing to sell a share");
     println!("bid price = highest price someone is willing to pay for a share");
