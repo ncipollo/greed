@@ -55,7 +55,7 @@ pub async fn fetch_status(
     println!("Open Positions:");
     let positions = platform.positions().await?;
     positions.iter()
-        .filter(|p| p.market_value.unwrap_or(0.0).abs() > 0.0)
+        .filter(|p| p.market_value.unwrap_or(0.0).abs() >= 0.01)
         .for_each(|p| println!("-- {}", p));
     // Fetch Open Orders
     println!("Open Orders:");
