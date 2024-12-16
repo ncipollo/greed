@@ -24,7 +24,7 @@ impl From<SimpleConfig> for Config {
         Config {
             platform: PlatformType::Alpaca,
             strategies: value.strategies.into_iter().map(Into::into).collect(),
-            interval: 1,
+            interval: 5,
         }
     }
 }
@@ -76,7 +76,7 @@ mod test {
         let expected = Config {
             platform: PlatformType::Alpaca,
             strategies: vec![],
-            interval: 1,
+            interval: 5,
         };
         assert_eq!(expected, Config::from(simple_config))
     }
@@ -99,8 +99,11 @@ mod test {
         };
         let expected = Config {
             platform: PlatformType::Alpaca,
-            strategies: vec![simple_strategy_1.clone().into(), simple_strategy_2.clone().into()],
-            interval: 1,
+            strategies: vec![
+                simple_strategy_1.clone().into(),
+                simple_strategy_2.clone().into(),
+            ],
+            interval: 5,
         };
         assert_eq!(
             expected,
