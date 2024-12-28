@@ -8,6 +8,7 @@ use std::path::Path;
 pub mod platform;
 pub mod reader;
 pub mod simple;
+pub mod strategy;
 pub mod tactic;
 
 #[derive(Debug, Default, Deserialize, PartialEq, Serialize)]
