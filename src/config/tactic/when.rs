@@ -1,4 +1,4 @@
-use crate::config::strategy::median::MedianPeriod;
+use crate::config::tactic::median::MedianPeriod;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

@@ -1,25 +1,25 @@
-use crate::strategy::r#do::{DoResult, DoRule};
-use crate::strategy::r#for::{ForResult, ForRule};
-use crate::strategy::state::StrategyState;
-use crate::strategy::when::{WhenResult, WhenRule};
+use crate::tactic::r#do::{DoResult, DoRule};
+use crate::tactic::r#for::{ForResult, ForRule};
+use crate::tactic::state::TacticState;
+use crate::tactic::when::{WhenResult, WhenRule};
 
 #[derive(Debug, PartialEq)]
 pub struct NullRule;
 
 impl ForRule for NullRule {
-    fn evaluate(&self, _: &StrategyState) -> ForResult {
+    fn evaluate(&self, _: &TacticState) -> ForResult {
         ForResult::default()
     }
 }
 
 impl WhenRule for NullRule {
-    fn evaluate(&self, _: &StrategyState, _: ForResult) -> WhenResult {
+    fn evaluate(&self, _: &TacticState, _: ForResult) -> WhenResult {
         Default::default()
     }
 }
 
 impl DoRule for NullRule {
-    fn evaluate(&self, _: &StrategyState, _: WhenResult) -> DoResult {
+    fn evaluate(&self, _: &TacticState, _: WhenResult) -> DoResult {
         DoResult::default()
     }
 }

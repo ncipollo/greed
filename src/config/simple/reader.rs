@@ -1,4 +1,4 @@
-use crate::config::simple::strategy::SimpleStrategyConfig;
+use crate::config::simple::tactic::SimpleTacticConfig;
 use crate::config::simple::SimpleConfig;
 use crate::error::GreedError;
 use csv::Trim;
@@ -6,14 +6,14 @@ use std::path::Path;
 
 pub async fn read_config<P: AsRef<Path>>(path: P) -> Result<SimpleConfig, GreedError> {
     let mut reader = csv::ReaderBuilder::new().trim(Trim::All).from_path(path)?;
-    let mut strategies = Vec::new();
+    let mut tactics = Vec::new();
     for result in reader.deserialize() {
-        let strategy: SimpleStrategyConfig = result?;
-        if !strategy.skip {
-            strategies.push(strategy)
+        let tactic: SimpleTacticConfig = result?;
+        if !tactic.skip {
+            tactics.push(tactic)
         }
     }
-    Ok(SimpleConfig { strategies })
+    Ok(SimpleConfig { tactics })
 }
 
 #[cfg(test)]

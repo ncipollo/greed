@@ -1,16 +1,16 @@
 use crate::config::platform::PlatformType;
-use crate::config::simple::strategy::SimpleStrategyConfig;
+use crate::config::simple::tactic::SimpleTacticConfig;
 use crate::config::Config;
 use crate::error::GreedError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 mod reader;
-mod strategy;
+mod tactic;
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct SimpleConfig {
-    strategies: Vec<SimpleStrategyConfig>,
+    tactics: Vec<SimpleTacticConfig>,
 }
 
 impl SimpleConfig {
@@ -23,7 +23,7 @@ impl From<SimpleConfig> for Config {
     fn from(value: SimpleConfig) -> Self {
         Config {
             platform: PlatformType::Alpaca,
-            strategies: value.strategies.into_iter().map(Into::into).collect(),
+            tactics: value.tactics.into_iter().map(Into::into).collect(),
             interval: 5,
         }
     }
@@ -33,7 +33,7 @@ impl From<SimpleConfig> for Config {
 mod test {
     use crate::config::platform::PlatformType;
     use crate::config::simple::reader::read_config;
-    use crate::config::simple::strategy::SimpleStrategyConfig;
+    use crate::config::simple::tactic::SimpleTacticConfig;
     use crate::config::simple::SimpleConfig;
     use crate::config::Config;
     use crate::fixture;
@@ -43,22 +43,22 @@ mod test {
         let path = fixture::path("simple_config_minimal.csv");
         let config = read_config(path).await.expect("config should load");
         let expected = SimpleConfig {
-            strategies: vec![
-                SimpleStrategyConfig {
+            tactics: vec![
+                SimpleTacticConfig {
                     asset: "VTI".into(),
                     amount: 50.0,
                     buy: Some(5.0),
                     sell: Some(1.0),
                     skip: false,
                 },
-                SimpleStrategyConfig {
+                SimpleTacticConfig {
                     asset: "SPY".into(),
                     amount: 25.0,
                     buy: Some(1.0),
                     sell: None,
                     skip: false,
                 },
-                SimpleStrategyConfig {
+                SimpleTacticConfig {
                     asset: "VEA".into(),
                     amount: 25.0,
                     buy: None,
@@ -75,7 +75,7 @@ mod test {
         let simple_config: SimpleConfig = Default::default();
         let expected = Config {
             platform: PlatformType::Alpaca,
-            strategies: vec![],
+            tactics: vec![],
             interval: 5,
         };
         assert_eq!(expected, Config::from(simple_config))
@@ -83,14 +83,14 @@ mod test {
 
     #[test]
     fn from_full_config() {
-        let simple_strategy_1 = SimpleStrategyConfig {
+        let simple_tactic_1 = SimpleTacticConfig {
             asset: "VTI".into(),
             amount: 50.0,
             buy: Some(5.0),
             sell: Some(1.0),
             skip: false,
         };
-        let simple_strategy_2 = SimpleStrategyConfig {
+        let simple_tactic_2 = SimpleTacticConfig {
             asset: "SPY".into(),
             amount: 25.0,
             buy: Some(1.0),
@@ -99,16 +99,16 @@ mod test {
         };
         let expected = Config {
             platform: PlatformType::Alpaca,
-            strategies: vec![
-                simple_strategy_1.clone().into(),
-                simple_strategy_2.clone().into(),
+            tactics: vec![
+                simple_tactic_1.clone().into(),
+                simple_tactic_2.clone().into(),
             ],
             interval: 5,
         };
         assert_eq!(
             expected,
             Config::from(SimpleConfig {
-                strategies: vec![simple_strategy_1, simple_strategy_2],
+                tactics: vec![simple_tactic_1, simple_tactic_2],
             })
         )
     }

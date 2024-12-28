@@ -1,15 +1,15 @@
 interval = 300
 platform = "alpaca"
 
-[[strategies]]
+[[tactics]]
 name = "ETF"
 
-[strategies.buy]
+[tactics.buy]
 for = { stock = "$VTI" }
 when = { below_median_percent = 5.0 }
 do = { buy_percent = 10 }
 
-[strategies.sell]
+[tactics.sell]
 for = { stock = "$VTI" }
 when = { gain_above_percent = 5.0 }
 do = { sell_all = true }

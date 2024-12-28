@@ -1,8 +1,8 @@
 use crate::bool::BooleanWhen;
-use crate::strategy::r#for::ForResult;
-use crate::strategy::state::StrategyState;
-use crate::strategy::target::TargetAsset;
-use crate::strategy::when::{WhenResult, WhenRule};
+use crate::tactic::r#for::ForResult;
+use crate::tactic::state::TacticState;
+use crate::tactic::target::TargetAsset;
+use crate::tactic::when::{WhenResult, WhenRule};
 
 #[derive(Debug, Default, PartialEq)]
 pub struct WhenGainAboveRule {
@@ -14,7 +14,7 @@ impl WhenGainAboveRule {
         Box::new(Self { gain_above_percent })
     }
 
-    fn is_gain_above(&self, state: &StrategyState, target_asset: &TargetAsset) -> bool {
+    fn is_gain_above(&self, state: &TacticState, target_asset: &TargetAsset) -> bool {
         if self.is_state_valid(state, target_asset) {
             return false;
         }
@@ -33,13 +33,13 @@ impl WhenGainAboveRule {
         )
     }
 
-    fn is_state_valid(&self, state: &StrategyState, target_asset: &TargetAsset) -> bool {
+    fn is_state_valid(&self, state: &TacticState, target_asset: &TargetAsset) -> bool {
         !state.positions.contains_key(&target_asset.symbol)
     }
 }
 
 impl WhenRule for WhenGainAboveRule {
-    fn evaluate(&self, state: &StrategyState, for_result: ForResult) -> WhenResult {
+    fn evaluate(&self, state: &TacticState, for_result: ForResult) -> WhenResult {
         let assets_above_gain = for_result
             .target_assets
             .iter()
@@ -62,9 +62,9 @@ mod tests {
 
     #[test]
     fn evaluate_no_positions() {
-        let state = StrategyState {
+        let state = TacticState {
             positions: vec![].into_iter().collect(),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let rule = WhenGainAboveRule::boxed(0.0);
         let target_assets = target_assets();
@@ -86,9 +86,9 @@ mod tests {
             unrealized_gain_today_percent: None,
             ..Position::fixture(spy.clone())
         };
-        let state = StrategyState {
+        let state = TacticState {
             positions: HashMap::from([(spy.clone(), position)]),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let rule = WhenGainAboveRule::boxed(0.0);
         let target_assets = target_assets();
@@ -110,9 +110,9 @@ mod tests {
             unrealized_gain_today_percent: Some(0.1),
             ..Position::fixture(spy.clone())
         };
-        let state = StrategyState {
+        let state = TacticState {
             positions: HashMap::from([(spy.clone(), position)]),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let rule = WhenGainAboveRule::boxed(11.0);
         let target_assets = target_assets();
@@ -134,9 +134,9 @@ mod tests {
             unrealized_gain_total_percent: Some(10.0),
             ..Position::fixture(spy.clone())
         };
-        let state = StrategyState {
+        let state = TacticState {
             positions: HashMap::from([(spy.clone(), position)]),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let rule = WhenGainAboveRule::boxed(10.0);
         let target_assets = target_assets();

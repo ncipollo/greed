@@ -4,12 +4,12 @@ mod when_below_median;
 pub mod when_factory;
 mod when_gain_above;
 
-use crate::strategy::r#for::ForResult;
-use crate::strategy::state::StrategyState;
-use crate::strategy::target::TargetAsset;
+use crate::tactic::r#for::ForResult;
+use crate::tactic::state::TacticState;
+use crate::tactic::target::TargetAsset;
 
 pub trait WhenRule {
-    fn evaluate(&self, state: &StrategyState, for_result: ForResult) -> WhenResult;
+    fn evaluate(&self, state: &TacticState, for_result: ForResult) -> WhenResult;
 }
 
 #[derive(Debug, Default, PartialEq)]

@@ -1,14 +1,14 @@
+mod do_buy;
 pub mod do_factory;
 pub mod do_sellall;
-mod do_buy;
 
-use crate::strategy::action::Action;
-use crate::strategy::skip::SkipReason;
-use crate::strategy::state::StrategyState;
-use crate::strategy::when::WhenResult;
+use crate::tactic::action::Action;
+use crate::tactic::skip::SkipReason;
+use crate::tactic::state::TacticState;
+use crate::tactic::when::WhenResult;
 
 pub trait DoRule {
-    fn evaluate(&self, state: &StrategyState, when_result: WhenResult) -> DoResult;
+    fn evaluate(&self, state: &TacticState, when_result: WhenResult) -> DoResult;
 }
 
 #[derive(Debug, Default, PartialEq)]

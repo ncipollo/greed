@@ -1,9 +1,9 @@
 use crate::float::FloatAmountRounding;
-use crate::strategy::action::Action;
-use crate::strategy::r#do::{DoResult, DoRule};
-use crate::strategy::skip::SkipReason;
-use crate::strategy::state::StrategyState;
-use crate::strategy::when::WhenResult;
+use crate::tactic::action::Action;
+use crate::tactic::r#do::{DoResult, DoRule};
+use crate::tactic::skip::SkipReason;
+use crate::tactic::state::TacticState;
+use crate::tactic::when::WhenResult;
 
 pub struct DoSellAllRule;
 
@@ -14,7 +14,7 @@ impl DoSellAllRule {
 }
 
 impl DoRule for DoSellAllRule {
-    fn evaluate(&self, state: &StrategyState, when_result: WhenResult) -> DoResult {
+    fn evaluate(&self, state: &TacticState, when_result: WhenResult) -> DoResult {
         let actions = when_result
             .target_assets
             .into_iter()
@@ -48,7 +48,7 @@ mod tests {
 
     use crate::asset::AssetSymbol;
     use crate::platform::position::Position;
-    use crate::strategy::target::TargetAsset;
+    use crate::tactic::target::TargetAsset;
 
     use super::*;
 
@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn evaluate_empty_state() {
         let rule = DoSellAllRule::boxed();
-        let state = StrategyState::default();
+        let state = TacticState::default();
         let when_result = create_when_result();
         let do_result = rule.evaluate(&state, when_result);
         let expected = DoResult::skip(SkipReason::NoTargetAssets);
@@ -90,14 +90,14 @@ mod tests {
         assert_eq!(expected, do_result)
     }
 
-    fn create_state() -> StrategyState {
+    fn create_state() -> TacticState {
         let spy_position = Position::fixture(AssetSymbol::new("SPY"));
         let vti_position = Position::fixture(AssetSymbol::new("VTI"));
         let positions = HashMap::from([
             (AssetSymbol::new("SPY"), spy_position),
             (AssetSymbol::new("VTI"), vti_position),
         ]);
-        StrategyState {
+        TacticState {
             positions,
             ..Default::default()
         }

@@ -2,12 +2,12 @@ mod for_any;
 pub mod for_factory;
 pub mod for_stock;
 
-use crate::strategy::state::StrategyState;
-use crate::strategy::target::TargetAsset;
+use crate::tactic::state::TacticState;
+use crate::tactic::target::TargetAsset;
 use std::fmt::Debug;
 
 pub trait ForRule {
-    fn evaluate(&self, state: &StrategyState) -> ForResult;
+    fn evaluate(&self, state: &TacticState) -> ForResult;
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

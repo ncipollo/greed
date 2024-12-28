@@ -20,7 +20,7 @@ mod pager;
 pub mod platform;
 pub mod run;
 mod statistics;
-mod strategy;
+mod tactic;
 mod trading_days;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
@@ -54,7 +54,8 @@ pub async fn fetch_status(
     // Fetch Open Positions
     println!("Open Positions:");
     let positions = platform.positions().await?;
-    positions.iter()
+    positions
+        .iter()
         .filter(|p| p.market_value.unwrap_or(0.0).abs() >= 0.01)
         .for_each(|p| println!("-- {}", p));
     // Fetch Open Orders

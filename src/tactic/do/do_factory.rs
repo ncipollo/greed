@@ -1,7 +1,7 @@
-use crate::config::strategy::r#do::DoConfig;
-use crate::strategy::r#do::do_buy::DoBuyRule;
-use crate::strategy::r#do::do_sellall::DoSellAllRule;
-use crate::strategy::r#do::DoRule;
+use crate::config::tactic::r#do::DoConfig;
+use crate::tactic::r#do::do_buy::DoBuyRule;
+use crate::tactic::r#do::do_sellall::DoSellAllRule;
+use crate::tactic::r#do::DoRule;
 
 pub struct DoFactory;
 

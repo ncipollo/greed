@@ -1,13 +1,13 @@
 use crate::asset::AssetSymbol;
-use crate::config::strategy::r#do::DoConfig;
-use crate::config::strategy::r#for::ForConfig;
-use crate::config::strategy::rule::RuleConfig;
-use crate::config::strategy::when::WhenConfig;
-use crate::config::strategy::StrategyConfig;
+use crate::config::tactic::r#do::DoConfig;
+use crate::config::tactic::r#for::ForConfig;
+use crate::config::tactic::rule::RuleConfig;
+use crate::config::tactic::when::WhenConfig;
+use crate::config::tactic::TacticConfig;
 use serde::{de, Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct SimpleStrategyConfig {
+pub struct SimpleTacticConfig {
     /// The Asset to buy and sell.
     pub asset: AssetSymbol,
     /// The amount as a percent of your total portfolio to buy.
@@ -33,9 +33,9 @@ where
     }
 }
 
-impl From<SimpleStrategyConfig> for StrategyConfig {
-    fn from(value: SimpleStrategyConfig) -> Self {
-        StrategyConfig {
+impl From<SimpleTacticConfig> for TacticConfig {
+    fn from(value: SimpleTacticConfig) -> Self {
+        TacticConfig {
             name: value.asset.symbol.clone(),
             buy: buy_rules(&value),
             sell: sell_rules(&value),
@@ -43,7 +43,7 @@ impl From<SimpleStrategyConfig> for StrategyConfig {
     }
 }
 
-fn buy_rules(simple_config: &SimpleStrategyConfig) -> RuleConfig {
+fn buy_rules(simple_config: &SimpleTacticConfig) -> RuleConfig {
     if let Some(buy) = simple_config.buy {
         RuleConfig {
             for_config: ForConfig::Stock {
@@ -62,7 +62,7 @@ fn buy_rules(simple_config: &SimpleStrategyConfig) -> RuleConfig {
     }
 }
 
-fn sell_rules(simple_config: &SimpleStrategyConfig) -> RuleConfig {
+fn sell_rules(simple_config: &SimpleTacticConfig) -> RuleConfig {
     if let Some(sell) = simple_config.sell {
         RuleConfig {
             for_config: ForConfig::Stock {
@@ -84,28 +84,28 @@ mod tests {
 
     #[test]
     fn from_minimal_config() {
-        let simple_config = SimpleStrategyConfig {
+        let simple_config = SimpleTacticConfig {
             asset: AssetSymbol::new("VTI"),
             ..Default::default()
         };
-        let expected = StrategyConfig {
+        let expected = TacticConfig {
             name: "VTI".into(),
             buy: RuleConfig::default(),
             sell: RuleConfig::default(),
         };
-        assert_eq!(expected, StrategyConfig::from(simple_config))
+        assert_eq!(expected, TacticConfig::from(simple_config))
     }
 
     #[test]
     fn from_full_config() {
-        let simple_config = SimpleStrategyConfig {
+        let simple_config = SimpleTacticConfig {
             asset: AssetSymbol::new("VTI"),
             amount: 0.5,
             buy: Some(0.1),
             sell: Some(0.2),
             skip: true,
         };
-        let expected = StrategyConfig {
+        let expected = TacticConfig {
             name: "VTI".into(),
             buy: RuleConfig {
                 for_config: ForConfig::Stock {
@@ -127,6 +127,6 @@ mod tests {
                 do_config: DoConfig::SellAll { sell_all: true },
             },
         };
-        assert_eq!(expected, StrategyConfig::from(simple_config))
+        assert_eq!(expected, TacticConfig::from(simple_config))
     }
 }

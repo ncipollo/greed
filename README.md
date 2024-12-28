@@ -66,38 +66,39 @@ The following columns are supported:
 ## Advanced Configuration
 
 For more advanced configurations, Greed supports a TOML configuration file. The following is an example configuration:
+
 ```toml
-# The interval between each strategy run in seconds
+# The interval between each tactic run in seconds
 interval = 300
 # The platform to use for trading (alpaca)
 platform = "alpaca"
 
-[[strategies]]
-# Each strategy can have an optional name
+[[tactics]]
+# Each tactic can have an optional name
 name = "ETF"
 
 # Each stategy has for, when and do rules.
 # In the following example we are buying $VTI when it is below the median price by 5% and selling when the gain is above 5%
-[strategies.buy]
+[tactics.buy]
 for = { stock = "$VTI" }
 when = { below_median_percent = 5.0 }
 do = { buy_percent = 10 }
 
-# You can have as many strategies as you'd like in a single configuration.
-[strategies.sell]
+# You can have as many tactics as you'd like in a single configuration.
+[tactics.sell]
 for = { stock = "$VTI" }
 when = { gain_above_percent = 5.0 }
 do = { sell_all = true }
 
-[[strategies]]
+[[tactics]]
 name = "Chaos"
 
-[strategies.buy]
+[tactics.buy]
 for = { stock = "$UVXY" }
 when = { below_median_percent = 2.0, median_period = "week" }
 do = { buy_percent = 5 }
 
-[strategies.sell]
+[tactics.sell]
 for = { stock = "$UVXY" }
 when = { gain_above_percent = 3.0 }
 do = { sell_all = true }

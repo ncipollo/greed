@@ -9,7 +9,7 @@ use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 
 #[derive(Default, PartialEq)]
-pub struct StrategyState {
+pub struct TacticState {
     pub account: Account,
     pub bar_analysis: Rc<HashMap<AssetSymbol, BarsResult>>,
     pub open_orders: HashMap<AssetSymbol, Vec<Order>>,
@@ -17,7 +17,7 @@ pub struct StrategyState {
     pub quotes: HashMap<AssetSymbol, Quote>,
 }
 
-impl StrategyState {
+impl TacticState {
     pub fn new(
         account: Account,
         bar_analysis: Rc<HashMap<AssetSymbol, BarsResult>>,
@@ -85,16 +85,16 @@ mod tests {
 
     #[test]
     fn open_order_value() {
-        let state = StrategyState::fixture();
+        let state = TacticState::fixture();
         let open_order_value = state.open_order_value(&AssetSymbol::new("SPY"));
         assert_eq!(open_order_value, 200.0)
     }
 
     #[test]
     fn open_order_value_no_orders() {
-        let state = StrategyState {
+        let state = TacticState {
             open_orders: HashMap::new(),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let open_order_value = state.open_order_value(&AssetSymbol::new("SPY"));
         assert_eq!(open_order_value, 0.0)
@@ -102,9 +102,9 @@ mod tests {
 
     #[test]
     fn open_order_value_no_quotes() {
-        let state = StrategyState {
+        let state = TacticState {
             open_orders: HashMap::new(),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let open_order_value = state.open_order_value(&AssetSymbol::new("SPY"));
         assert_eq!(open_order_value, 0.0)

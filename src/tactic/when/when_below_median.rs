@@ -1,12 +1,12 @@
 use crate::analysis::result::BarsResult;
 use crate::bool::BooleanWhen;
-use crate::config::strategy::median::MedianPeriod;
+use crate::config::tactic::median::MedianPeriod;
 use crate::float::PercentOps;
 use crate::platform::bars::Bars;
-use crate::strategy::r#for::ForResult;
-use crate::strategy::state::StrategyState;
-use crate::strategy::target::TargetAsset;
-use crate::strategy::when::{WhenResult, WhenRule};
+use crate::tactic::r#for::ForResult;
+use crate::tactic::state::TacticState;
+use crate::tactic::target::TargetAsset;
+use crate::tactic::when::{WhenResult, WhenRule};
 use log::{info, warn};
 
 #[derive(Debug, Default, PartialEq)]
@@ -23,7 +23,7 @@ impl WhenBelowMedianRule {
         })
     }
 
-    fn is_below_median(&self, state: &StrategyState, target_asset: &TargetAsset) -> bool {
+    fn is_below_median(&self, state: &TacticState, target_asset: &TargetAsset) -> bool {
         match self.median_period {
             MedianPeriod::Day => self.is_below_median_for_func(state, target_asset, |analysis| {
                 &analysis.last_trading_day
@@ -39,7 +39,7 @@ impl WhenBelowMedianRule {
 
     fn is_below_median_for_func<F>(
         &self,
-        state: &StrategyState,
+        state: &TacticState,
         target_asset: &TargetAsset,
         func: F,
     ) -> bool
@@ -82,7 +82,7 @@ impl WhenBelowMedianRule {
         )
     }
 
-    fn is_state_valid(&self, state: &StrategyState, target_asset: &TargetAsset) -> bool {
+    fn is_state_valid(&self, state: &TacticState, target_asset: &TargetAsset) -> bool {
         !state.quotes.contains_key(&target_asset.symbol)
             || !state.bar_analysis.contains_key(&target_asset.symbol)
     }
@@ -93,7 +93,7 @@ impl WhenBelowMedianRule {
 }
 
 impl WhenRule for WhenBelowMedianRule {
-    fn evaluate(&self, state: &StrategyState, for_result: ForResult) -> WhenResult {
+    fn evaluate(&self, state: &TacticState, for_result: ForResult) -> WhenResult {
         let assets_below_median = for_result
             .target_assets
             .iter()
@@ -117,9 +117,9 @@ mod tests {
 
     #[test]
     fn evaluate_no_analysis() {
-        let state = StrategyState {
+        let state = TacticState {
             bar_analysis: Rc::new(HashMap::new()),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let rule = WhenBelowMedianRule::boxed(10.0, MedianPeriod::Day);
         let target_assets = target_assets();
@@ -136,9 +136,9 @@ mod tests {
 
     #[test]
     fn evaluate_no_quote() {
-        let state = StrategyState {
+        let state = TacticState {
             quotes: HashMap::new(),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let rule = WhenBelowMedianRule::boxed(10.0, MedianPeriod::Day);
         let target_assets = target_assets();
@@ -160,9 +160,9 @@ mod tests {
             ask_price: 0.0,
             ..Default::default()
         };
-        let state = StrategyState {
+        let state = TacticState {
             quotes: HashMap::from([(spy.clone(), quote)]),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let rule = WhenBelowMedianRule::boxed(10.0, MedianPeriod::Day);
         let target_assets = target_assets();
@@ -183,9 +183,9 @@ mod tests {
         let bar_result = BarsResult {
             ..Default::default()
         };
-        let state = StrategyState {
+        let state = TacticState {
             bar_analysis: Rc::new(HashMap::from([(spy.clone(), bar_result)])),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let rule = WhenBelowMedianRule::boxed(10.0, MedianPeriod::Day);
         let target_assets = target_assets();
@@ -207,9 +207,9 @@ mod tests {
             last_trading_day: Bars::with_bars(vec![Default::default()]),
             ..Default::default()
         };
-        let state = StrategyState {
+        let state = TacticState {
             bar_analysis: Rc::new(HashMap::from([(spy.clone(), bar_result)])),
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let rule = WhenBelowMedianRule::boxed(10.0, MedianPeriod::Day);
         let target_assets = target_assets();
@@ -259,7 +259,7 @@ mod tests {
         median_period: MedianPeriod,
         expected_to_be_valid: bool,
     ) {
-        let state = StrategyState::fixture();
+        let state = TacticState::fixture();
         let rule = WhenBelowMedianRule::boxed(below_median_percent, median_period);
         let target_assets = target_assets();
         let for_result = ForResult {

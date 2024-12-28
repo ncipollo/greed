@@ -1,6 +1,6 @@
-use crate::strategy::r#for::ForResult;
-use crate::strategy::state::StrategyState;
-use crate::strategy::when::{WhenResult, WhenRule};
+use crate::tactic::r#for::ForResult;
+use crate::tactic::state::TacticState;
+use crate::tactic::when::{WhenResult, WhenRule};
 
 pub struct WhenAllOfRule {
     rules: Vec<Box<dyn WhenRule>>,
@@ -13,7 +13,7 @@ impl WhenAllOfRule {
 }
 
 impl WhenRule for WhenAllOfRule {
-    fn evaluate(&self, state: &StrategyState, for_result: ForResult) -> WhenResult {
+    fn evaluate(&self, state: &TacticState, for_result: ForResult) -> WhenResult {
         let filtered_assets = for_result
             .target_assets
             .into_iter()
@@ -36,17 +36,17 @@ impl WhenRule for WhenAllOfRule {
 #[cfg(test)]
 mod tests {
     use crate::asset::AssetSymbol;
-    use crate::strategy::null::NullRule;
-    use crate::strategy::r#for::ForResult;
-    use crate::strategy::state::StrategyState;
-    use crate::strategy::target::TargetAsset;
-    use crate::strategy::when::when_all_of::WhenAllOfRule;
-    use crate::strategy::when::when_always::WhenAlwaysRule;
-    use crate::strategy::when::WhenResult;
+    use crate::tactic::null::NullRule;
+    use crate::tactic::r#for::ForResult;
+    use crate::tactic::state::TacticState;
+    use crate::tactic::target::TargetAsset;
+    use crate::tactic::when::when_all_of::WhenAllOfRule;
+    use crate::tactic::when::when_always::WhenAlwaysRule;
+    use crate::tactic::when::WhenResult;
 
     #[test]
     fn evaluate_not_satisfied() {
-        let state = StrategyState::fixture();
+        let state = TacticState::fixture();
         let rule = WhenAllOfRule::boxed(vec![WhenAlwaysRule::boxed(), NullRule::when_boxed()]);
         let target_assets = target_assets();
         let for_result = ForResult {
@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn evaluate_satisfied() {
-        let state = StrategyState::fixture();
+        let state = TacticState::fixture();
         let rule = WhenAllOfRule::boxed(vec![WhenAlwaysRule::boxed()]);
         let target_assets = target_assets();
         let for_result = ForResult {

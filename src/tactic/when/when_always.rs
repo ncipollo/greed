@@ -1,11 +1,11 @@
-use crate::strategy::r#for::ForResult;
-use crate::strategy::state::StrategyState;
-use crate::strategy::when::{WhenResult, WhenRule};
+use crate::tactic::r#for::ForResult;
+use crate::tactic::state::TacticState;
+use crate::tactic::when::{WhenResult, WhenRule};
 
 pub struct WhenAlwaysRule;
 
 impl WhenRule for WhenAlwaysRule {
-    fn evaluate(&self, _state: &StrategyState, for_result: ForResult) -> WhenResult {
+    fn evaluate(&self, _state: &TacticState, for_result: ForResult) -> WhenResult {
         WhenResult {
             conditions_satisfied: true,
             target_assets: for_result.target_assets,
@@ -22,11 +22,11 @@ impl WhenAlwaysRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::strategy::target::TargetAsset;
+    use crate::tactic::target::TargetAsset;
 
     #[test]
     fn evaluate() {
-        let state = StrategyState::default();
+        let state = TacticState::default();
         let for_result = ForResult::fixture();
         let rule = WhenAlwaysRule {};
         let result = rule.evaluate(&state, for_result);

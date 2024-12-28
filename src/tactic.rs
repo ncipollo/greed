@@ -1,16 +1,16 @@
 use crate::analysis::AssetAnalyzer;
 use crate::asset::AssetSymbol;
-use crate::config::strategy::StrategyConfig;
+use crate::config::tactic::TacticConfig;
 use crate::error::GreedError;
 use crate::platform::account::Account;
 use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::FinancialPlatform;
-use crate::strategy::r#do::DoResult;
-use crate::strategy::rule::RuleType::{Buy, Sell};
-use crate::strategy::rule::{RuleType, StrategyRuleset};
-use crate::strategy::state::StrategyState;
+use crate::tactic::r#do::DoResult;
+use crate::tactic::rule::RuleType::{Buy, Sell};
+use crate::tactic::rule::{RuleType, TacticRuleset};
+use crate::tactic::state::TacticState;
 use itertools::Itertools;
 use log::{info, warn};
 use std::collections::HashMap;
@@ -26,14 +26,14 @@ mod state;
 mod target;
 mod when;
 
-pub struct StrategyRunner {
+pub struct TacticRunner {
     asset_analyzer: AssetAnalyzer,
-    config: StrategyConfig,
+    config: TacticConfig,
     platform: Arc<dyn FinancialPlatform>,
 }
 
-impl StrategyRunner {
-    pub fn new(config: StrategyConfig, platform: Arc<dyn FinancialPlatform>) -> Self {
+impl TacticRunner {
+    pub fn new(config: TacticConfig, platform: Arc<dyn FinancialPlatform>) -> Self {
         Self {
             asset_analyzer: AssetAnalyzer::new(platform.clone()),
             config,
@@ -41,7 +41,7 @@ impl StrategyRunner {
         }
     }
     pub async fn run(&self) -> Result<(), GreedError> {
-        info!("🧠 running strategy: {}", self.config.name);
+        info!("🧠 running tactic: {}", self.config.name);
         let account = self.fetch_account().await?;
         let symbols = self.config.assets();
         let bar_analysis = self.asset_analyzer.analyze_bars(&symbols).await?;
@@ -49,7 +49,7 @@ impl StrategyRunner {
         let positions = self.fetch_positions().await?;
         let open_orders = self.fetch_open_orders().await?;
 
-        let state = StrategyState::new(account, bar_analysis, open_orders, positions, quotes);
+        let state = TacticState::new(account, bar_analysis, open_orders, positions, quotes);
         self.evaluate_rules(state).await?;
         info!("----------");
         Ok(())
@@ -101,8 +101,8 @@ impl StrategyRunner {
         Ok(by_symbol)
     }
 
-    async fn evaluate_rules(&self, state: StrategyState) -> Result<(), GreedError> {
-        let rules = StrategyRuleset::from_config(self.config.clone());
+    async fn evaluate_rules(&self, state: TacticState) -> Result<(), GreedError> {
+        let rules = TacticRuleset::from_config(self.config.clone());
         let buy_result = rules.buy.evaluate(&state);
         let sell_result = rules.sell.evaluate(&state);
 

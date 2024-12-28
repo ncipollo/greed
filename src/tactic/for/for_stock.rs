@@ -1,7 +1,7 @@
 use crate::asset::AssetSymbol;
-use crate::strategy::r#for::{ForResult, ForRule};
-use crate::strategy::state::StrategyState;
-use crate::strategy::target::TargetAsset;
+use crate::tactic::r#for::{ForResult, ForRule};
+use crate::tactic::state::TacticState;
+use crate::tactic::target::TargetAsset;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct ForStockRule {
@@ -9,7 +9,7 @@ pub struct ForStockRule {
 }
 
 impl ForRule for ForStockRule {
-    fn evaluate(&self, _state: &StrategyState) -> ForResult {
+    fn evaluate(&self, _state: &TacticState) -> ForResult {
         let target = TargetAsset::full_percent(self.stock.clone());
         ForResult {
             target_assets: vec![target],
@@ -31,7 +31,7 @@ mod tests {
 
     #[test]
     fn evaluate() {
-        let state: StrategyState = Default::default();
+        let state: TacticState = Default::default();
         let rule = ForStockRule::boxed("SPY");
         let result = rule.evaluate(&state);
         let expected = ForResult {

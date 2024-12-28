@@ -1,10 +1,10 @@
 use crate::float::PercentOps;
-use crate::strategy::action::Action;
-use crate::strategy::r#do::{DoResult, DoRule};
-use crate::strategy::skip::SkipReason;
-use crate::strategy::state::StrategyState;
-use crate::strategy::target::TargetAsset;
-use crate::strategy::when::WhenResult;
+use crate::tactic::action::Action;
+use crate::tactic::r#do::{DoResult, DoRule};
+use crate::tactic::skip::SkipReason;
+use crate::tactic::state::TacticState;
+use crate::tactic::target::TargetAsset;
+use crate::tactic::when::WhenResult;
 
 pub struct DoBuyRule {
     buy_percent: f64,
@@ -15,7 +15,7 @@ impl DoBuyRule {
         Box::new(Self { buy_percent })
     }
 
-    fn actions(&self, state: &StrategyState, assets: &Vec<TargetAsset>) -> Vec<Action> {
+    fn actions(&self, state: &TacticState, assets: &Vec<TargetAsset>) -> Vec<Action> {
         let mut remaining_cash = state.account.cash.clone();
         assets
             .iter()
@@ -33,7 +33,7 @@ impl DoBuyRule {
 
     fn calculate_buy_amount(
         &self,
-        state: &StrategyState,
+        state: &TacticState,
         target_asset: &TargetAsset,
         remaining_cash: f64,
     ) -> f64 {
@@ -52,7 +52,7 @@ impl DoBuyRule {
         (target_asset.percent * self.buy_percent) / 100.0
     }
 
-    fn position_value(&self, state: &StrategyState, target_asset: &TargetAsset) -> f64 {
+    fn position_value(&self, state: &TacticState, target_asset: &TargetAsset) -> f64 {
         let position = state.positions.get(&target_asset.symbol);
         position
             .map(|p| p.average_entry_price.clone() * p.quantity.clone())
@@ -61,7 +61,7 @@ impl DoBuyRule {
 }
 
 impl DoRule for DoBuyRule {
-    fn evaluate(&self, state: &StrategyState, when_result: WhenResult) -> DoResult {
+    fn evaluate(&self, state: &TacticState, when_result: WhenResult) -> DoResult {
         let actions = self.actions(state, &when_result.target_assets);
         let skipped = actions.is_empty();
         DoResult {
@@ -82,7 +82,7 @@ mod tests {
     #[test]
     fn evaluate() {
         let rule = DoBuyRule::boxed(100.0);
-        let state = StrategyState::fixture();
+        let state = TacticState::fixture();
         let when_result = WhenResult {
             target_assets: vec![
                 TargetAsset::new(AssetSymbol::new("VTI"), 50.0),
@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn evaluate_clamped_to_zero() {
         let rule = DoBuyRule::boxed(-100.0);
-        let state = StrategyState::fixture();
+        let state = TacticState::fixture();
         let when_result = WhenResult {
             target_assets: vec![
                 TargetAsset::new(AssetSymbol::new("VTI"), 50.0),
@@ -125,12 +125,12 @@ mod tests {
     #[test]
     fn evaluate_clamped_to_cash() {
         let rule = DoBuyRule::boxed(100.0);
-        let state = StrategyState {
+        let state = TacticState {
             account: Account {
                 cash: 5.0,
                 ..Account::fixture()
             },
-            ..StrategyState::fixture()
+            ..TacticState::fixture()
         };
         let when_result = WhenResult {
             target_assets: vec![
@@ -141,9 +141,7 @@ mod tests {
         };
         let result = rule.evaluate(&state, when_result);
         let expected = DoResult {
-            actions: vec![
-                Action::buy_notional(AssetSymbol::new("VTI"), 5.0)
-            ],
+            actions: vec![Action::buy_notional(AssetSymbol::new("VTI"), 5.0)],
             skipped: false,
             skip_reason: SkipReason::NoTargetAssets,
         };

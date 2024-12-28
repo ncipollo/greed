@@ -1,10 +1,10 @@
-use crate::config::strategy::when::WhenConfig;
-use crate::strategy::null::NullRule;
-use crate::strategy::when::when_all_of::WhenAllOfRule;
-use crate::strategy::when::when_always::WhenAlwaysRule;
-use crate::strategy::when::when_below_median::WhenBelowMedianRule;
-use crate::strategy::when::when_gain_above::WhenGainAboveRule;
-use crate::strategy::when::WhenRule;
+use crate::config::tactic::when::WhenConfig;
+use crate::tactic::null::NullRule;
+use crate::tactic::when::when_all_of::WhenAllOfRule;
+use crate::tactic::when::when_always::WhenAlwaysRule;
+use crate::tactic::when::when_below_median::WhenBelowMedianRule;
+use crate::tactic::when::when_gain_above::WhenGainAboveRule;
+use crate::tactic::when::WhenRule;
 
 pub struct WhenFactory;
 

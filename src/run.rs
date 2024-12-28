@@ -1,15 +1,15 @@
-use std::ffi::OsStr;
+use crate::config::simple::SimpleConfig;
 use crate::config::Config;
 use crate::error::GreedError;
-use crate::platform::FinancialPlatform;
-use crate::strategy::StrategyRunner;
 use crate::platform;
+use crate::platform::FinancialPlatform;
+use crate::tactic::TacticRunner;
+use log::warn;
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use log::warn;
 use tokio::time::sleep;
-use crate::config::simple::SimpleConfig;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct GreedRunnerArgs {
@@ -19,19 +19,19 @@ pub struct GreedRunnerArgs {
 
 pub struct GreedRunner {
     run_interval: u64,
-    strategy_runners: Vec<StrategyRunner>,
+    tactic_runners: Vec<TacticRunner>,
 }
 
 impl GreedRunner {
     pub fn new(config: Config, platform: Arc<dyn FinancialPlatform>) -> Self {
-        let strategy_runners = config
-            .strategies
+        let tactic_runners = config
+            .tactics
             .into_iter()
-            .map(|c| StrategyRunner::new(c.clone(), platform.clone()))
+            .map(|c| TacticRunner::new(c.clone(), platform.clone()))
             .collect::<Vec<_>>();
         Self {
             run_interval: config.interval,
-            strategy_runners,
+            tactic_runners,
         }
     }
 
@@ -53,11 +53,13 @@ impl GreedRunner {
 
     pub async fn run_loop(&self) -> Result<(), GreedError> {
         let loop_interval = Duration::from_secs(self.run_interval);
-        let mut strategy_index = 0;
+        let mut tactic_index = 0;
         loop {
-            let _ = self.strategy_runners[strategy_index].run().await
+            let _ = self.tactic_runners[tactic_index]
+                .run()
+                .await
                 .inspect_err(|e| warn!("{e}"));
-            strategy_index = (strategy_index + 1) % self.strategy_runners.len();
+            tactic_index = (tactic_index + 1) % self.tactic_runners.len();
             sleep(loop_interval).await;
         }
     }

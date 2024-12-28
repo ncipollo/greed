@@ -1,16 +1,16 @@
 pub mod r#do;
 pub mod r#for;
+pub mod median;
 pub mod rule;
 pub mod when;
-pub mod median;
 
-use itertools::Itertools;
 use crate::asset::AssetSymbol;
-use crate::config::strategy::rule::RuleConfig;
+use crate::config::tactic::rule::RuleConfig;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct StrategyConfig {
+pub struct TacticConfig {
     #[serde(default)]
     pub name: String,
     #[serde(default)]
@@ -19,11 +19,12 @@ pub struct StrategyConfig {
     pub sell: RuleConfig,
 }
 
-impl StrategyConfig {
+impl TacticConfig {
     pub fn assets(&self) -> Vec<AssetSymbol> {
         let buy_assets = self.buy.assets();
         let sell_assets = self.sell.assets();
-        return vec![buy_assets, sell_assets].into_iter()
+        return vec![buy_assets, sell_assets]
+            .into_iter()
             .flat_map(|thing| thing.into_iter())
             .unique()
             .collect::<Vec<_>>();
@@ -33,48 +34,48 @@ impl StrategyConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::strategy::r#for::ForConfig;
+    use crate::config::tactic::r#for::ForConfig;
 
     #[test]
     fn assets_buy_and_sell_rules() {
-        let strategy = StrategyConfig {
+        let tactic = TacticConfig {
             buy: buy_rules(),
             sell: sell_rules(),
             ..Default::default()
         };
         let expected: Vec<AssetSymbol> = vec!["BUY".into(), "SELL".into()];
-        assert_eq!(expected, strategy.assets())
+        assert_eq!(expected, tactic.assets())
     }
 
     #[test]
     fn assets_only_buy_rules() {
-        let strategy = StrategyConfig {
+        let tactic = TacticConfig {
             buy: buy_rules(),
             ..Default::default()
         };
         let expected: Vec<AssetSymbol> = vec!["BUY".into()];
-        assert_eq!(expected, strategy.assets())
+        assert_eq!(expected, tactic.assets())
     }
 
     #[test]
     fn assets_only_sell_rules() {
-        let strategy = StrategyConfig {
+        let tactic = TacticConfig {
             sell: sell_rules(),
             ..Default::default()
         };
         let expected: Vec<AssetSymbol> = vec!["SELL".into()];
-        assert_eq!(expected, strategy.assets())
+        assert_eq!(expected, tactic.assets())
     }
 
     #[test]
     fn assets_only_uniques() {
-        let strategy = StrategyConfig {
+        let tactic = TacticConfig {
             buy: buy_rules(),
             sell: buy_rules(),
             ..Default::default()
         };
         let expected: Vec<AssetSymbol> = vec!["BUY".into()];
-        assert_eq!(expected, strategy.assets())
+        assert_eq!(expected, tactic.assets())
     }
 
     fn buy_rules() -> RuleConfig {

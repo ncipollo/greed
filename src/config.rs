@@ -1,21 +1,21 @@
 use crate::config::platform::PlatformType;
 use crate::config::reader::read_config;
-use crate::config::strategy::StrategyConfig;
+use crate::config::tactic::TacticConfig;
 use crate::error::GreedError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub mod platform;
 pub mod reader;
-pub mod strategy;
 pub mod simple;
+pub mod tactic;
 
 #[derive(Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct Config {
     #[serde(default)]
     pub platform: PlatformType,
     #[serde(default)]
-    pub strategies: Vec<StrategyConfig>,
+    pub tactics: Vec<TacticConfig>,
     #[serde(default = "default_interval")]
     pub interval: u64,
 }
@@ -33,13 +33,13 @@ impl Config {
 #[cfg(test)]
 mod test {
     use crate::config::platform::PlatformType;
-    use crate::config::strategy::r#do::DoConfig;
-    use crate::config::strategy::r#for::ForConfig;
-    use crate::config::strategy::rule::RuleConfig;
-    use crate::config::strategy::when::WhenConfig;
-    use crate::config::strategy::StrategyConfig;
+    use crate::config::tactic::median::MedianPeriod;
+    use crate::config::tactic::r#do::DoConfig;
+    use crate::config::tactic::r#for::ForConfig;
+    use crate::config::tactic::rule::RuleConfig;
+    use crate::config::tactic::when::WhenConfig;
+    use crate::config::tactic::TacticConfig;
     use crate::config::Config;
-    use crate::config::strategy::median::MedianPeriod;
     use crate::fixture;
 
     #[test]
@@ -47,7 +47,7 @@ mod test {
         let default = Config::default();
         let expected = Config {
             platform: PlatformType::Alpaca,
-            strategies: vec![],
+            tactics: vec![],
             interval: 0,
         };
 
@@ -59,18 +59,18 @@ mod test {
         let config = fixture::config("config_minimal.toml").await;
         let expected = Config {
             platform: PlatformType::Alpaca,
-            strategies: vec![],
+            tactics: vec![],
             interval: 60,
         };
         assert_eq!(expected, config)
     }
 
     #[tokio::test]
-    async fn deserialize_single_strategy() {
-        let config = fixture::config("config_single_strategy.toml").await;
+    async fn deserialize_single_tactic() {
+        let config = fixture::config("config_single_tactic.toml").await;
         let expected = Config {
             platform: PlatformType::Alpaca,
-            strategies: vec![StrategyConfig {
+            tactics: vec![TacticConfig {
                 name: "ETF".to_string(),
                 buy: RuleConfig {
                     for_config: ForConfig::Stock {
@@ -78,7 +78,7 @@ mod test {
                     },
                     when_config: WhenConfig::BelowMedian {
                         below_median_percent: 5.0,
-                        median_period: Default::default()
+                        median_period: Default::default(),
                     },
                     do_config: DoConfig::Buy { buy_percent: 10.0 },
                 },
@@ -98,12 +98,12 @@ mod test {
     }
 
     #[tokio::test]
-    async fn deserialize_multi_strategy_config() {
-        let config = fixture::config("config_multi_strategy.toml").await;
+    async fn deserialize_multi_tactic_config() {
+        let config = fixture::config("config_multi_tactic.toml").await;
         let expected = Config {
             platform: PlatformType::Alpaca,
-            strategies: vec![
-                StrategyConfig {
+            tactics: vec![
+                TacticConfig {
                     name: "ETF".to_string(),
                     buy: RuleConfig {
                         for_config: ForConfig::Stock {
@@ -111,7 +111,7 @@ mod test {
                         },
                         when_config: WhenConfig::BelowMedian {
                             below_median_percent: 5.0,
-                            median_period: Default::default()
+                            median_period: Default::default(),
                         },
                         do_config: DoConfig::Buy { buy_percent: 10.0 },
                     },
@@ -125,7 +125,7 @@ mod test {
                         do_config: DoConfig::SellAll { sell_all: true },
                     },
                 },
-                StrategyConfig {
+                TacticConfig {
                     name: "Chaos".to_string(),
                     buy: RuleConfig {
                         for_config: ForConfig::Stock {

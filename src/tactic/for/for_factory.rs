@@ -1,8 +1,8 @@
-use crate::config::strategy::r#for::ForConfig;
-use crate::strategy::null::NullRule;
-use crate::strategy::r#for::for_any::ForAnyStockRule;
-use crate::strategy::r#for::for_stock::ForStockRule;
-use crate::strategy::r#for::ForRule;
+use crate::config::tactic::r#for::ForConfig;
+use crate::tactic::null::NullRule;
+use crate::tactic::r#for::for_any::ForAnyStockRule;
+use crate::tactic::r#for::for_stock::ForStockRule;
+use crate::tactic::r#for::ForRule;
 
 pub struct ForFactory;
 

@@ -1,7 +1,7 @@
 use crate::asset::AssetSymbol;
-use crate::config::strategy::r#do::DoConfig;
-use crate::config::strategy::r#for::ForConfig;
-use crate::config::strategy::when::WhenConfig;
+use crate::config::tactic::r#do::DoConfig;
+use crate::config::tactic::r#for::ForConfig;
+use crate::config::tactic::when::WhenConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
