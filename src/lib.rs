@@ -20,6 +20,7 @@ mod pager;
 pub mod platform;
 pub mod run;
 mod statistics;
+mod strategy;
 mod tactic;
 mod trading_days;
 
