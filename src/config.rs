@@ -37,6 +37,7 @@ impl Config {
 #[cfg(test)]
 mod test {
     use crate::config::platform::PlatformType;
+    use crate::config::strategy::{StrategyConfig, StrategyOptions};
     use crate::config::tactic::median::MedianPeriod;
     use crate::config::tactic::r#do::DoConfig;
     use crate::config::tactic::r#for::ForConfig;
@@ -159,5 +160,60 @@ mod test {
             interval: 300,
         };
         assert_eq!(expected, config)
+    }
+
+    #[tokio::test]
+    async fn deserialize_strategic_config() {
+        let config = fixture::config("config_strategic.toml").await;
+        let expected = Config {
+            platform: PlatformType::Alpaca,
+            strategies: vec![
+                StrategyConfig::LocalFile {
+                    path: "config_minimal.toml".to_string(),
+                    options: StrategyOptions {
+                        name: "Minimal".to_string(),
+                        portfolio_percent: 100.0,
+                    },
+                },
+                StrategyConfig::LocalFile {
+                    path: "config_multi_tactic.toml".to_string(),
+                    options: StrategyOptions {
+                        name: "Multi Tactic".to_string(),
+                        portfolio_percent: 75.0,
+                    },
+                },
+                StrategyConfig::LocalFile {
+                    path: "simple_config_minimal.csv".to_string(),
+                    options: StrategyOptions {
+                        name: "CSV".to_string(),
+                        portfolio_percent: 25.0,
+                    },
+                },
+            ],
+            tactics: vec![TacticConfig {
+                name: "Spy".to_string(),
+                buy: RuleConfig {
+                    for_config: ForConfig::Stock {
+                        stock: "SPY".into(),
+                    },
+                    when_config: WhenConfig::BelowMedian {
+                        below_median_percent: 5.0,
+                        median_period: Default::default(),
+                    },
+                    do_config: DoConfig::Buy { buy_percent: 10.0 },
+                },
+                sell: RuleConfig {
+                    for_config: ForConfig::Stock {
+                        stock: "SPY".into(),
+                    },
+                    when_config: WhenConfig::GainAbove {
+                        gain_above_percent: 5.0,
+                    },
+                    do_config: DoConfig::SellAll { sell_all: true },
+                },
+            }],
+            interval: 300,
+        };
+        assert_eq!(config, expected)
     }
 }

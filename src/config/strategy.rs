@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(untagged)]
 pub enum StrategyConfig {
     LocalFile {
         path: String,
         #[serde(flatten)]
-        strategy: StrategyOptions,
+        options: StrategyOptions,
     },
 }
 
@@ -13,7 +14,7 @@ impl Default for StrategyConfig {
     fn default() -> Self {
         Self::LocalFile {
             path: "".to_string(),
-            strategy: Default::default(),
+            options: Default::default(),
         }
     }
 }
@@ -39,7 +40,7 @@ mod tests {
         let default = StrategyConfig::default();
         let expected = StrategyConfig::LocalFile {
             path: "".to_string(),
-            strategy: Default::default(),
+            options: Default::default(),
         };
         assert_eq!(expected, default)
     }

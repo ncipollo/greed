@@ -1,0 +1,29 @@
+interval = 300
+platform = "alpaca"
+
+[[strategies]]
+name = "Minimal"
+path = "config_minimal.toml"
+
+[[strategies]]
+name = "Multi Tactic"
+path = "config_multi_tactic.toml"
+portfolio_percent = 75
+
+[[strategies]]
+name = "CSV"
+path = "simple_config_minimal.csv"
+portfolio_percent = 25
+
+[[tactics]]
+name = "Spy"
+
+[tactics.buy]
+for = { stock = "$SPY" }
+when = { below_median_percent = 5.0 }
+do = { buy_percent = 10 }
+
+[tactics.sell]
+for = { stock = "$SPY" }
+when = { gain_above_percent = 5.0 }
+do = { sell_all = true }
