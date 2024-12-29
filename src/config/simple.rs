@@ -23,6 +23,7 @@ impl From<SimpleConfig> for Config {
     fn from(value: SimpleConfig) -> Self {
         Config {
             platform: PlatformType::Alpaca,
+            strategies: vec![],
             tactics: value.tactics.into_iter().map(Into::into).collect(),
             interval: 5,
         }
@@ -75,6 +76,7 @@ mod test {
         let simple_config: SimpleConfig = Default::default();
         let expected = Config {
             platform: PlatformType::Alpaca,
+            strategies: vec![],
             tactics: vec![],
             interval: 5,
         };
@@ -99,6 +101,7 @@ mod test {
         };
         let expected = Config {
             platform: PlatformType::Alpaca,
+            strategies: vec![],
             tactics: vec![
                 simple_tactic_1.clone().into(),
                 simple_tactic_2.clone().into(),

@@ -1,5 +1,6 @@
 use crate::config::platform::PlatformType;
 use crate::config::reader::read_config;
+use crate::config::strategy::StrategyConfig;
 use crate::config::tactic::TacticConfig;
 use crate::error::GreedError;
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,8 @@ pub mod tactic;
 pub struct Config {
     #[serde(default)]
     pub platform: PlatformType,
+    #[serde(default)]
+    pub strategies: Vec<StrategyConfig>,
     #[serde(default)]
     pub tactics: Vec<TacticConfig>,
     #[serde(default = "default_interval")]
@@ -48,6 +51,7 @@ mod test {
         let default = Config::default();
         let expected = Config {
             platform: PlatformType::Alpaca,
+            strategies: vec![],
             tactics: vec![],
             interval: 0,
         };
@@ -60,6 +64,7 @@ mod test {
         let config = fixture::config("config_minimal.toml").await;
         let expected = Config {
             platform: PlatformType::Alpaca,
+            strategies: vec![],
             tactics: vec![],
             interval: 60,
         };
@@ -71,6 +76,7 @@ mod test {
         let config = fixture::config("config_single_tactic.toml").await;
         let expected = Config {
             platform: PlatformType::Alpaca,
+            strategies: vec![],
             tactics: vec![TacticConfig {
                 name: "ETF".to_string(),
                 buy: RuleConfig {
@@ -103,6 +109,7 @@ mod test {
         let config = fixture::config("config_multi_tactic.toml").await;
         let expected = Config {
             platform: PlatformType::Alpaca,
+            strategies: vec![],
             tactics: vec![
                 TacticConfig {
                     name: "ETF".to_string(),
