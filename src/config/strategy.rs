@@ -6,7 +6,7 @@ pub enum StrategyConfig {
     LocalFile {
         path: String,
         #[serde(flatten)]
-        options: StrategyOptions,
+        properties: StrategyProperties,
     },
 }
 
@@ -14,13 +14,13 @@ impl Default for StrategyConfig {
     fn default() -> Self {
         Self::LocalFile {
             path: "".to_string(),
-            options: Default::default(),
+            properties: Default::default(),
         }
     }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct StrategyOptions {
+pub struct StrategyProperties {
     #[serde(default)]
     pub name: String,
     #[serde(default = "default_portfolio_percent")]
@@ -40,7 +40,7 @@ mod tests {
         let default = StrategyConfig::default();
         let expected = StrategyConfig::LocalFile {
             path: "".to_string(),
-            options: Default::default(),
+            properties: Default::default(),
         };
         assert_eq!(expected, default)
     }

@@ -37,7 +37,7 @@ impl Config {
 #[cfg(test)]
 mod test {
     use crate::config::platform::PlatformType;
-    use crate::config::strategy::{StrategyConfig, StrategyOptions};
+    use crate::config::strategy::{StrategyConfig, StrategyProperties};
     use crate::config::tactic::median::MedianPeriod;
     use crate::config::tactic::r#do::DoConfig;
     use crate::config::tactic::r#for::ForConfig;
@@ -170,21 +170,21 @@ mod test {
             strategies: vec![
                 StrategyConfig::LocalFile {
                     path: "config_minimal.toml".to_string(),
-                    options: StrategyOptions {
+                    properties: StrategyProperties {
                         name: "Minimal".to_string(),
                         portfolio_percent: 100.0,
                     },
                 },
                 StrategyConfig::LocalFile {
                     path: "config_multi_tactic.toml".to_string(),
-                    options: StrategyOptions {
+                    properties: StrategyProperties {
                         name: "Multi Tactic".to_string(),
                         portfolio_percent: 75.0,
                     },
                 },
                 StrategyConfig::LocalFile {
                     path: "simple_config_minimal.csv".to_string(),
-                    options: StrategyOptions {
+                    properties: StrategyProperties {
                         name: "CSV".to_string(),
                         portfolio_percent: 25.0,
                     },
