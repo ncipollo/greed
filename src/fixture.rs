@@ -1,4 +1,6 @@
 #[cfg(test)]
+use crate::config::simple::SimpleConfig;
+#[cfg(test)]
 use crate::config::Config;
 #[cfg(test)]
 use std::path::PathBuf;
@@ -8,6 +10,14 @@ pub async fn config(file: &str) -> Config {
     Config::from_path(path(file))
         .await
         .expect("config not found")
+}
+
+#[cfg(test)]
+pub async fn simple_config(file: &str) -> Config {
+    SimpleConfig::from_path(path(file))
+        .await
+        .expect("simple config not found")
+        .into()
 }
 
 #[cfg(test)]
