@@ -10,6 +10,7 @@ pub mod position;
 pub mod quote;
 pub mod request;
 pub mod side;
+mod noop;
 
 use crate::asset::AssetSymbol;
 use crate::config::platform::PlatformType;
@@ -28,7 +29,7 @@ use log::info;
 use std::sync::Arc;
 
 #[async_trait]
-pub trait FinancialPlatform {
+pub trait FinancialPlatform: Send + Sync {
     async fn account(&self) -> Result<Account, GreedError>;
     async fn bars(&self, bars_request: BarRequest) -> Result<Bars, GreedError>;
     async fn latest_quotes(&self, symbols: &Vec<AssetSymbol>) -> Result<Vec<Quote>, GreedError>;

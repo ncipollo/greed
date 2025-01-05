@@ -8,6 +8,7 @@ use crate::tactic::TacticRunner;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+use async_trait::async_trait;
 
 pub struct ConfigStrategyProvider {
     config_path: PathBuf,
@@ -32,6 +33,7 @@ impl ConfigStrategyProvider {
     }
 }
 
+#[async_trait]
 impl StrategyRunnerProvider for ConfigStrategyProvider {
     async fn provide_strategy_runner(&self) -> Result<StrategyRunner, GreedError> {
         let tactics = read_tactics_from_config(&self.config_path, &self.strategy_config).await?;
