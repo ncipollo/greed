@@ -7,7 +7,7 @@ use crate::strategy::path::path_for_config;
 use std::ffi::OsStr;
 use std::path::Path;
 
-pub async fn ready_tactics_from_config(
+pub async fn read_tactics_from_config(
     config_path: &Path,
     strategy_config: &StrategyConfig,
 ) -> Result<Vec<TacticConfig>, GreedError> {
@@ -32,13 +32,13 @@ mod tests {
     use crate::fixture;
 
     #[tokio::test]
-    async fn ready_tactics_from_config_csv_config() {
+    async fn read_tactics_from_config_csv_config() {
         let config_path = fixture::path("config_strategic.toml");
         let strategy_config = StrategyConfig::LocalFile {
             path: "simple_config_minimal.csv".to_string(),
             properties: Default::default(),
         };
-        let tactics = ready_tactics_from_config(&config_path, &strategy_config)
+        let tactics = read_tactics_from_config(&config_path, &strategy_config)
             .await
             .expect("should have read tactics from config");
         let expected_config = fixture::simple_config("simple_config_minimal.csv").await;
@@ -46,13 +46,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ready_tactics_from_config_toml_config() {
+    async fn read_tactics_from_config_toml_config() {
         let config_path = fixture::path("config_strategic.toml");
         let strategy_config = StrategyConfig::LocalFile {
             path: "config_single_tactic.toml".to_string(),
             properties: Default::default(),
         };
-        let tactics = ready_tactics_from_config(&config_path, &strategy_config)
+        let tactics = read_tactics_from_config(&config_path, &strategy_config)
             .await
             .expect("should have read tactics from config");
         let expected_config = fixture::config("config_single_tactic.toml").await;
@@ -60,13 +60,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ready_tactics_from_config_invalid_path() {
+    async fn read_tactics_from_config_invalid_path() {
         let config_path = fixture::path("non_existent_config.toml");
         let strategy_config = StrategyConfig::LocalFile {
             path: "non_existent_file.toml".to_string(),
             properties: Default::default(),
         };
-        let result = ready_tactics_from_config(&config_path, &strategy_config).await;
+        let result = read_tactics_from_config(&config_path, &strategy_config).await;
         assert!(
             result.is_err(),
             "should have returned an error for invalid path"
