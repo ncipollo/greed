@@ -10,6 +10,14 @@ pub enum StrategyConfig {
     },
 }
 
+impl StrategyConfig {
+    pub fn properties(&self) -> StrategyProperties {
+        match self {
+            Self::LocalFile { properties, .. } => properties.clone(),
+        }
+    }
+}
+
 impl Default for StrategyConfig {
     fn default() -> Self {
         Self::LocalFile {
@@ -48,5 +56,21 @@ mod tests {
     #[test]
     fn default_portfolio_percent() {
         assert_eq!(100.0, super::default_portfolio_percent())
+    }
+
+    #[test]
+    fn properties_local_file() {
+        let config = StrategyConfig::LocalFile {
+            path: "test".to_string(),
+            properties: test_properties(),
+        };
+        assert_eq!(test_properties(), config.properties())
+    }
+
+    fn test_properties() -> StrategyProperties {
+        StrategyProperties {
+            name: "test".to_string(),
+            portfolio_percent: 50.0,
+        }
     }
 }
