@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use async_trait::async_trait;
 use crate::asset::AssetSymbol;
 use crate::error::GreedError;
@@ -10,11 +11,15 @@ use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::request::OrderRequest;
 
-struct NoOpPlatform;
+pub struct NoOpPlatform;
 
 impl NoOpPlatform {
     pub fn new() -> Self {
         Self
+    }
+
+    pub fn arc() -> Arc<dyn FinancialPlatform> {
+        Arc::new(Self::new())
     }
 }
 

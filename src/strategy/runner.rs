@@ -24,6 +24,11 @@ impl StrategyRunner {
         }
     }
 
+    #[cfg(test)]
+    pub fn tactic_runner_count(&self) -> usize {
+        self.tactic_runners.len()
+    }
+
     pub async fn run_loop(&self) -> Result<(), GreedError> {
         for tactic_runner in &self.tactic_runners {
             let _ = tactic_runner.run().await.inspect_err(|e| warn!("{e}"));

@@ -5,12 +5,12 @@ pub mod asset_class;
 pub mod bar;
 pub mod bars;
 pub mod id;
+pub mod noop;
 pub mod order;
 pub mod position;
 pub mod quote;
 pub mod request;
 pub mod side;
-mod noop;
 
 use crate::asset::AssetSymbol;
 use crate::config::platform::PlatformType;
