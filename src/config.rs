@@ -212,7 +212,7 @@ mod test {
                     do_config: DoConfig::SellAll { sell_all: true },
                 },
             }],
-            interval: 300,
+            interval: 5,
         };
         assert_eq!(config, expected)
     }

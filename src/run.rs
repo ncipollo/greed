@@ -6,7 +6,6 @@ use crate::platform::FinancialPlatform;
 use crate::strategy::factory::StrategyProviderFactory;
 use crate::strategy::provider::StrategyRunnerProvider;
 use crate::strategy::runner::StrategyRunner;
-use crate::tactic::TacticRunner;
 use log::warn;
 use std::ffi::OsStr;
 use std::path::PathBuf;

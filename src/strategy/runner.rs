@@ -2,7 +2,7 @@ use crate::config::strategy::StrategyProperties;
 use crate::config::Config;
 use crate::platform::FinancialPlatform;
 use crate::tactic::TacticRunner;
-use log::warn;
+use log::{info, warn};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -44,6 +44,10 @@ impl StrategyRunner {
     }
 
     pub async fn run(&self) {
+        let name = self.strategy_properties.name.clone();
+        if !name.is_empty() {
+            info!("🚀 running strategy: {}", self.strategy_properties.name);
+        }
         for tactic_runner in &self.tactic_runners {
             let _ = tactic_runner.run().await.inspect_err(|e| warn!("{e}"));
             sleep(self.loop_interval).await;
