@@ -1,4 +1,5 @@
 use crate::config::strategy::StrategyConfig;
+use crate::config::tactic::TacticConfig;
 use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
 use crate::strategy::provider::StrategyRunnerProvider;
@@ -11,33 +12,34 @@ use std::sync::Arc;
 use std::time::Duration;
 
 pub struct ConfigStrategyProvider {
-    config_path: PathBuf,
     loop_interval: Duration,
     platform: Arc<dyn FinancialPlatform>,
     strategy_config: StrategyConfig,
+    tactic_configs: Vec<TacticConfig>,
 }
 
 impl ConfigStrategyProvider {
-    fn new(
+    async fn new(
         config_path: PathBuf,
         loop_interval: Duration,
         platform: Arc<dyn FinancialPlatform>,
         strategy_config: StrategyConfig,
-    ) -> Self {
-        Self {
-            config_path,
+    ) -> Result<Self, GreedError> {
+        let tactic_configs = read_tactics_from_config(&config_path, &strategy_config).await?;
+        Ok(Self {
             loop_interval,
             platform,
             strategy_config,
-        }
+            tactic_configs,
+        })
     }
 }
 
 #[async_trait]
 impl StrategyRunnerProvider for ConfigStrategyProvider {
     async fn provide_strategy_runner(&self) -> Result<StrategyRunner, GreedError> {
-        let tactics = read_tactics_from_config(&self.config_path, &self.strategy_config).await?;
-        let tactic_runners = tactics
+        let tactic_runners = self
+            .tactic_configs
             .iter()
             .map(|tactic_config| TacticRunner::new(tactic_config.clone(), self.platform.clone()))
             .collect();
@@ -86,6 +88,6 @@ mod tests {
             Duration::from_secs(1),
             NoOpPlatform::arc(),
             strategy_config,
-        )
+        ).await.expect("should create provider")
     }
 }
