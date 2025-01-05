@@ -19,7 +19,7 @@ pub struct ConfigStrategyProvider {
 }
 
 impl ConfigStrategyProvider {
-    async fn new(
+    pub async fn new(
         config_path: PathBuf,
         loop_interval: Duration,
         platform: Arc<dyn FinancialPlatform>,
