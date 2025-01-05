@@ -75,7 +75,7 @@ impl TacticState {
         ]);
         let strategy_properties = StrategyProperties {
             name: "test".to_string(),
-            portfolio_percent: 50.0
+            portfolio_percent: 100.0
         };
         Self {
             account: Account::fixture(),
