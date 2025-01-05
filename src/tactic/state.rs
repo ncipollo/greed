@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::analysis::result::BarsResult;
 use crate::asset::AssetSymbol;
+use crate::config::strategy::StrategyProperties;
 use crate::platform::account::Account;
 use crate::platform::order::Order;
 use crate::platform::position::Position;
@@ -15,6 +16,7 @@ pub struct TacticState {
     pub open_orders: HashMap<AssetSymbol, Vec<Order>>,
     pub positions: HashMap<AssetSymbol, Position>,
     pub quotes: HashMap<AssetSymbol, Quote>,
+    pub strategy_properties: StrategyProperties
 }
 
 impl TacticState {
@@ -24,6 +26,7 @@ impl TacticState {
         open_orders: HashMap<AssetSymbol, Vec<Order>>,
         positions: HashMap<AssetSymbol, Position>,
         quotes: HashMap<AssetSymbol, Quote>,
+        strategy_properties: StrategyProperties
     ) -> Self {
         Self {
             account,
@@ -31,6 +34,7 @@ impl TacticState {
             open_orders,
             positions,
             quotes,
+            strategy_properties
         }
     }
 
@@ -69,12 +73,17 @@ impl TacticState {
             (spy.clone(), Quote::fixture(spy.clone())),
             (vti.clone(), Quote::fixture(vti.clone())),
         ]);
+        let strategy_properties = StrategyProperties {
+            name: "test".to_string(),
+            portfolio_percent: 50.0
+        };
         Self {
             account: Account::fixture(),
             bar_analysis: Rc::new(bar_analysis),
             open_orders,
             positions,
             quotes,
+            strategy_properties
         }
     }
 }

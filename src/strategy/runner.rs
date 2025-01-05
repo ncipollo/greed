@@ -33,7 +33,9 @@ impl StrategyRunner {
             .tactics
             .clone()
             .into_iter()
-            .map(|tactic_config| TacticRunner::new(tactic_config.clone(), platform.clone()))
+            .map(|tactic_config| {
+                TacticRunner::new(tactic_config.clone(), platform.clone(), Default::default())
+            })
             .collect();
         Self::new(loop_interval, Default::default(), tactic_runners)
     }

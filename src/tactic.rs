@@ -1,5 +1,6 @@
 use crate::analysis::AssetAnalyzer;
 use crate::asset::AssetSymbol;
+use crate::config::strategy::StrategyProperties;
 use crate::config::tactic::TacticConfig;
 use crate::error::GreedError;
 use crate::platform::account::Account;
@@ -30,14 +31,20 @@ pub struct TacticRunner {
     asset_analyzer: AssetAnalyzer,
     config: TacticConfig,
     platform: Arc<dyn FinancialPlatform>,
+    strategy_properties: StrategyProperties,
 }
 
 impl TacticRunner {
-    pub fn new(config: TacticConfig, platform: Arc<dyn FinancialPlatform>) -> Self {
+    pub fn new(
+        config: TacticConfig,
+        platform: Arc<dyn FinancialPlatform>,
+        strategy_properties: StrategyProperties,
+    ) -> Self {
         Self {
             asset_analyzer: AssetAnalyzer::new(platform.clone()),
             config,
             platform,
+            strategy_properties,
         }
     }
     pub async fn run(&self) -> Result<(), GreedError> {
@@ -49,7 +56,14 @@ impl TacticRunner {
         let positions = self.fetch_positions().await?;
         let open_orders = self.fetch_open_orders().await?;
 
-        let state = TacticState::new(account, bar_analysis, open_orders, positions, quotes);
+        let state = TacticState::new(
+            account,
+            bar_analysis,
+            open_orders,
+            positions,
+            quotes,
+            self.strategy_properties.clone(),
+        );
         self.evaluate_rules(state).await?;
         info!("----------");
         Ok(())

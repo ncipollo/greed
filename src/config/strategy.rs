@@ -27,7 +27,7 @@ impl Default for StrategyConfig {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct StrategyProperties {
     #[serde(default)]
     pub name: String,
@@ -39,6 +39,15 @@ fn default_portfolio_percent() -> f64 {
     100.0
 }
 
+impl Default for StrategyProperties {
+    fn default() -> Self {
+        Self {
+            name: "".to_string(),
+            portfolio_percent: default_portfolio_percent(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -46,9 +55,13 @@ mod tests {
     #[test]
     fn default() {
         let default = StrategyConfig::default();
+        let expected_props = StrategyProperties {
+            name: "".to_string(),
+            portfolio_percent: 100.0,
+        };
         let expected = StrategyConfig::LocalFile {
             path: "".to_string(),
-            properties: Default::default(),
+            properties: expected_props,
         };
         assert_eq!(expected, default)
     }

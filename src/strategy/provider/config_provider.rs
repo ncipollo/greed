@@ -41,7 +41,13 @@ impl StrategyRunnerProvider for ConfigStrategyProvider {
         let tactic_runners = self
             .tactic_configs
             .iter()
-            .map(|tactic_config| TacticRunner::new(tactic_config.clone(), self.platform.clone()))
+            .map(|tactic_config| {
+                TacticRunner::new(
+                    tactic_config.clone(),
+                    self.platform.clone(),
+                    self.strategy_config.properties(),
+                )
+            })
             .collect();
         let strategy_runner = StrategyRunner::new(
             self.loop_interval,
@@ -88,6 +94,8 @@ mod tests {
             Duration::from_secs(1),
             NoOpPlatform::arc(),
             strategy_config,
-        ).await.expect("should create provider")
+        )
+        .await
+        .expect("should create provider")
     }
 }
