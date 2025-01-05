@@ -1,6 +1,5 @@
 use crate::config::strategy::StrategyProperties;
 use crate::config::Config;
-use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
 use crate::tactic::TacticRunner;
 use log::warn;
@@ -27,11 +26,12 @@ impl StrategyRunner {
         }
     }
 
-    pub fn from_config(config: Config, platform: Arc<dyn FinancialPlatform>) -> Self {
+    pub fn from_config(config: &Config, platform: &Arc<dyn FinancialPlatform>) -> Self {
         let loop_interval = Duration::from_secs(config.interval);
 
         let tactic_runners = config
             .tactics
+            .clone()
             .into_iter()
             .map(|tactic_config| TacticRunner::new(tactic_config.clone(), platform.clone()))
             .collect();
@@ -43,12 +43,11 @@ impl StrategyRunner {
         self.tactic_runners.len()
     }
 
-    pub async fn run_loop(&self) -> Result<(), GreedError> {
+    pub async fn run(&self) {
         for tactic_runner in &self.tactic_runners {
             let _ = tactic_runner.run().await.inspect_err(|e| warn!("{e}"));
             sleep(self.loop_interval).await;
         }
-        Ok(())
     }
 }
 
@@ -61,7 +60,8 @@ mod tests {
     #[tokio::test]
     async fn from_config_empty_tactics() {
         let config = fixture::config("config_minimal.toml").await;
-        let runner = StrategyRunner::from_config(config, NoOpPlatform::arc());
+        let platform = NoOpPlatform::arc();
+        let runner = StrategyRunner::from_config(&config, &platform);
         assert_eq!(runner.loop_interval, Duration::from_secs(60));
         assert_eq!(runner.tactic_runner_count(), 0);
     }
@@ -69,7 +69,8 @@ mod tests {
     #[tokio::test]
     async fn from_config_with_tactics() {
         let config = fixture::config("config_single_tactic.toml").await;
-        let runner = StrategyRunner::from_config(config, NoOpPlatform::arc());
+        let platform = NoOpPlatform::arc();
+        let runner = StrategyRunner::from_config(&config, &platform);
         assert_eq!(runner.loop_interval, Duration::from_secs(300));
         assert_eq!(runner.tactic_runner_count(), 1);
     }

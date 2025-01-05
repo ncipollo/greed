@@ -8,14 +8,18 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-struct StrategyProviderFactory {
-    config: Config,
+pub struct StrategyProviderFactory<'a> {
+    config: &'a Config,
     config_path: PathBuf,
-    platform: Arc<dyn FinancialPlatform>,
+    platform: &'a Arc<dyn FinancialPlatform>,
 }
 
-impl StrategyProviderFactory {
-    pub fn new(config: Config, config_path: PathBuf, platform: Arc<dyn FinancialPlatform>) -> Self {
+impl<'a> StrategyProviderFactory<'a> {
+    pub fn new(
+        config: &'a Config,
+        config_path: PathBuf,
+        platform: &'a Arc<dyn FinancialPlatform>,
+    ) -> StrategyProviderFactory<'a> {
         Self {
             config,
             config_path,
