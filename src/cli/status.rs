@@ -32,6 +32,7 @@ mod test {
         let status_args = StatusArgs {
             is_simulated: true,
             platform_type: Default::default(),
+            full: false
         };
         let platform_args: PlatformArgs = PlatformArgs::from(&status_args);
         let expected = PlatformArgs {
