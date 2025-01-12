@@ -36,6 +36,7 @@ pub trait FinancialPlatform: Send + Sync {
     async fn place_order(&self, order_request: OrderRequest) -> Result<Order, GreedError>;
     async fn positions(&self) -> Result<Vec<Position>, GreedError>;
     async fn open_orders(&self) -> Result<Vec<Order>, GreedError>;
+    async fn recent_orders(&self) -> Result<Vec<Order>, GreedError>;
 }
 
 pub fn for_type(

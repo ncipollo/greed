@@ -44,6 +44,18 @@ pub async fn fetch_quote(
     Ok(())
 }
 
+pub async fn fetch_recent_orders(
+    platform_args: PlatformArgs,
+    platform_type: &PlatformType,
+) -> Result<(), GreedError> {
+    let platform = platform::for_type(platform_type, platform_args)?;
+    let orders = platform.recent_orders().await?;
+    for order in orders {
+        println!("{}", order)
+    }
+    Ok(())
+}
+
 pub async fn fetch_status(
     platform_args: PlatformArgs,
     platform_type: &PlatformType,

@@ -88,13 +88,23 @@ impl Order {
 
 impl Display for Order {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {} of {}", self.side, self.amount, self.symbol)
+        let submitted_at = self
+            .submitted_at
+            .map(|t| t.format("%Y-%m-%d %H:%M").to_string())
+            .map(|s| s + " ")
+            .unwrap_or("".to_string());
+        write!(
+            f,
+            "{}{} {} of {}",
+            submitted_at, self.side, self.amount, self.symbol
+        )
     }
 }
 
 #[cfg(test)]
 mod test {
     use crate::asset::AssetSymbol;
+    use crate::date::DateTimeFixture;
     use crate::platform::order::amount::Amount;
     use crate::platform::order::side::OrderSide;
     use crate::platform::order::Order;
@@ -120,7 +130,7 @@ mod test {
     }
 
     #[test]
-    fn display() {
+    fn display_no_submission_time() {
         let order = Order {
             amount: Amount::Quantity(10.0),
             side: OrderSide::Buy,
@@ -129,5 +139,18 @@ mod test {
         };
         let display = order.to_string();
         assert_eq!(display, "buy 10.00 units of VTI")
+    }
+
+    #[test]
+    fn display_with_submission_time() {
+        let order = Order {
+            amount: Amount::Quantity(10.0),
+            side: OrderSide::Buy,
+            symbol: AssetSymbol::new("VTI"),
+            submitted_at: Some(DateTimeFixture::utc()),
+            ..Default::default()
+        };
+        let display = order.to_string();
+        assert_eq!(display, "2023-12-04 08:00 buy 10.00 units of VTI")
     }
 }

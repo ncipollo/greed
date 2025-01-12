@@ -140,4 +140,14 @@ impl FinancialPlatform for AlpacaPlatform {
         let orders: Vec<Order> = alpaca_orders.into_iter().map_into().collect();
         Ok(orders)
     }
+
+    async fn recent_orders(&self) -> Result<Vec<Order>, GreedError> {
+        let orders_req = orders::ListReq {
+            status: Status::All,
+            ..ListReq::default()
+        };
+        let alpaca_orders = self.client.issue::<orders::List>(&orders_req).await?;
+        let orders: Vec<Order> = alpaca_orders.into_iter().map_into().collect();
+        Ok(orders)
+    }
 }

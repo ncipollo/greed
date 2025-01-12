@@ -48,6 +48,10 @@ impl FinancialPlatform for NoOpPlatform {
     async fn open_orders(&self) -> Result<Vec<Order>, GreedError> {
         Ok(Vec::new())
     }
+
+    async fn recent_orders(&self) -> Result<Vec<Order>, GreedError> {
+        Ok(Vec::new())
+    }
 }
 
 #[cfg(test)]
