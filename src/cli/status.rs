@@ -8,7 +8,10 @@ pub struct StatusArgs {
     #[arg(short = 's', long)]
     pub is_simulated: bool,
     #[arg(short = 'p', long, default_value="alpaca")]
-    pub platform_type: PlatformType
+    pub platform_type: PlatformType,
+    /// Show full status including open positions and orders
+    #[arg(short = 'f', long)]
+    pub full: bool,
 }
 
 impl From<&StatusArgs> for PlatformArgs {

@@ -50,8 +50,9 @@ pub async fn fetch_recent_orders(
 ) -> Result<(), GreedError> {
     let platform = platform::for_type(platform_type, platform_args)?;
     let orders = platform.recent_orders().await?;
+    println!("Recent Orders:");
     for order in orders {
-        println!("{}", order)
+        println!("-- {}", order)
     }
     Ok(())
 }
@@ -59,11 +60,16 @@ pub async fn fetch_recent_orders(
 pub async fn fetch_status(
     platform_args: PlatformArgs,
     platform_type: &PlatformType,
+    show_full_status: bool
 ) -> Result<(), GreedError> {
     let platform = platform::for_type(platform_type, platform_args)?;
     // Fetch account info
     let account = platform.account().await?;
     println!("Account Info: {}", account);
+    // Bail if we're not showing full status
+    if !show_full_status {
+        return Ok(());
+    }
     // Fetch Open Positions
     println!("Open Positions:");
     let positions = platform.positions().await?;

@@ -55,7 +55,7 @@ async fn async_main(log_config: Config) {
         }
         Command::Status(args) => {
             let platform_args = PlatformArgs::from(&args);
-            fetch_status(platform_args, &args.platform_type)
+            fetch_status(platform_args, &args.platform_type, args.full)
                 .await
                 .expect("status fetch failed");
         }
