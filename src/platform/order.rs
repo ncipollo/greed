@@ -7,7 +7,7 @@ use crate::platform::order::order_type::OrderType;
 use crate::platform::order::side::OrderSide;
 use crate::platform::order::status::Status;
 use crate::platform::order::time_in_force::TimeInForce;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use num_decimal::Num;
 use std::fmt::{Display, Formatter};
 
@@ -76,6 +76,29 @@ impl Order {
             Amount::Notional(value) => *value,
         }
     }
+
+    pub fn display_with_time_zone<TZ: TimeZone>(&self, time_zone: &TZ) -> String
+    where
+        TZ::Offset: Display,
+    {
+        let submitted_at_string = self.fmt_submitted_at(time_zone);
+        format!(
+            "{}{} {} of {}",
+            submitted_at_string, self.side, self.amount, self.symbol
+        )
+    }
+
+    fn fmt_submitted_at<TZ: TimeZone>(&self, time_zone: &TZ) -> String
+    where
+        TZ::Offset: Display,
+    {
+        self.submitted_at
+            .map(|t| t.with_timezone(time_zone))
+            .map(|t| t.format("%Y-%m-%d %H:%M").to_string())
+            .map(|s| s + " ")
+            .unwrap_or("".to_string())
+    }
+
     #[cfg(test)]
     pub fn fixture(symbol: AssetSymbol) -> Self {
         Self {
@@ -88,15 +111,11 @@ impl Order {
 
 impl Display for Order {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let submitted_at = self
-            .submitted_at
-            .map(|t| t.format("%Y-%m-%d %H:%M").to_string())
-            .map(|s| s + " ")
-            .unwrap_or("".to_string());
+        let submitted_at_string = self.fmt_submitted_at(&Utc);
         write!(
             f,
             "{}{} {} of {}",
-            submitted_at, self.side, self.amount, self.symbol
+            submitted_at_string, self.side, self.amount, self.symbol
         )
     }
 }
@@ -139,6 +158,19 @@ mod test {
         };
         let display = order.to_string();
         assert_eq!(display, "buy 10.00 units of VTI")
+    }
+
+    #[test]
+    fn display_with_time_zone() {
+        let order = Order {
+            amount: Amount::Quantity(10.0),
+            side: OrderSide::Buy,
+            symbol: AssetSymbol::new("VTI"),
+            submitted_at: Some(DateTimeFixture::utc()),
+            ..Default::default()
+        };
+        let display = order.display_with_time_zone(&chrono::Utc);
+        assert_eq!(display, "2023-12-04 08:00 buy 10.00 units of VTI")
     }
 
     #[test]

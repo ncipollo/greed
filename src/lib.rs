@@ -52,7 +52,7 @@ pub async fn fetch_recent_orders(
     let orders = platform.recent_orders().await?;
     println!("Recent Orders:");
     for order in orders {
-        println!("-- {}", order)
+        println!("-- {}", order.display_with_time_zone(&chrono::Local))
     }
     Ok(())
 }
