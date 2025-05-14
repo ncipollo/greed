@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Tasks Lists
+
+You may be asked to create a task list and then execute tasks. The following is guidance for this task list:
+- You should create the task list within the package you are working within.
+- The last task should always be "Delete this task list".
+- Always check off the task when you are done.
+- We should add a section to the task list which outlines assumptions we are making about our tasks.
+- We should also add a section which provides file structure information for the package we are working within.
