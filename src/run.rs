@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
+use crate::asset::AssetSymbol;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct GreedRunnerArgs {
@@ -23,6 +24,7 @@ pub struct GreedRunner {
     run_interval: u64,
     config_strategy: StrategyRunner,
     strategy_providers: Vec<Box<dyn StrategyRunnerProvider>>,
+    config_assets: Vec<AssetSymbol>,
 }
 
 impl GreedRunner {
@@ -34,10 +36,20 @@ impl GreedRunner {
         let config_strategy = StrategyRunner::from_config(&config, &platform);
         let factory = StrategyProviderFactory::new(&config, config_path, &platform);
         let strategy_providers = factory.create_providers().await?;
+        
+        // Accumulate assets from all providers
+        let mut config_assets = Vec::new();
+        for provider in &strategy_providers {
+            config_assets.extend(provider.config_assets());
+        }
+        // Add assets from config strategy
+        config_assets.extend(config.tactics.iter().flat_map(|t| t.assets()));
+        
         Ok(Self {
             run_interval: config.interval,
             config_strategy,
             strategy_providers,
+            config_assets,
         })
     }
 
@@ -72,11 +84,11 @@ impl GreedRunner {
             // Run each strategy runner
             let strategy_runners = strategy_runners_result.unwrap();
             for runner in strategy_runners {
-                let _ = runner.run().await;
+                let _ = runner.run(&self.config_assets).await;
                 sleep(loop_interval).await;
             }
             // Run the general strategy from the top level config
-            self.config_strategy.run().await;
+            self.config_strategy.run(&self.config_assets).await;
             // Sleep for the loop interval then start again.
             sleep(loop_interval).await;
         }

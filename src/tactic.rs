@@ -47,7 +47,7 @@ impl TacticRunner {
             strategy_properties,
         }
     }
-    pub async fn run(&self) -> Result<(), GreedError> {
+    pub async fn run(&self, config_assets: &[AssetSymbol]) -> Result<(), GreedError> {
         info!("🧠 running tactic: {}", self.config.name);
         let account = self.fetch_account().await?;
         let symbols = self.config.assets();
@@ -63,7 +63,7 @@ impl TacticRunner {
             positions,
             quotes,
             self.strategy_properties.clone(),
-            symbols
+            config_assets.to_vec()
         );
         self.evaluate_rules(state).await?;
         info!("----------");
