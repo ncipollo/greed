@@ -63,6 +63,7 @@ impl TacticRunner {
             positions,
             quotes,
             self.strategy_properties.clone(),
+            symbols
         );
         self.evaluate_rules(state).await?;
         info!("----------");

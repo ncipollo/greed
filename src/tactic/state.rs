@@ -16,7 +16,8 @@ pub struct TacticState {
     pub open_orders: HashMap<AssetSymbol, Vec<Order>>,
     pub positions: HashMap<AssetSymbol, Position>,
     pub quotes: HashMap<AssetSymbol, Quote>,
-    pub strategy_properties: StrategyProperties
+    pub strategy_properties: StrategyProperties,
+    pub all_assets: Vec<AssetSymbol>
 }
 
 impl TacticState {
@@ -26,7 +27,8 @@ impl TacticState {
         open_orders: HashMap<AssetSymbol, Vec<Order>>,
         positions: HashMap<AssetSymbol, Position>,
         quotes: HashMap<AssetSymbol, Quote>,
-        strategy_properties: StrategyProperties
+        strategy_properties: StrategyProperties,
+        all_assets: Vec<AssetSymbol>
     ) -> Self {
         Self {
             account,
@@ -34,7 +36,8 @@ impl TacticState {
             open_orders,
             positions,
             quotes,
-            strategy_properties
+            strategy_properties,
+            all_assets
         }
     }
 
@@ -77,13 +80,15 @@ impl TacticState {
             name: "test".to_string(),
             portfolio_percent: 100.0
         };
+        let all_assets = vec![spy, vti];
         Self {
             account: Account::fixture(),
             bar_analysis: Rc::new(bar_analysis),
             open_orders,
             positions,
             quotes,
-            strategy_properties
+            strategy_properties,
+            all_assets
         }
     }
 }
@@ -117,5 +122,13 @@ mod tests {
         };
         let open_order_value = state.open_order_value(&AssetSymbol::new("SPY"));
         assert_eq!(open_order_value, 0.0)
+    }
+
+    #[test]
+    fn fixture_includes_all_assets() {
+        let state = TacticState::fixture();
+        assert_eq!(state.all_assets.len(), 2);
+        assert!(state.all_assets.contains(&AssetSymbol::new("SPY")));
+        assert!(state.all_assets.contains(&AssetSymbol::new("VTI")));
     }
 }
