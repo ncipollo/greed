@@ -10,6 +10,7 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+use crate::asset::AssetSymbol;
 
 pub struct ConfigStrategyProvider {
     loop_interval: Duration,
@@ -56,6 +57,13 @@ impl StrategyRunnerProvider for ConfigStrategyProvider {
         );
         Ok(strategy_runner)
     }
+
+    fn config_assets(&self) -> Vec<AssetSymbol> {
+        self.tactic_configs
+            .iter()
+            .flat_map(|tactic_config| tactic_config.assets())
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -82,6 +90,15 @@ mod tests {
             .await
             .expect("should return runner");
         assert_ne!(strategy_runner.tactic_runner_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn config_assets() {
+        let provider = provider_for_config("config_multi_tactic.toml").await;
+        let assets = provider.config_assets();
+        assert_eq!(assets.len(), 2);
+        assert!(assets.contains(&AssetSymbol::new("VTI")));
+        assert!(assets.contains(&AssetSymbol::new("UVXY")));
     }
 
     async fn provider_for_config(config_name: &str) -> ConfigStrategyProvider {
