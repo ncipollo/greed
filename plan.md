@@ -37,7 +37,9 @@ src/
 
 ## Task List
 
-- [ ] **Task 1: Define the `QuoteFetcherConfig` trait.**
+Note: always mark as complete when done.
+
+- [x] **Task 1: Define the `QuoteFetcherConfig` trait.**
     - Create `src/config/quote_fetcher_config.rs`.
     - Add the following code:
       ```rust
@@ -45,18 +47,22 @@ src/
           fn should_fetch_quotes(&self) -> bool;
       }
       ```
-- [ ] **Task 2: Implement `QuoteFetcherConfig` for `DoConfig`.**
+    - Add tests to verify the trait can be implemented and used.
+- [x] **Task 2: Implement `QuoteFetcherConfig` for `DoConfig`.**
     - Open `src/config/tactic/do.rs`.
     - Import the trait: `use crate::config::quote_fetcher_config::QuoteFetcherConfig;`.
     - Implement `impl QuoteFetcherConfig for DoConfig { ... }`. Logic will depend on enum variants. (e.g., return `true` for variants that imply actions on market data).
+    - Add tests to verify both Buy and SellAll variants return true.
 - [ ] **Task 3: Implement `QuoteFetcherConfig` for `WhenConfig`.**
     - Open `src/config/tactic/when.rs`.
     - Import the trait: `use crate::config::quote_fetcher_config::QuoteFetcherConfig;`.
     - Implement `impl QuoteFetcherConfig for WhenConfig { ... }`. Logic will depend on enum variants. (e.g., return `true` if a condition involves price checks).
+    - Add tests to verify each variant's quote fetching behavior.
 - [ ] **Task 4: Implement `QuoteFetcherConfig` for `ForConfig`.**
     - Open `src/config/tactic/for.rs`.
     - Import the trait: `use crate::config::quote_fetcher_config::QuoteFetcherConfig;`.
     - Implement `impl QuoteFetcherConfig for ForConfig { ... }`. Logic will depend on enum variants. (e.g., return `true` if the 'for' target requires live data).
+    - Add tests to verify each variant's quote fetching behavior.
 - [ ] **Task 5: Implement `QuoteFetcherConfig` for `RuleConfig`.**
     - Open `src/config/tactic/rule.rs`.
     - Import the trait: `use crate::config::quote_fetcher_config::QuoteFetcherConfig;`.
@@ -77,6 +83,7 @@ src/
           // }
           ```
         - The actual implementation will depend on the fields of `RuleConfig`.
+    - Add tests to verify combinations of config fields correctly determine quote fetching needs.
 - [ ] **Task 6: Implement `QuoteFetcherConfig` for `TacticConfig`.**
     - Open `src/config/tactic.rs`.
     - Import the trait: `use crate::config::quote_fetcher_config::QuoteFetcherConfig;`.
@@ -88,10 +95,13 @@ src/
           // }
           ```
         - The actual implementation will depend on how `TacticConfig` stores its `RuleConfig` instances.
+    - Add tests to verify quote fetching behavior with various rule combinations.
 - [ ] **Task 7: Add necessary imports and derive macros.**
     - Ensure all necessary `use` statements are present.
     - Add `#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]` or similar macros to the trait or implementations if they become necessary due to trait bounds or usage, though likely not needed for the trait itself.
+    - Add tests to verify serialization/deserialization if macros are added.
 - [ ] **Task 8: Review and test.**
     - Compile the project to ensure all changes are valid.
     - Write unit tests for each implementation of `QuoteFetcherConfig` to verify correct behavior.
+    - Add integration tests to verify the trait works correctly across all implementations.
 - [ ] **Task 9: Delete this task list (`plan.md`).** 
