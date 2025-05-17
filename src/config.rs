@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub mod platform;
+pub mod quote_fetcher_config;
 pub mod reader;
 pub mod simple;
 pub mod strategy;

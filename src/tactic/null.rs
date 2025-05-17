@@ -25,6 +25,10 @@ impl DoRule for NullRule {
 }
 
 impl NullRule {
+    pub fn do_boxed() -> Box<dyn DoRule> {
+        Box::new(NullRule {})
+    }
+    
     pub fn for_boxed() -> Box<dyn ForRule> {
         Box::new(NullRule {})
     }
