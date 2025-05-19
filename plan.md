@@ -58,7 +58,7 @@ Note: always mark as complete when done.
     - Import the trait: `use crate::config::quote_fetcher_config::QuoteFetcherConfig;`.
     - Implement `impl QuoteFetcherConfig for WhenConfig { ... }`. Logic will depend on enum variants. (e.g., return `true` if a condition involves price checks).
     - Add tests to verify each variant's quote fetching behavior.
-- [ ] **Task 4: Implement `QuoteFetcherConfig` for `ForConfig`.**
+- [x] **Task 4: Implement `QuoteFetcherConfig` for `ForConfig`.**
     - Open `src/config/tactic/for.rs`.
     - Import the trait: `use crate::config::quote_fetcher_config::QuoteFetcherConfig;`.
     - Implement `impl QuoteFetcherConfig for ForConfig { ... }`. Logic will depend on enum variants. (e.g., return `true` if the 'for' target requires live data).

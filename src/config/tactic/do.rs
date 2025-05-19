@@ -10,7 +10,10 @@ pub enum DoConfig {
 
 impl QuoteFetcherConfig for DoConfig {
     fn should_fetch_quotes(&self) -> bool {
-        false
+        match self {
+            DoConfig::Buy { .. } => true,
+            DoConfig::SellAll { .. } => false
+        }
     }
 }
 
@@ -32,7 +35,7 @@ mod tests {
     #[test]
     fn should_fetch_quotes_buy() {
         let config = DoConfig::Buy { buy_percent: 0.5 };
-        assert!(!config.should_fetch_quotes());
+        assert!(config.should_fetch_quotes());
     }
 
     #[test]
