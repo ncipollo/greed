@@ -53,7 +53,7 @@ Note: always mark as complete when done.
     - Import the trait: `use crate::config::quote_fetcher_config::QuoteFetcherConfig;`.
     - Implement `impl QuoteFetcherConfig for DoConfig { ... }`. Logic will depend on enum variants. (e.g., return `true` for variants that imply actions on market data).
     - Add tests to verify both Buy and SellAll variants return true.
-- [ ] **Task 3: Implement `QuoteFetcherConfig` for `WhenConfig`.**
+- [x] **Task 3: Implement `QuoteFetcherConfig` for `WhenConfig`.**
     - Open `src/config/tactic/when.rs`.
     - Import the trait: `use crate::config::quote_fetcher_config::QuoteFetcherConfig;`.
     - Implement `impl QuoteFetcherConfig for WhenConfig { ... }`. Logic will depend on enum variants. (e.g., return `true` if a condition involves price checks).
