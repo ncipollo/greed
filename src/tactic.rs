@@ -1,5 +1,7 @@
+use crate::analysis::result::BarsResult;
 use crate::analysis::AssetAnalyzer;
 use crate::asset::AssetSymbol;
+use crate::config::quote_fetcher_config::QuoteFetcherConfig;
 use crate::config::strategy::StrategyProperties;
 use crate::config::tactic::TacticConfig;
 use crate::error::GreedError;
@@ -15,6 +17,7 @@ use crate::tactic::state::TacticState;
 use itertools::Itertools;
 use log::{info, warn};
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::Arc;
 
 mod action;
@@ -51,10 +54,19 @@ impl TacticRunner {
         info!("🧠 running tactic: {}", self.config.name);
         let account = self.fetch_account().await?;
         let symbols = self.config.assets();
-        let bar_analysis = self.asset_analyzer.analyze_bars(&symbols).await?;
-        let quotes = self.fetch_quotes(&symbols).await?;
         let positions = self.fetch_positions().await?;
         let open_orders = self.fetch_open_orders().await?;
+
+        let (bar_analysis, quotes): (
+            Rc<HashMap<AssetSymbol, BarsResult>>,
+            HashMap<AssetSymbol, Quote>,
+        ) = if self.config.should_fetch_quotes() {
+            let bar_analysis = self.asset_analyzer.analyze_bars(&symbols).await?;
+            let quotes: HashMap<AssetSymbol, Quote> = self.fetch_quotes(&symbols).await?;
+            (bar_analysis, quotes)
+        } else {
+            (Rc::new(HashMap::new()), HashMap::new())
+        };
 
         let state = TacticState::new(
             account,
@@ -63,7 +75,7 @@ impl TacticRunner {
             positions,
             quotes,
             self.strategy_properties.clone(),
-            config_assets.to_vec()
+            config_assets.to_vec(),
         );
         self.evaluate_rules(state).await?;
         info!("----------");
