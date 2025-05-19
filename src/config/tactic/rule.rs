@@ -1,4 +1,6 @@
 use crate::asset::AssetSymbol;
+use crate::config::quote_fetcher_config::QuoteFetcherConfig;
+use crate::config::tactic::median::MedianPeriod;
 use crate::config::tactic::r#do::DoConfig;
 use crate::config::tactic::r#for::ForConfig;
 use crate::config::tactic::when::WhenConfig;
@@ -20,6 +22,14 @@ impl RuleConfig {
     }
 }
 
+impl QuoteFetcherConfig for RuleConfig {
+    fn should_fetch_quotes(&self) -> bool {
+        self.for_config.should_fetch_quotes()
+            || self.when_config.should_fetch_quotes()
+            || self.do_config.should_fetch_quotes()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -34,5 +44,44 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(vec![stock.clone()], config.assets())
+    }
+
+    #[test]
+    fn should_fetch_quotes_when_below_median() {
+        let config = RuleConfig {
+            when_config: WhenConfig::BelowMedian {
+                below_median_percent: 10.0,
+                median_period: MedianPeriod::default(),
+            },
+            ..Default::default()
+        };
+        assert!(config.should_fetch_quotes());
+    }
+
+    #[test]
+    fn should_fetch_quotes_when_buy() {
+        let config = RuleConfig {
+            do_config: DoConfig::Buy { buy_percent: 0.5 },
+            ..Default::default()
+        };
+        assert!(config.should_fetch_quotes());
+    }
+
+    #[test]
+    fn should_fetch_quotes_when_sell_all() {
+        let config = RuleConfig {
+            do_config: DoConfig::SellAll { sell_all: true },
+            ..Default::default()
+        };
+        assert!(!config.should_fetch_quotes());
+    }
+
+    #[test]
+    fn should_fetch_quotes_when_always() {
+        let config = RuleConfig {
+            when_config: WhenConfig::Always { always: true },
+            ..Default::default()
+        };
+        assert!(!config.should_fetch_quotes());
     }
 }
