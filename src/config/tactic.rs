@@ -5,6 +5,7 @@ pub mod rule;
 pub mod when;
 
 use crate::asset::AssetSymbol;
+use crate::config::quote_fetcher_config::QuoteFetcherConfig;
 use crate::config::tactic::rule::RuleConfig;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -31,10 +32,19 @@ impl TacticConfig {
     }
 }
 
+impl QuoteFetcherConfig for TacticConfig {
+    fn should_fetch_quotes(&self) -> bool {
+        self.buy.should_fetch_quotes() || self.sell.should_fetch_quotes()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::tactic::r#for::ForConfig;
+    use crate::config::tactic::r#do::DoConfig;
+    use crate::config::tactic::when::WhenConfig;
+    use crate::config::tactic::median::MedianPeriod;
 
     #[test]
     fn assets_buy_and_sell_rules() {
@@ -76,6 +86,50 @@ mod tests {
         };
         let expected: Vec<AssetSymbol> = vec!["BUY".into()];
         assert_eq!(expected, tactic.assets())
+    }
+
+    #[test]
+    fn should_fetch_quotes_buy_requires_quotes() {
+        let tactic = TacticConfig {
+            buy: RuleConfig {
+                do_config: DoConfig::Buy { buy_percent: 0.5 },
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(tactic.should_fetch_quotes());
+    }
+
+    #[test]
+    fn should_fetch_quotes_sell_requires_quotes() {
+        let tactic = TacticConfig {
+            sell: RuleConfig {
+                when_config: WhenConfig::BelowMedian {
+                    below_median_percent: 10.0,
+                    median_period: MedianPeriod::default(),
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(tactic.should_fetch_quotes());
+    }
+
+    #[test]
+    fn should_fetch_quotes_neither_requires_quotes() {
+        let tactic = TacticConfig {
+            buy: RuleConfig {
+                do_config: DoConfig::SellAll { sell_all: true },
+                ..Default::default()
+            },
+            sell: RuleConfig {
+                when_config: WhenConfig::Always { always: true },
+                do_config: DoConfig::SellAll { sell_all: true },
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(!tactic.should_fetch_quotes());
     }
 
     fn buy_rules() -> RuleConfig {

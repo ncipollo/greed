@@ -84,7 +84,7 @@ Note: always mark as complete when done.
           ```
         - The actual implementation will depend on the fields of `RuleConfig`.
     - Add tests to verify combinations of config fields correctly determine quote fetching needs.
-- [ ] **Task 6: Implement `QuoteFetcherConfig` for `TacticConfig`.**
+- [x] **Task 6: Implement `QuoteFetcherConfig` for `TacticConfig`.**
     - Open `src/config/tactic.rs`.
     - Import the trait: `use crate::config::quote_fetcher_config::QuoteFetcherConfig;`.
     - Implement `impl QuoteFetcherConfig for TacticConfig { ... }`.

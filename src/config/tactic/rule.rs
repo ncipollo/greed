@@ -80,6 +80,7 @@ mod tests {
     fn should_fetch_quotes_when_always() {
         let config = RuleConfig {
             when_config: WhenConfig::Always { always: true },
+            do_config: DoConfig::SellAll { sell_all: true },
             ..Default::default()
         };
         assert!(!config.should_fetch_quotes());
