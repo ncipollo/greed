@@ -91,6 +91,15 @@ when = { gain_above_percent = 5.0 }
 do = { sell_all = true }
 
 [[tactics]]
+name = "All Positions"
+
+# This tactic applies to all current positions in your portfolio
+[tactics.sell]
+for = { all_other_positions = true }
+when = { gain_above_percent = 10.0 }
+do = { sell_all = true }
+
+[[tactics]]
 name = "Chaos"
 
 [tactics.buy]
