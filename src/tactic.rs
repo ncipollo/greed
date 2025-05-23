@@ -21,6 +21,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 mod action;
+mod filter;
 mod r#do;
 mod r#for;
 mod null;
