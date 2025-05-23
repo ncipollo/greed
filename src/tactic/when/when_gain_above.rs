@@ -1,3 +1,4 @@
+use crate::asset::AssetSymbol;
 use crate::bool::BooleanWhen;
 use crate::tactic::r#for::ForResult;
 use crate::tactic::state::TacticState;
@@ -21,13 +22,17 @@ impl WhenGainAboveRule {
 
         let position = &state.positions[&target_asset.symbol];
         let gain = position.unrealized_gain_total_percent.clone();
-        gain.map(|g| (g >= self.gain_above_percent).when_false(|| self.log_gain_not_above(g)))
-            .unwrap_or(false)
+        gain.map(|g| {
+            (g >= self.gain_above_percent)
+                .when_false(|| self.log_gain_not_above(g, &position.symbol))
+        })
+        .unwrap_or(false)
     }
 
-    fn log_gain_not_above(&self, g: f64) {
+    fn log_gain_not_above(&self, g: f64, symbol: &AssetSymbol) {
         log::info!(
-            "when_gain_above: Gain was {:.2}, expecting {}",
+            "when_gain_above: Gain for {} was {:.2}, expecting {}",
+            symbol,
             g,
             self.gain_above_percent
         )

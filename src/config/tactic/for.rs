@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum ForConfig {
+    AllOtherPositions { all_other_positions: bool },
     AnyOf { any_of: Vec<AssetSymbol> },
     Nothing { nothing: bool },
     Stock { stock: AssetSymbol },
@@ -13,6 +14,7 @@ pub enum ForConfig {
 impl ForConfig {
     pub fn assets(&self) -> Vec<AssetSymbol> {
         match self {
+            ForConfig::AllOtherPositions { .. } => vec![],
             ForConfig::AnyOf { any_of } => any_of.clone(),
             ForConfig::Nothing { .. } => vec![],
             ForConfig::Stock { stock } => vec![stock.clone()],
@@ -37,6 +39,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn assets_all_other_positions() {
+        assert_eq!(
+            Vec::<AssetSymbol>::new(),
+            ForConfig::AllOtherPositions { all_other_positions: true }.assets()
+        );
+    }
+
+    #[test]
     fn assets_nothing() {
         assert_eq!(
             Vec::<AssetSymbol>::new(),
@@ -59,6 +69,14 @@ mod tests {
     #[test]
     fn default() {
         assert_eq!(ForConfig::Nothing { nothing: true }, Default::default())
+    }
+
+    #[test]
+    fn should_fetch_quotes_all_other_positions() {
+        let all_other = ForConfig::AllOtherPositions {
+            all_other_positions: true,
+        };
+        assert!(!all_other.should_fetch_quotes());
     }
 
     #[test]
