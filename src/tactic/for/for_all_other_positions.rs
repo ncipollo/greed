@@ -57,11 +57,13 @@ mod tests {
         let spy = AssetSymbol::new("SPY");
         let vti = AssetSymbol::new("VTI");
         let qqq = AssetSymbol::new("QQQ");
+        let bond = AssetSymbol::new("BOND"); // This will be a "rogue" position not in config
         
         let mut positions = HashMap::new();
         positions.insert(spy.clone(), Position::fixture(spy.clone()));
+        positions.insert(bond.clone(), Position::fixture(bond.clone())); // Position not in config
         
-        let all_assets = vec![spy.clone(), vti.clone(), qqq.clone()];
+        let all_assets = vec![spy.clone(), vti.clone(), qqq.clone()]; // Config doesn't include BOND
         
         let state = TacticState {
             positions,
@@ -72,8 +74,8 @@ mod tests {
         let rule = ForAllOtherPositionsRule::boxed();
         let result = rule.evaluate(&state);
         
-        // We should have 2 assets (VTI and QQQ) not in positions
-        assert_eq!(2, result.target_assets.len());
+        // We should have 1 asset (BOND) that is in positions but not in config
+        assert_eq!(1, result.target_assets.len());
         
         // All assets should have 100% percent
         for asset in &result.target_assets {
@@ -83,8 +85,7 @@ mod tests {
         let symbols: Vec<AssetSymbol> = result.target_assets.iter()
             .map(|asset| asset.symbol.clone())
             .collect();
-        assert!(!symbols.contains(&spy));
-        assert!(symbols.contains(&vti));
-        assert!(symbols.contains(&qqq));
+        let expected_symbols = vec![bond.clone()];
+        assert_eq!(expected_symbols, symbols);
     }
 } 

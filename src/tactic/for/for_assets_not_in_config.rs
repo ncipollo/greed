@@ -42,11 +42,8 @@ mod tests {
         // Run the function
         let result = filter_assets_not_in_config(&state);
         
-        // Verify results - should return position assets not in config
-        assert_eq!(1, result.len());
-        assert!(!result.contains(&spy)); // SPY is in config, so filtered out
-        assert!(result.contains(&bond)); // BOND is not in config, so included
-        assert!(!result.contains(&vti)); // VTI is not a position
-        assert!(!result.contains(&qqq)); // QQQ is not a position
+        // Create expected vector and assert
+        let expected = vec![bond];
+        assert_eq!(expected, result);
     }
 } 
