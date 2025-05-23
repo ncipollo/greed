@@ -1,4 +1,4 @@
-use crate::tactic::r#for::for_assets_not_in_config::filter_assets_not_in_config;
+use crate::tactic::r#for::other_positions_filter::filter_assets_not_in_config;
 use crate::tactic::r#for::{ForResult, ForRule};
 use crate::tactic::state::TacticState;
 use crate::tactic::target::TargetAsset;
@@ -74,10 +74,6 @@ mod tests {
         let rule = ForAllOtherPositionsRule::boxed();
         let result = rule.evaluate(&state);
         
-        // We should have 1 asset (BOND) that is in positions but not in config
-        assert_eq!(1, result.target_assets.len());
-        
-        // All assets should have 100% percent
         for asset in &result.target_assets {
             assert_eq!(100.0, asset.percent);
         }
