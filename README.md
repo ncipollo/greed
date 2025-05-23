@@ -93,7 +93,7 @@ do = { sell_all = true }
 [[tactics]]
 name = "All Positions"
 
-# This tactic applies to all current positions in your portfolio
+# This tactic applies to all current positions in your portfolio not configured in the other tactics or strategies.
 [tactics.sell]
 for = { all_other_positions = true }
 when = { gain_above_percent = 10.0 }
