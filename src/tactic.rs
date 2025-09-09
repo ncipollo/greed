@@ -121,7 +121,7 @@ impl TacticRunner {
         }
         let by_symbol = orders
             .into_iter()
-            .group_by(|o| o.symbol.clone())
+            .chunk_by(|o| o.symbol.clone())
             .into_iter()
             .map(|(sym, group)| (sym, group.collect::<Vec<_>>()))
             .collect::<HashMap<_, _>>();
