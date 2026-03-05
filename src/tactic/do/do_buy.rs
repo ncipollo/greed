@@ -44,6 +44,10 @@ impl DoBuyRule {
         let open_order_value = state.open_order_value(&target_asset.symbol);
         let desired_value = equity.percent_of(target_percent);
 
+        if remaining_cash <= 0.0 {
+            return 0.0;
+        }
+
         let total_amount_notational = desired_value - position_value - open_order_value;
         total_amount_notational.clamp(0.0, remaining_cash)
     }
@@ -139,6 +143,32 @@ mod tests {
     fn evaluate_clamped_to_zero() {
         let rule = DoBuyRule::boxed(-100.0);
         let state = TacticState::fixture();
+        let when_result = WhenResult {
+            target_assets: vec![
+                TargetAsset::new(AssetSymbol::new("VTI"), 50.0),
+                TargetAsset::new(AssetSymbol::new("SPY"), 50.0),
+            ],
+            ..Default::default()
+        };
+        let result = rule.evaluate(&state, when_result);
+        let expected = DoResult {
+            actions: vec![],
+            skipped: true,
+            skip_reason: SkipReason::NoTargetAssets,
+        };
+        assert_eq!(expected, result)
+    }
+
+    #[test]
+    fn evaluate_negative_cash() {
+        let rule = DoBuyRule::boxed(100.0);
+        let state = TacticState {
+            account: Account {
+                cash: -5.0,
+                ..Account::fixture()
+            },
+            ..TacticState::fixture()
+        };
         let when_result = WhenResult {
             target_assets: vec![
                 TargetAsset::new(AssetSymbol::new("VTI"), 50.0),
