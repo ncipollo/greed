@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Id {
-    Uuid(Uuid)
+    Uuid(Uuid),
 }
 
 impl Default for Id {

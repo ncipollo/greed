@@ -1,3 +1,4 @@
+use crate::asset::AssetSymbol;
 use crate::config::simple::SimpleConfig;
 use crate::config::Config;
 use crate::error::GreedError;
@@ -12,7 +13,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
-use crate::asset::AssetSymbol;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct GreedRunnerArgs {
@@ -36,7 +36,7 @@ impl GreedRunner {
         let config_strategy = StrategyRunner::from_config(&config, &platform);
         let factory = StrategyProviderFactory::new(&config, config_path, &platform);
         let strategy_providers = factory.create_providers().await?;
-        
+
         // Accumulate assets from all providers
         let mut config_assets = Vec::new();
         for provider in &strategy_providers {
@@ -44,7 +44,7 @@ impl GreedRunner {
         }
         // Add assets from config strategy
         config_assets.extend(config.tactics.iter().flat_map(|t| t.assets()));
-        
+
         Ok(Self {
             run_interval: config.interval,
             config_strategy,

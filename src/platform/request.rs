@@ -1,6 +1,7 @@
 pub mod stop_loss;
 pub mod take_profit;
 
+use crate::asset::AssetSymbol;
 use crate::platform::order::amount::Amount;
 use crate::platform::order::class::OrderClass;
 use crate::platform::order::order_type::OrderType;
@@ -10,7 +11,6 @@ use crate::platform::request::stop_loss::StopLoss;
 use crate::platform::request::take_profit::TakeProfit;
 use num_decimal::Num;
 use std::fmt::{Display, Formatter};
-use crate::asset::AssetSymbol;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct OrderRequest {
@@ -68,16 +68,16 @@ mod test {
 
     #[test]
     fn display() {
-        let request = OrderRequest::market_order_buy("VTI".parse().unwrap(),
-                                                 Amount::Quantity(1.into()));
+        let request =
+            OrderRequest::market_order_buy("VTI".parse().unwrap(), Amount::Quantity(1.into()));
         let display = request.to_string();
         assert_eq!(display, "market buy 1.00 units of VTI")
     }
 
     #[test]
     fn market_order_buy() {
-        let request = OrderRequest::market_order_buy("VTI".parse().unwrap(),
-                                                     Amount::Quantity(1.into()));
+        let request =
+            OrderRequest::market_order_buy("VTI".parse().unwrap(), Amount::Quantity(1.into()));
         let expected = OrderRequest {
             symbol: AssetSymbol::new("VTI"),
             amount: Amount::Quantity(1.0),
@@ -89,8 +89,8 @@ mod test {
 
     #[test]
     fn market_order_sell() {
-        let request = OrderRequest::market_order_sell("VTI".parse().unwrap(),
-                                                     Amount::Quantity(1.into()));
+        let request =
+            OrderRequest::market_order_sell("VTI".parse().unwrap(), Amount::Quantity(1.into()));
         let expected = OrderRequest {
             symbol: AssetSymbol::new("VTI"),
             amount: Amount::Quantity(1.0),

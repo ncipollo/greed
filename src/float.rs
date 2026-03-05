@@ -53,8 +53,8 @@ impl PercentOps for f64 {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
     use super::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn floor_with_precision() {

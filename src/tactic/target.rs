@@ -19,7 +19,7 @@ impl Default for TargetAsset {
 
 impl TargetAsset {
     #[cfg(test)]
-    pub  fn new(symbol: AssetSymbol, percent: f64) -> Self {
+    pub fn new(symbol: AssetSymbol, percent: f64) -> Self {
         Self { symbol, percent }
     }
 

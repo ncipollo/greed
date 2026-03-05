@@ -1,9 +1,9 @@
 use clap::{CommandFactory, Parser};
 use log::LevelFilter;
-use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TerminalMode, TermLogger};
+use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode};
 
-use greed::{analyze_stocks, fetch_quote, fetch_recent_orders, fetch_status, greed_loop};
 use greed::platform::args::PlatformArgs;
+use greed::{analyze_stocks, fetch_quote, fetch_recent_orders, fetch_status, greed_loop};
 
 use crate::cli::{Cli, Command};
 
@@ -28,8 +28,8 @@ async fn async_main(log_config: Config) {
                 &args.platform_type,
                 PlatformArgs::from(&args),
             )
-                .await
-                .expect("stock analysis failed");
+            .await
+            .expect("stock analysis failed");
         }
         Command::Orders(args) => {
             fetch_recent_orders(PlatformArgs::from(&args), &args.platform_type)
@@ -42,8 +42,8 @@ async fn async_main(log_config: Config) {
                 &args.platform_type,
                 PlatformArgs::from(&args),
             )
-                .await
-                .expect("quote fetch failed");
+            .await
+            .expect("quote fetch failed");
         }
         Command::Run(args) => {
             setup_logging(log_config);

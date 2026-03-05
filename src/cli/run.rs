@@ -9,7 +9,7 @@ pub struct RunCommandArgs {
     config_path: PathBuf,
     /// Use a simulated financial platform instead of a live account.
     #[arg(short = 's', long)]
-    is_simulated: bool
+    is_simulated: bool,
 }
 
 impl From<RunCommandArgs> for GreedRunnerArgs {
@@ -31,7 +31,7 @@ mod test {
     fn runner_args_from() {
         let command_args = RunCommandArgs {
             config_path: PathBuf::from("path"),
-            is_simulated: true
+            is_simulated: true,
         };
         let runner_args: GreedRunnerArgs = command_args.into();
         let expected = GreedRunnerArgs {

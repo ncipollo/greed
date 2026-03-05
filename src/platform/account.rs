@@ -40,10 +40,11 @@ impl Display for Account {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let buying_power = self.buying_power;
         let equity = self.equity;
+        let cash = self.cash;
         write!(
             f,
-            "buying power: {:.2}, equity: {:.2}",
-            buying_power, equity
+            "buying power: {:.2}, equity: {:.2}, cash: {:.2}",
+            buying_power, equity, cash
         )
     }
 }
@@ -57,10 +58,11 @@ mod test {
         let account = Account {
             buying_power: 100.0,
             equity: 200.0,
+            cash: 50.0,
             ..Default::default()
         };
         let display = account.to_string();
-        let expected = "buying power: 100.00, equity: 200.00";
+        let expected = "buying power: 100.00, equity: 200.00, cash: 50.00";
         assert_eq!(display, expected)
     }
 }

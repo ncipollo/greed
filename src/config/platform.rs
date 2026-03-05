@@ -1,8 +1,7 @@
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, ValueEnum)]
-#[derive(Default)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, ValueEnum, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum PlatformType {
     #[default]

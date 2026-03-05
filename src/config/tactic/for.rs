@@ -42,7 +42,10 @@ mod tests {
     fn assets_all_other_positions() {
         assert_eq!(
             Vec::<AssetSymbol>::new(),
-            ForConfig::AllOtherPositions { all_other_positions: true }.assets()
+            ForConfig::AllOtherPositions {
+                all_other_positions: true
+            }
+            .assets()
         );
     }
 

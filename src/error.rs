@@ -31,7 +31,7 @@ impl Display for GreedError {
     }
 }
 
-impl std::error::Error for GreedError { }
+impl std::error::Error for GreedError {}
 
 #[macro_export]
 macro_rules! greed_error_from {
@@ -52,8 +52,8 @@ greed_error_from!(apca::Error);
 
 #[cfg(test)]
 mod test {
-    use std::io::ErrorKind;
     use crate::error::GreedError;
+    use std::io::ErrorKind;
 
     #[derive(Debug)]
     #[allow(dead_code)]
@@ -67,9 +67,7 @@ mod test {
             message: "message".to_string(),
         };
         let greed_error = GreedError::from_debug(debug);
-        let expected = GreedError::new(
-            "debug error: DebugTest { message: \"message\" }",
-        );
+        let expected = GreedError::new("debug error: DebugTest { message: \"message\" }");
         assert_eq!(greed_error, expected)
     }
 

@@ -31,8 +31,8 @@ impl QuoteFetcherConfig for RuleConfig {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::tactic::median::MedianPeriod;
     use super::*;
+    use crate::config::tactic::median::MedianPeriod;
 
     #[test]
     fn assets() {

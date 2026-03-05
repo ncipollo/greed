@@ -1,7 +1,7 @@
+use crate::platform::bar::bar_request::BarRequest;
 use apca::data::v2::bars::Adjustment::Split;
 use apca::data::v2::bars::ListReq;
 use apca::data::v2::Feed;
-use crate::platform::bar::bar_request::BarRequest;
 
 impl From<BarRequest> for ListReq {
     fn from(value: BarRequest) -> Self {
@@ -21,11 +21,11 @@ impl From<BarRequest> for ListReq {
 
 #[cfg(test)]
 mod tests {
-    use apca::data::v2::Feed::IEX;
-    use chrono::{TimeZone, Utc};
+    use super::*;
     use crate::asset::AssetSymbol;
     use crate::platform::bar::time_frame::TimeFrame;
-    use super::*;
+    use apca::data::v2::Feed::IEX;
+    use chrono::{TimeZone, Utc};
 
     #[test]
     fn into_alpaca() {

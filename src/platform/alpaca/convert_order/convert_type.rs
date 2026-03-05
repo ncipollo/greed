@@ -1,5 +1,5 @@
-use apca::api::v2::order::Type;
 use crate::platform::order::order_type::OrderType;
+use apca::api::v2::order::Type;
 
 impl From<Type> for OrderType {
     fn from(value: Type) -> Self {
@@ -9,7 +9,7 @@ impl From<Type> for OrderType {
             Type::Stop => OrderType::Stop,
             Type::StopLimit => OrderType::StopLimit,
             Type::TrailingStop => OrderType::TrailingStop,
-            _ => panic!("unknown stop order type")
+            _ => panic!("unknown stop order type"),
         }
     }
 }
@@ -21,16 +21,16 @@ impl From<OrderType> for Type {
             OrderType::Limit => Self::Limit,
             OrderType::Stop => Self::Stop,
             OrderType::StopLimit => Self::StopLimit,
-            OrderType::TrailingStop => Self::TrailingStop
+            OrderType::TrailingStop => Self::TrailingStop,
         }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use apca::api::v2::order::Type;
     use crate::assert;
     use crate::platform::order::order_type::OrderType;
+    use apca::api::v2::order::Type;
 
     #[test]
     fn from() {
@@ -39,7 +39,6 @@ mod test {
         assert::conversion(Type::Stop, OrderType::Stop);
         assert::conversion(Type::StopLimit, OrderType::StopLimit);
         assert::conversion(Type::TrailingStop, OrderType::TrailingStop);
-
     }
 
     #[test]
@@ -49,6 +48,5 @@ mod test {
         assert::conversion(OrderType::Stop, Type::Stop);
         assert::conversion(OrderType::StopLimit, Type::StopLimit);
         assert::conversion(OrderType::TrailingStop, Type::TrailingStop);
-
     }
 }

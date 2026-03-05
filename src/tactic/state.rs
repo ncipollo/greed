@@ -17,7 +17,7 @@ pub struct TacticState {
     pub positions: HashMap<AssetSymbol, Position>,
     pub quotes: HashMap<AssetSymbol, Quote>,
     pub strategy_properties: StrategyProperties,
-    pub all_assets: Vec<AssetSymbol>
+    pub all_assets: Vec<AssetSymbol>,
 }
 
 impl TacticState {
@@ -28,7 +28,7 @@ impl TacticState {
         positions: HashMap<AssetSymbol, Position>,
         quotes: HashMap<AssetSymbol, Quote>,
         strategy_properties: StrategyProperties,
-        all_assets: Vec<AssetSymbol>
+        all_assets: Vec<AssetSymbol>,
     ) -> Self {
         Self {
             account,
@@ -37,7 +37,7 @@ impl TacticState {
             positions,
             quotes,
             strategy_properties,
-            all_assets
+            all_assets,
         }
     }
 
@@ -78,7 +78,7 @@ impl TacticState {
         ]);
         let strategy_properties = StrategyProperties {
             name: "test".to_string(),
-            portfolio_percent: 100.0
+            portfolio_percent: 100.0,
         };
         let all_assets = vec![spy, vti];
         Self {
@@ -88,7 +88,7 @@ impl TacticState {
             positions,
             quotes,
             strategy_properties,
-            all_assets
+            all_assets,
         }
     }
 }

@@ -35,10 +35,7 @@ impl AssetAnalyzer {
         Ok(self.bars_by_symbol())
     }
 
-    async fn refresh_bars_if_needed(
-        &self,
-        assets: &Vec<AssetSymbol>,
-    ) -> Result<(), GreedError> {
+    async fn refresh_bars_if_needed(&self, assets: &Vec<AssetSymbol>) -> Result<(), GreedError> {
         let mutable_state = self.mutable_state.clone();
         let mut state = mutable_state.lock().unwrap();
         if state.should_fetch(Local::now()) {
@@ -62,6 +59,11 @@ impl AssetAnalyzer {
     }
 
     fn bars_by_symbol(&self) -> Rc<HashMap<AssetSymbol, BarsResult>> {
-        self.mutable_state.clone().lock().unwrap().bars_by_symbol.clone()
+        self.mutable_state
+            .clone()
+            .lock()
+            .unwrap()
+            .bars_by_symbol
+            .clone()
     }
 }

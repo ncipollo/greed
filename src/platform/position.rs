@@ -60,7 +60,8 @@ impl Position {
 
 impl NumFormatter for Option<f64> {
     fn format_as_float(&self) -> String {
-        self.map(|v| format!("{:.2}", v)).unwrap_or("--".to_string())
+        self.map(|v| format!("{:.2}", v))
+            .unwrap_or("--".to_string())
     }
 }
 

@@ -1,10 +1,10 @@
 pub mod convert_bar_request;
 mod convert_time_frame;
 
-use apca::RequestError;
 use crate::greed_error_from;
 use crate::platform::bar::Bar;
 use crate::platform::bars::Bars;
+use apca::RequestError;
 
 impl From<apca::data::v2::bars::Bar> for Bar {
     fn from(value: apca::data::v2::bars::Bar) -> Self {

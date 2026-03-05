@@ -1,14 +1,14 @@
 pub mod analyze;
+mod orders;
 pub mod quote;
 pub mod run;
 mod status;
-mod orders;
 
 use crate::cli::analyze::AnalyzeArgs;
+use crate::cli::orders::OrdersArgs;
 use crate::cli::quote::QuoteArgs;
 use crate::cli::run::RunCommandArgs;
 use clap::{Args, Parser, Subcommand};
-use crate::cli::orders::OrdersArgs;
 
 #[derive(Debug, Parser)]
 #[command(name = "greed", version)]

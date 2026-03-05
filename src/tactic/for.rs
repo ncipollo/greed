@@ -1,8 +1,8 @@
 mod for_all_other_positions;
 mod for_any;
-pub mod other_positions_filter;
 pub mod for_factory;
 pub mod for_stock;
+pub mod other_positions_filter;
 
 use crate::tactic::state::TacticState;
 use crate::tactic::target::TargetAsset;

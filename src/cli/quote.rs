@@ -11,8 +11,8 @@ pub struct QuoteArgs {
     /// Indicates if we should use a simulated financial platform instead of a live account.
     #[arg(short = 's', long)]
     pub is_simulated: bool,
-    #[arg(short = 'p', long, default_value="alpaca")]
-    pub platform_type: PlatformType
+    #[arg(short = 'p', long, default_value = "alpaca")]
+    pub platform_type: PlatformType,
 }
 
 impl From<&QuoteArgs> for PlatformArgs {
@@ -25,8 +25,8 @@ impl From<&QuoteArgs> for PlatformArgs {
 
 #[cfg(test)]
 mod test {
-    use greed::platform::args::PlatformArgs;
     use crate::cli::quote::QuoteArgs;
+    use greed::platform::args::PlatformArgs;
 
     #[test]
     fn from() {
@@ -36,9 +36,7 @@ mod test {
             platform_type: Default::default(),
         };
         let platform_args: PlatformArgs = PlatformArgs::from(&quote_args);
-        let expected = PlatformArgs {
-            is_simulated: true,
-        };
+        let expected = PlatformArgs { is_simulated: true };
         assert_eq!(platform_args, expected)
     }
 }

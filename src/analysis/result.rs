@@ -41,8 +41,12 @@ impl Display for BarsResult {
             self.last_trading_day.average_median().unwrap_or_default(),
             self.seven_day.average_median().unwrap_or_default(),
             self.thirty_day.average_median().unwrap_or_default(),
-            self.thirty_day_hourly.positive_percent_median().unwrap_or_default(),
-            self.thirty_day_hourly.negative_percent_median().unwrap_or_default(),
+            self.thirty_day_hourly
+                .positive_percent_median()
+                .unwrap_or_default(),
+            self.thirty_day_hourly
+                .negative_percent_median()
+                .unwrap_or_default(),
         )
     }
 }

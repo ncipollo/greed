@@ -60,7 +60,7 @@ pub async fn fetch_recent_orders(
 pub async fn fetch_status(
     platform_args: PlatformArgs,
     platform_type: &PlatformType,
-    show_full_status: bool
+    show_full_status: bool,
 ) -> Result<(), GreedError> {
     let platform = platform::for_type(platform_type, platform_args)?;
     // Fetch account info

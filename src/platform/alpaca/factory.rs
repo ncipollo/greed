@@ -1,6 +1,6 @@
-use std::env;
 use crate::error::GreedError;
 use apca::{ApiInfo, Client};
+use std::env;
 
 pub fn create_alpaca_client(is_simulated: bool) -> Result<Client, GreedError> {
     let api_info = api_info(is_simulated)?;
@@ -15,8 +15,8 @@ fn api_info(is_simulated: bool) -> Result<ApiInfo, GreedError> {
         let secret_key = env::var("SIMULATED_APCA_API_SECRET_KEY")?;
         ApiInfo::from_parts(base_url, key_id, secret_key)?
     } else {
-        let base_url = env::var("APCA_API_BASE_URL")
-            .unwrap_or("https://api.alpaca.markets".to_string());
+        let base_url =
+            env::var("APCA_API_BASE_URL").unwrap_or("https://api.alpaca.markets".to_string());
         let key_id = env::var("APCA_API_KEY_ID")?;
         let secret_key = env::var("APCA_API_SECRET_KEY")?;
         ApiInfo::from_parts(base_url, key_id, secret_key)?

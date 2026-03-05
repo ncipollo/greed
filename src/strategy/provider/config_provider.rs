@@ -1,3 +1,4 @@
+use crate::asset::AssetSymbol;
 use crate::config::strategy::StrategyConfig;
 use crate::config::tactic::TacticConfig;
 use crate::error::GreedError;
@@ -10,7 +11,6 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use crate::asset::AssetSymbol;
 
 pub struct ConfigStrategyProvider {
     loop_interval: Duration,

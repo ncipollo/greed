@@ -2,7 +2,7 @@ use num_decimal::Num;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TakeProfit {
-    Limit(Num)
+    Limit(Num),
 }
 
 impl Default for TakeProfit {
@@ -13,8 +13,8 @@ impl Default for TakeProfit {
 
 #[cfg(test)]
 mod test {
-    use num_decimal::Num;
     use crate::platform::request::take_profit::TakeProfit;
+    use num_decimal::Num;
 
     #[test]
     fn default() {

@@ -8,7 +8,7 @@ impl From<Class> for OrderClass {
             Class::Bracket => OrderClass::Bracket,
             Class::OneCancelsOther => OrderClass::OneCancelsOther,
             Class::OneTriggersOther => OrderClass::OneTriggersOther,
-            _ => panic!("unknown stop order class")
+            _ => panic!("unknown stop order class"),
         }
     }
 }
@@ -26,9 +26,9 @@ impl From<OrderClass> for Class {
 
 #[cfg(test)]
 mod test {
+    use crate::assert;
     use crate::platform::order::class::OrderClass;
     use apca::api::v2::order::Class;
-    use crate::assert;
 
     #[test]
     fn from() {

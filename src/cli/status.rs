@@ -7,7 +7,7 @@ pub struct StatusArgs {
     /// Indicates if we should use a simulated financial platform instead of a live account.
     #[arg(short = 's', long)]
     pub is_simulated: bool,
-    #[arg(short = 'p', long, default_value="alpaca")]
+    #[arg(short = 'p', long, default_value = "alpaca")]
     pub platform_type: PlatformType,
     /// Show full status including open positions and orders
     #[arg(short = 'f', long)]
@@ -24,20 +24,18 @@ impl From<&StatusArgs> for PlatformArgs {
 
 #[cfg(test)]
 mod test {
-    use greed::platform::args::PlatformArgs;
     use crate::cli::status::StatusArgs;
+    use greed::platform::args::PlatformArgs;
 
     #[test]
     fn from() {
         let status_args = StatusArgs {
             is_simulated: true,
             platform_type: Default::default(),
-            full: false
+            full: false,
         };
         let platform_args: PlatformArgs = PlatformArgs::from(&status_args);
-        let expected = PlatformArgs {
-            is_simulated: true,
-        };
+        let expected = PlatformArgs { is_simulated: true };
         assert_eq!(platform_args, expected)
     }
 }

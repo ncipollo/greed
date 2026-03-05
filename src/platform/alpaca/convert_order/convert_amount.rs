@@ -1,7 +1,7 @@
-use num_decimal::Num;
 use crate::float::FloatAmountRounding;
-use crate::num::{NumFromFloat};
+use crate::num::NumFromFloat;
 use crate::platform::order::amount::Amount;
+use num_decimal::Num;
 
 impl From<apca::api::v2::order::Amount> for Amount {
     fn from(value: apca::api::v2::order::Amount) -> Self {
@@ -79,8 +79,7 @@ mod test {
 
     #[test]
     fn from_quantity_alpaca_rounding() {
-        let amount: apca::api::v2::order::Amount =
-            Amount::Quantity(5.123456789).into();
+        let amount: apca::api::v2::order::Amount = Amount::Quantity(5.123456789).into();
         if let apca::api::v2::order::Amount::Quantity { quantity } = amount {
             assert_eq!(quantity.to_f64(), Some(5.1234567));
         } else {

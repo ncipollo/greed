@@ -1,9 +1,9 @@
-use apca::api::v2::{account, order, orders, positions};
 use apca::api::v2::order::CreateReq;
 use apca::api::v2::orders::{ListReq, Status};
-use apca::Client;
-use apca::data::v2::{bars, last_quotes};
+use apca::api::v2::{account, order, orders, positions};
 use apca::data::v2::bars::ListReq as BarsReq;
+use apca::data::v2::{bars, last_quotes};
+use apca::Client;
 use async_trait::async_trait;
 use chrono::Utc;
 use itertools::Itertools;
@@ -15,15 +15,15 @@ use crate::pager;
 use crate::platform::account::Account;
 use crate::platform::alpaca::factory::create_alpaca_client;
 use crate::platform::args::PlatformArgs;
-use crate::platform::bar::Bar;
 use crate::platform::bar::bar_request::BarRequest;
 use crate::platform::bar::time_frame::TimeFrame;
+use crate::platform::bar::Bar;
 use crate::platform::bars::Bars;
-use crate::platform::FinancialPlatform;
 use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::request::OrderRequest;
+use crate::platform::FinancialPlatform;
 
 mod convert_account;
 mod convert_asset_class;
@@ -61,7 +61,10 @@ impl AlpacaPlatform {
             return quote;
         }
 
-        info!("invalid quote {}, attempting to fetch prices from bar", quote.symbol.symbol);
+        info!(
+            "invalid quote {}, attempting to fetch prices from bar",
+            quote.symbol.symbol
+        );
 
         let end_time = Utc::now();
         let start_time = end_time - chrono::Duration::minutes(1);
@@ -72,7 +75,8 @@ impl AlpacaPlatform {
             end: end_time,
             timeframe: TimeFrame::OneMinute,
         };
-        self.bars(bars_request).await
+        self.bars(bars_request)
+            .await
             .map(|b| Quote::from(b))
             .unwrap_or(quote)
     }

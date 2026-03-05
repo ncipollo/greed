@@ -1,15 +1,15 @@
-use std::sync::Arc;
-use async_trait::async_trait;
 use crate::asset::AssetSymbol;
 use crate::error::GreedError;
 use crate::platform::account::Account;
 use crate::platform::bar::bar_request::BarRequest;
 use crate::platform::bars::Bars;
-use crate::platform::FinancialPlatform;
 use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::request::OrderRequest;
+use crate::platform::FinancialPlatform;
+use async_trait::async_trait;
+use std::sync::Arc;
 
 pub struct NoOpPlatform;
 

@@ -1,7 +1,7 @@
-use std::path::Path;
-use tokio::fs;
 use crate::config::Config;
 use crate::error::GreedError;
+use std::path::Path;
+use tokio::fs;
 
 pub async fn read_config<P: AsRef<Path>>(path: P) -> Result<Config, GreedError> {
     let file_contents = fs::read_to_string(path).await?;
@@ -16,6 +16,8 @@ mod test {
     #[tokio::test]
     async fn read_config_not_found() {
         let path = fixture::path("bad_fixture.toml");
-        read_config(path).await.expect_err("should have returned an error");
+        read_config(path)
+            .await
+            .expect_err("should have returned an error");
     }
 }

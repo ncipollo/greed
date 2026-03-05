@@ -73,7 +73,8 @@ impl BarsFetcher {
 
     async fn fetch_thirty_day_hourly(&self, symbol: AssetSymbol) -> Result<Bars, GreedError> {
         let time_range = self.time_ranges.last_x_days(30);
-        let bars = self.platform
+        let bars = self
+            .platform
             .bars(BarRequest {
                 symbol,
                 start: time_range.start,

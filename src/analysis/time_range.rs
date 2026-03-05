@@ -1,7 +1,7 @@
 use crate::date::NaiveDateTimeConvert;
+use crate::trading_days::TradingDaysOffset;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use std::ops::Range;
-use crate::trading_days::TradingDaysOffset;
 
 pub struct FetcherTimeRanges {
     now: DateTime<Utc>,

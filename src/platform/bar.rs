@@ -119,7 +119,7 @@ mod test {
     }
 
     #[test]
-    fn  displacement_from_value() {
+    fn displacement_from_value() {
         let bar = Bar {
             close: 100.0,
             ..Default::default()

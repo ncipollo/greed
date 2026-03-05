@@ -1,6 +1,6 @@
+use num_decimal::num_bigint::BigInt;
 use num_decimal::num_rational::BigRational;
 use num_decimal::Num;
-use num_decimal::num_bigint::BigInt;
 
 pub trait NumFromFloat {
     fn from_f64(float: f64) -> Self;

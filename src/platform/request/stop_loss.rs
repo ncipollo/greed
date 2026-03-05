@@ -16,8 +16,8 @@ impl Default for StopLoss {
 
 #[cfg(test)]
 mod test {
-    use num_decimal::Num;
     use crate::platform::request::stop_loss::StopLoss;
+    use num_decimal::Num;
 
     #[test]
     fn default() {

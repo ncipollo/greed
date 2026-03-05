@@ -41,10 +41,10 @@ impl QuoteFetcherConfig for TacticConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::tactic::r#for::ForConfig;
-    use crate::config::tactic::r#do::DoConfig;
-    use crate::config::tactic::when::WhenConfig;
     use crate::config::tactic::median::MedianPeriod;
+    use crate::config::tactic::r#do::DoConfig;
+    use crate::config::tactic::r#for::ForConfig;
+    use crate::config::tactic::when::WhenConfig;
 
     #[test]
     fn assets_buy_and_sell_rules() {

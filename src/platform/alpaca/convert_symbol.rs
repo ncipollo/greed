@@ -1,5 +1,5 @@
-use apca::api::v2::asset::Symbol;
 use crate::asset::AssetSymbol;
+use apca::api::v2::asset::Symbol;
 
 impl From<AssetSymbol> for Symbol {
     fn from(value: AssetSymbol) -> Self {
@@ -9,9 +9,9 @@ impl From<AssetSymbol> for Symbol {
 
 #[cfg(test)]
 mod test {
-    use apca::api::v2::asset::Symbol;
     use crate::assert;
     use crate::asset::AssetSymbol;
+    use apca::api::v2::asset::Symbol;
 
     #[test]
     fn into_alpaca() {

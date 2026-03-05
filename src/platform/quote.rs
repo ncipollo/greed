@@ -71,9 +71,9 @@ impl Display for Quote {
 
 #[cfg(test)]
 mod test {
-    use approx::{assert_relative_eq};
     use crate::asset::AssetSymbol;
     use crate::platform::quote::Quote;
+    use approx::assert_relative_eq;
 
     #[test]
     fn display() {

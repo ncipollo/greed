@@ -1,5 +1,5 @@
+pub mod factory;
 mod path;
+pub mod provider;
 mod reader;
 pub mod runner;
-pub mod provider;
-pub mod factory;

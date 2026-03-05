@@ -1,9 +1,9 @@
 pub mod config_provider;
 
-use async_trait::async_trait;
+use crate::asset::AssetSymbol;
 use crate::error::GreedError;
 use crate::strategy::runner::StrategyRunner;
-use crate::asset::AssetSymbol;
+use async_trait::async_trait;
 
 #[async_trait]
 pub trait StrategyRunnerProvider {

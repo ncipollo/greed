@@ -1,5 +1,5 @@
-use crate::config::tactic::median::MedianPeriod;
 use crate::config::quote_fetcher_config::QuoteFetcherConfig;
+use crate::config::tactic::median::MedianPeriod;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -33,7 +33,9 @@ impl Default for WhenConfig {
 impl QuoteFetcherConfig for WhenConfig {
     fn should_fetch_quotes(&self) -> bool {
         match self {
-            WhenConfig::AllOf { all_off } => all_off.iter().any(|config| config.should_fetch_quotes()),
+            WhenConfig::AllOf { all_off } => {
+                all_off.iter().any(|config| config.should_fetch_quotes())
+            }
             WhenConfig::Always { .. } => false,
             WhenConfig::BelowMedian { .. } => true,
             WhenConfig::GainAbove { .. } => false,
@@ -56,7 +58,10 @@ mod tests {
         let all_of = WhenConfig::AllOf {
             all_off: vec![
                 WhenConfig::Always { always: true },
-                WhenConfig::BelowMedian { below_median_percent: 10.0, median_period: MedianPeriod::default() },
+                WhenConfig::BelowMedian {
+                    below_median_percent: 10.0,
+                    median_period: MedianPeriod::default(),
+                },
             ],
         };
         assert!(all_of.should_fetch_quotes());
@@ -67,7 +72,9 @@ mod tests {
         let all_of = WhenConfig::AllOf {
             all_off: vec![
                 WhenConfig::Always { always: true },
-                WhenConfig::GainAbove { gain_above_percent: 10.0 },
+                WhenConfig::GainAbove {
+                    gain_above_percent: 10.0,
+                },
                 WhenConfig::Never { never: true },
             ],
         };
@@ -91,7 +98,9 @@ mod tests {
 
     #[test]
     fn should_fetch_quotes_gain_above() {
-        let gain_above = WhenConfig::GainAbove { gain_above_percent: 10.0 };
+        let gain_above = WhenConfig::GainAbove {
+            gain_above_percent: 10.0,
+        };
         assert!(!gain_above.should_fetch_quotes());
     }
 
