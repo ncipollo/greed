@@ -3,6 +3,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum StrategyConfig {
+    Agent {
+        agent_path: String,
+        #[serde(flatten)]
+        properties: StrategyProperties,
+    },
     LocalFile {
         path: String,
         #[serde(flatten)]
@@ -13,6 +18,7 @@ pub enum StrategyConfig {
 impl StrategyConfig {
     pub fn properties(&self) -> StrategyProperties {
         match self {
+            Self::Agent { properties, .. } => properties.clone(),
             Self::LocalFile { properties, .. } => properties.clone(),
         }
     }
@@ -69,6 +75,15 @@ mod tests {
     #[test]
     fn default_portfolio_percent() {
         assert_eq!(100.0, super::default_portfolio_percent())
+    }
+
+    #[test]
+    fn properties_agent() {
+        let config = StrategyConfig::Agent {
+            agent_path: "agent.toml".to_string(),
+            properties: test_properties(),
+        };
+        assert_eq!(test_properties(), config.properties())
     }
 
     #[test]
