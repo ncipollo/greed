@@ -6,6 +6,7 @@ use crate::error::GreedError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+pub mod agent;
 pub mod platform;
 pub mod quote_fetcher_config;
 pub mod reader;

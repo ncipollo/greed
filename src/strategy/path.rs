@@ -7,6 +7,7 @@ pub fn path_for_config(
     strategy_config: &StrategyConfig,
 ) -> Result<PathBuf, GreedError> {
     match strategy_config {
+        StrategyConfig::Agent { agent_path, .. } => strategic_path(config_path, agent_path),
         StrategyConfig::LocalFile { path, .. } => strategic_path(config_path, path),
     }
 }

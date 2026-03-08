@@ -44,6 +44,9 @@ impl<'a> StrategyProviderFactory<'a> {
         strategy_config: StrategyConfig,
     ) -> Result<Box<dyn StrategyRunnerProvider>, GreedError> {
         match strategy_config {
+            StrategyConfig::Agent { .. } => {
+                Err(GreedError::new("Agent strategy not yet implemented"))
+            }
             StrategyConfig::LocalFile { .. } => {
                 let provider = ConfigStrategyProvider::new(
                     self.config_path.clone(),
