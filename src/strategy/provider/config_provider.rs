@@ -5,7 +5,7 @@ use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
 use crate::strategy::provider::StrategyRunnerProvider;
 use crate::strategy::reader::read_tactics_from_config;
-use crate::strategy::runner::StrategyRunner;
+use crate::strategy::runner::{StrategyRunner, TacticStrategyRunner};
 use crate::tactic::TacticRunner;
 use async_trait::async_trait;
 use std::path::PathBuf;
@@ -38,7 +38,7 @@ impl ConfigStrategyProvider {
 
 #[async_trait]
 impl StrategyRunnerProvider for ConfigStrategyProvider {
-    async fn provide_strategy_runner(&self) -> Result<StrategyRunner, GreedError> {
+    async fn provide_strategy_runner(&self) -> Result<Box<dyn StrategyRunner>, GreedError> {
         let tactic_runners = self
             .tactic_configs
             .iter()
@@ -50,12 +50,12 @@ impl StrategyRunnerProvider for ConfigStrategyProvider {
                 )
             })
             .collect();
-        let strategy_runner = StrategyRunner::new(
+        let strategy_runner = TacticStrategyRunner::new(
             self.loop_interval,
             self.strategy_config.properties().clone(),
             tactic_runners,
         );
-        Ok(strategy_runner)
+        Ok(Box::new(strategy_runner))
     }
 
     fn config_assets(&self) -> Vec<AssetSymbol> {
@@ -75,20 +75,28 @@ mod tests {
     #[tokio::test]
     async fn provide_strategy_runner_no_tactics() {
         let provider = provider_for_config("config_minimal.toml").await;
-        let strategy_runner = provider
+        let runner = provider
             .provide_strategy_runner()
             .await
             .expect("should return runner");
+        let strategy_runner = runner
+            .as_any()
+            .downcast_ref::<TacticStrategyRunner>()
+            .expect("should be TacticStrategyRunner");
         assert_eq!(strategy_runner.tactic_runner_count(), 0);
     }
 
     #[tokio::test]
     async fn provide_strategy_runner_with_tactics() {
         let provider = provider_for_config("config_multi_tactic.toml").await;
-        let strategy_runner = provider
+        let runner = provider
             .provide_strategy_runner()
             .await
             .expect("should return runner");
+        let strategy_runner = runner
+            .as_any()
+            .downcast_ref::<TacticStrategyRunner>()
+            .expect("should be TacticStrategyRunner");
         assert_ne!(strategy_runner.tactic_runner_count(), 0);
     }
 

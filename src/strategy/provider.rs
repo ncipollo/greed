@@ -8,6 +8,6 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait StrategyRunnerProvider {
-    async fn provide_strategy_runner(&self) -> Result<StrategyRunner, GreedError>;
+    async fn provide_strategy_runner(&self) -> Result<Box<dyn StrategyRunner>, GreedError>;
     fn config_assets(&self) -> Vec<AssetSymbol>;
 }

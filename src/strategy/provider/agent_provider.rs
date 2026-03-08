@@ -4,7 +4,7 @@ use crate::config::strategy::StrategyConfig;
 use crate::error::GreedError;
 use crate::strategy::path::path_for_config;
 use crate::strategy::provider::StrategyRunnerProvider;
-use crate::strategy::runner::StrategyRunner;
+use crate::strategy::runner::{StrategyRunner, TacticStrategyRunner};
 use async_trait::async_trait;
 use log::info;
 use std::path::PathBuf;
@@ -34,15 +34,15 @@ impl AgentStrategyProvider {
 
 #[async_trait]
 impl StrategyRunnerProvider for AgentStrategyProvider {
-    async fn provide_strategy_runner(&self) -> Result<StrategyRunner, GreedError> {
+    async fn provide_strategy_runner(&self) -> Result<Box<dyn StrategyRunner>, GreedError> {
         let name = self.strategy_config.properties().name;
         info!("running agent strategy: {name}");
-        let runner = StrategyRunner::new(
+        let runner = TacticStrategyRunner::new(
             self.loop_interval,
             self.strategy_config.properties().clone(),
             vec![],
         );
-        Ok(runner)
+        Ok(Box::new(runner))
     }
 
     fn config_assets(&self) -> Vec<AssetSymbol> {

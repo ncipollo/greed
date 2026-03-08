@@ -6,7 +6,7 @@ use crate::platform;
 use crate::platform::FinancialPlatform;
 use crate::strategy::factory::StrategyProviderFactory;
 use crate::strategy::provider::StrategyRunnerProvider;
-use crate::strategy::runner::StrategyRunner;
+use crate::strategy::runner::{StrategyRunner, TacticStrategyRunner};
 use log::warn;
 use std::ffi::OsStr;
 use std::path::PathBuf;
@@ -22,7 +22,7 @@ pub struct GreedRunnerArgs {
 
 pub struct GreedRunner {
     run_interval: u64,
-    config_strategy: StrategyRunner,
+    config_strategy: Box<dyn StrategyRunner>,
     strategy_providers: Vec<Box<dyn StrategyRunnerProvider>>,
     config_assets: Vec<AssetSymbol>,
 }
@@ -33,7 +33,7 @@ impl GreedRunner {
         config_path: PathBuf,
         platform: Arc<dyn FinancialPlatform>,
     ) -> Result<Self, GreedError> {
-        let config_strategy = StrategyRunner::from_config(&config, &platform);
+        let config_strategy = Box::new(TacticStrategyRunner::from_config(&config, &platform));
         let factory = StrategyProviderFactory::new(&config, config_path, &platform);
         let strategy_providers = factory.create_providers().await?;
 
@@ -94,7 +94,7 @@ impl GreedRunner {
         }
     }
 
-    async fn provide_strategy_runners(&self) -> Result<Vec<StrategyRunner>, GreedError> {
+    async fn provide_strategy_runners(&self) -> Result<Vec<Box<dyn StrategyRunner>>, GreedError> {
         let mut runners = Vec::new();
         for provider in &self.strategy_providers {
             let runner = provider.provide_strategy_runner().await?;

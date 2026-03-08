@@ -3,18 +3,28 @@ use crate::config::strategy::StrategyProperties;
 use crate::config::Config;
 use crate::platform::FinancialPlatform;
 use crate::tactic::TacticRunner;
+use async_trait::async_trait;
 use log::{info, warn};
+#[cfg(test)]
+use std::any::Any;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 
-pub struct StrategyRunner {
+#[async_trait(?Send)]
+pub trait StrategyRunner {
+    async fn run(&self, config_assets: &[AssetSymbol]);
+    #[cfg(test)]
+    fn as_any(&self) -> &dyn Any;
+}
+
+pub struct TacticStrategyRunner {
     loop_interval: Duration,
     strategy_properties: StrategyProperties,
     tactic_runners: Vec<TacticRunner>,
 }
 
-impl StrategyRunner {
+impl TacticStrategyRunner {
     pub fn new(
         loop_interval: Duration,
         strategy_properties: StrategyProperties,
@@ -45,8 +55,11 @@ impl StrategyRunner {
     pub fn tactic_runner_count(&self) -> usize {
         self.tactic_runners.len()
     }
+}
 
-    pub async fn run(&self, config_assets: &[AssetSymbol]) {
+#[async_trait(?Send)]
+impl StrategyRunner for TacticStrategyRunner {
+    async fn run(&self, config_assets: &[AssetSymbol]) {
         let name = self.strategy_properties.name.clone();
         if !name.is_empty() {
             info!("🚀 running strategy: {}", self.strategy_properties.name);
@@ -58,6 +71,11 @@ impl StrategyRunner {
                 .inspect_err(|e| warn!("{e}"));
             sleep(self.loop_interval).await;
         }
+    }
+
+    #[cfg(test)]
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -71,7 +89,7 @@ mod tests {
     async fn from_config_empty_tactics() {
         let config = fixture::config("config_minimal.toml").await;
         let platform = NoOpPlatform::arc();
-        let runner = StrategyRunner::from_config(&config, &platform);
+        let runner = TacticStrategyRunner::from_config(&config, &platform);
         assert_eq!(runner.loop_interval, Duration::from_secs(60));
         assert_eq!(runner.tactic_runner_count(), 0);
     }
@@ -80,7 +98,7 @@ mod tests {
     async fn from_config_with_tactics() {
         let config = fixture::config("config_single_tactic.toml").await;
         let platform = NoOpPlatform::arc();
-        let runner = StrategyRunner::from_config(&config, &platform);
+        let runner = TacticStrategyRunner::from_config(&config, &platform);
         assert_eq!(runner.loop_interval, Duration::from_secs(300));
         assert_eq!(runner.tactic_runner_count(), 1);
     }
