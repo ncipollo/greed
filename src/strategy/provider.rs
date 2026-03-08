@@ -1,3 +1,4 @@
+pub mod agent_provider;
 pub mod config_provider;
 
 use crate::asset::AssetSymbol;

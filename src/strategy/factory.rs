@@ -2,6 +2,7 @@ use crate::config::strategy::StrategyConfig;
 use crate::config::Config;
 use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
+use crate::strategy::provider::agent_provider::AgentStrategyProvider;
 use crate::strategy::provider::config_provider::ConfigStrategyProvider;
 use crate::strategy::provider::StrategyRunnerProvider;
 use std::path::PathBuf;
@@ -45,7 +46,13 @@ impl<'a> StrategyProviderFactory<'a> {
     ) -> Result<Box<dyn StrategyRunnerProvider>, GreedError> {
         match strategy_config {
             StrategyConfig::Agent { .. } => {
-                Err(GreedError::new("Agent strategy not yet implemented"))
+                let provider = AgentStrategyProvider::new(
+                    self.config_path.clone(),
+                    Duration::from_secs(self.config.interval),
+                    strategy_config,
+                )
+                .await?;
+                Ok(Box::new(provider))
             }
             StrategyConfig::LocalFile { .. } => {
                 let provider = ConfigStrategyProvider::new(
