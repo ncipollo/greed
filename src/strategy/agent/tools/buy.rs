@@ -2,6 +2,7 @@ use crate::asset::AssetSymbol;
 use crate::platform::order::amount::Amount;
 use crate::platform::request::OrderRequest;
 use crate::platform::FinancialPlatform;
+use crate::strategy::agent::tools::access_control::is_permitted;
 use crate::strategy::agent::tools::ToolCallError;
 use rig::completion::ToolDefinition;
 use rig::tool::Tool;
@@ -36,17 +37,6 @@ impl BuyTool {
             allow,
             deny,
         }
-    }
-
-    fn is_permitted(&self, symbol: &str) -> bool {
-        let symbol_upper = symbol.to_uppercase();
-        if !self.allow.is_empty() && !self.allow.iter().any(|s| s.to_uppercase() == symbol_upper) {
-            return false;
-        }
-        if !self.deny.is_empty() && self.deny.iter().any(|s| s.to_uppercase() == symbol_upper) {
-            return false;
-        }
-        true
     }
 }
 
@@ -83,7 +73,7 @@ impl Tool for BuyTool {
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
-        if !self.is_permitted(&args.symbol) {
+        if !is_permitted(&args.symbol, &self.allow, &self.deny) {
             return Err(ToolCallError(format!(
                 "Asset {} is not permitted by allow/deny list configuration.",
                 args.symbol
