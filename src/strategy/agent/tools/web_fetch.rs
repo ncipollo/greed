@@ -1,4 +1,5 @@
 use crate::strategy::agent::tools::ToolCallError;
+use log::info;
 use rig::completion::ToolDefinition;
 use rig::tool::Tool;
 use schemars::JsonSchema;
@@ -38,6 +39,7 @@ impl Tool for WebFetchTool {
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
+        info!("Agent tool: fetching url {}", args.url);
         let text = reqwest::get(&args.url).await?.text().await?;
         if text.len() > MAX_RESPONSE_CHARS {
             Ok(text[..MAX_RESPONSE_CHARS].to_string())

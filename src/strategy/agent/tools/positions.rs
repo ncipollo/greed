@@ -1,5 +1,6 @@
 use crate::platform::FinancialPlatform;
 use crate::strategy::agent::tools::ToolCallError;
+use log::info;
 use rig::completion::ToolDefinition;
 use rig::tool::Tool;
 use schemars::JsonSchema;
@@ -37,6 +38,7 @@ impl Tool for PositionsTool {
     }
 
     async fn call(&self, _args: Self::Args) -> Result<Self::Output, Self::Error> {
+        info!("Agent tool: fetching positions");
         let positions = self.platform.positions().await?;
         if positions.is_empty() {
             return Ok("No positions held.".to_string());

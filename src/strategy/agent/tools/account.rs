@@ -1,5 +1,6 @@
 use crate::platform::FinancialPlatform;
 use crate::strategy::agent::tools::ToolCallError;
+use log::info;
 use rig::completion::ToolDefinition;
 use rig::tool::Tool;
 use schemars::JsonSchema;
@@ -39,6 +40,7 @@ impl Tool for AccountTool {
     }
 
     async fn call(&self, _args: Self::Args) -> Result<Self::Output, Self::Error> {
+        info!("Agent tool: fetching account");
         let account = self.platform.account().await?;
         Ok(account.to_string())
     }

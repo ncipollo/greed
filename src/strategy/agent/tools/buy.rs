@@ -4,6 +4,7 @@ use crate::platform::request::OrderRequest;
 use crate::platform::FinancialPlatform;
 use crate::strategy::agent::tools::access_control::is_permitted;
 use crate::strategy::agent::tools::ToolCallError;
+use log::info;
 use rig::completion::ToolDefinition;
 use rig::tool::Tool;
 use schemars::JsonSchema;
@@ -73,6 +74,10 @@ impl Tool for BuyTool {
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
+        info!(
+            "Agent tool: buy {} {} ({})",
+            args.amount, args.symbol, args.amount_type
+        );
         if !is_permitted(&args.symbol, &self.allow, &self.deny) {
             return Err(ToolCallError(format!(
                 "Asset {} is not permitted by allow/deny list configuration.",
@@ -86,6 +91,7 @@ impl Tool for BuyTool {
         let symbol = AssetSymbol::new(&args.symbol);
         let request = OrderRequest::market_order_buy(symbol, amount);
         let order = self.platform.place_order(request).await?;
+        info!("Agent tool: buy order placed: {order}");
         Ok(format!("Buy order placed: {order}"))
     }
 }

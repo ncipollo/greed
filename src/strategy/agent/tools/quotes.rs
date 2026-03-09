@@ -1,6 +1,7 @@
 use crate::asset::AssetSymbol;
 use crate::platform::FinancialPlatform;
 use crate::strategy::agent::tools::ToolCallError;
+use log::info;
 use rig::completion::ToolDefinition;
 use rig::tool::Tool;
 use schemars::JsonSchema;
@@ -48,6 +49,7 @@ impl Tool for QuotesTool {
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
+        info!("Agent tool: fetching quotes for {:?}", args.symbols);
         let symbols: Vec<AssetSymbol> = args.symbols.iter().map(|s| AssetSymbol::new(s)).collect();
         let quotes = self.platform.latest_quotes(&symbols).await?;
         if quotes.is_empty() {

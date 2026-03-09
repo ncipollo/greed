@@ -1,5 +1,6 @@
 use crate::platform::FinancialPlatform;
 use crate::strategy::agent::tools::ToolCallError;
+use log::info;
 use rig::completion::ToolDefinition;
 use rig::tool::Tool;
 use schemars::JsonSchema;
@@ -37,6 +38,7 @@ impl Tool for OpenOrdersTool {
     }
 
     async fn call(&self, _args: Self::Args) -> Result<Self::Output, Self::Error> {
+        info!("Agent tool: fetching open orders");
         let orders = self.platform.open_orders().await?;
         if orders.is_empty() {
             return Ok("No open orders.".to_string());
