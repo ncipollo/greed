@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use log::{info, warn};
 use rig::client::completion::CompletionClient;
 use rig::client::Nothing;
+use rig::tool::ToolDyn;
 use rig::completion::Prompt;
 use rig::providers::ollama;
 use std::sync::Arc;
@@ -76,16 +77,39 @@ impl StrategyRunner for AgentStrategyRunner {
         let deny = self.agent_config.deny.clone();
         let platform = self.platform.clone();
 
+        let tool_config = &self.agent_config.tools;
+        let mut tool_vec: Vec<Box<dyn ToolDyn>> = Vec::new();
+
+        if tool_config.account {
+            tool_vec.push(Box::new(AccountTool::new(platform.clone())));
+        }
+        if tool_config.positions {
+            tool_vec.push(Box::new(PositionsTool::new(platform.clone())));
+        }
+        if tool_config.open_orders {
+            tool_vec.push(Box::new(OpenOrdersTool::new(platform.clone())));
+        }
+        if tool_config.quotes {
+            tool_vec.push(Box::new(QuotesTool::new(platform.clone())));
+        }
+        if tool_config.buy {
+            tool_vec.push(Box::new(BuyTool::new(
+                platform.clone(),
+                allow.clone(),
+                deny.clone(),
+            )));
+        }
+        if tool_config.sell {
+            tool_vec.push(Box::new(SellTool::new(platform.clone(), allow, deny)));
+        }
+        if tool_config.web_fetch {
+            tool_vec.push(Box::new(WebFetchTool));
+        }
+
         let agent = client
             .agent(model.as_str())
             .preamble(&preamble)
-            .tool(AccountTool::new(platform.clone()))
-            .tool(PositionsTool::new(platform.clone()))
-            .tool(OpenOrdersTool::new(platform.clone()))
-            .tool(QuotesTool::new(platform.clone()))
-            .tool(BuyTool::new(platform.clone(), allow.clone(), deny.clone()))
-            .tool(SellTool::new(platform.clone(), allow, deny))
-            .tool(WebFetchTool)
+            .tools(tool_vec)
             .build();
 
         match agent.prompt(&preamble).await {
