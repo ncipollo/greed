@@ -11,6 +11,7 @@ use crate::platform::FinancialPlatform;
 use async_trait::async_trait;
 use std::sync::Arc;
 
+#[derive(Default)]
 pub struct NoOpPlatform;
 
 impl NoOpPlatform {
@@ -33,7 +34,7 @@ impl FinancialPlatform for NoOpPlatform {
         Ok(Bars::default())
     }
 
-    async fn latest_quotes(&self, _symbols: &Vec<AssetSymbol>) -> Result<Vec<Quote>, GreedError> {
+    async fn latest_quotes(&self, _symbols: &[AssetSymbol]) -> Result<Vec<Quote>, GreedError> {
         Ok(Vec::new())
     }
 

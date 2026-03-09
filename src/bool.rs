@@ -9,14 +9,14 @@ impl BooleanWhen for bool {
         if !self {
             f();
         }
-        return self;
+        self
     }
 
     fn when_true<F: FnOnce()>(self, f: F) -> Self {
         if self {
             f();
         }
-        return self;
+        self
     }
 }
 

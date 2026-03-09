@@ -51,7 +51,6 @@ async fn async_main(log_config: Config) {
             if let Err(e) = result {
                 panic!("{}", e);
             }
-            ()
         }
         Command::Status(args) => {
             let platform_args = PlatformArgs::from(&args);

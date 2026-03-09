@@ -1,9 +1,10 @@
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub enum SkipReason {
     ConditionsUnsatisfied,
     NoTargetAssets,
+    #[default]
     Unknown,
 }
 
@@ -14,12 +15,6 @@ impl SkipReason {
             SkipReason::NoTargetAssets => "no target assets",
             SkipReason::Unknown => "unknown",
         }
-    }
-}
-
-impl Default for SkipReason {
-    fn default() -> Self {
-        Self::Unknown
     }
 }
 

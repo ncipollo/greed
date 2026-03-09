@@ -98,7 +98,7 @@ impl WhenRule for WhenBelowMedianRule {
             .target_assets
             .iter()
             .filter(|t| self.is_below_median(state, t))
-            .map(|t| t.clone())
+            .cloned()
             .collect::<Vec<_>>();
         WhenResult {
             conditions_satisfied: !assets_below_median.is_empty(),

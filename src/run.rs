@@ -57,7 +57,7 @@ impl GreedRunner {
         let config_path = args.config_path.clone();
         let config = GreedRunner::read_config(&args).await?;
         let platform = platform::for_type(&config.platform, args.into())?;
-        Ok(Self::new(config, config_path, platform).await?)
+        Self::new(config, config_path, platform).await
     }
 
     async fn read_config(args: &GreedRunnerArgs) -> Result<Config, GreedError> {

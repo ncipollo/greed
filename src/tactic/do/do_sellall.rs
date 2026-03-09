@@ -21,9 +21,7 @@ impl DoRule for DoSellAllRule {
             .map(|target_asset| {
                 let symbol = &target_asset.symbol;
                 let position = state.positions.get(symbol);
-                let position_amount = position
-                    .map(|p| p.quantity_available.clone())
-                    .unwrap_or_default();
+                let position_amount = position.map(|p| p.quantity_available).unwrap_or_default();
                 // We need to round down after 7 significant digits because anything more than that
                 // does not serialize correctly in num.
                 let sell_amount = target_asset

@@ -89,11 +89,11 @@ impl TacticRunner {
 
     async fn fetch_quotes(
         &self,
-        symbols: &Vec<AssetSymbol>,
+        symbols: &[AssetSymbol],
     ) -> Result<HashMap<AssetSymbol, Quote>, GreedError> {
-        let symbols_string = Self::symbols_string(&symbols);
+        let symbols_string = Self::symbols_string(symbols);
         info!("- fetching quotes for {}", symbols_string);
-        let quotes = self.platform.latest_quotes(&symbols).await?;
+        let quotes = self.platform.latest_quotes(symbols).await?;
         for quote in &quotes {
             info!("-- {}", quote);
         }
@@ -164,7 +164,7 @@ impl TacticRunner {
         Ok(())
     }
 
-    fn symbols_string(symbols: &Vec<AssetSymbol>) -> String {
+    fn symbols_string(symbols: &[AssetSymbol]) -> String {
         symbols.iter().map(|s| s.symbol.clone()).join(",")
     }
 }

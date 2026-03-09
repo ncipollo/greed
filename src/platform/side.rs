@@ -1,15 +1,10 @@
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Side {
     /// A long position of an asset.
+    #[default]
     Long,
     /// A short position of an asset.
     Short,
-}
-
-impl Default for Side {
-    fn default() -> Self {
-        Self::Long
-    }
 }
 
 #[cfg(test)]

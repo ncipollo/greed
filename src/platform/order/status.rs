@@ -1,6 +1,6 @@
 use crate::lowercase_enum_display;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Status {
     New,
     /// The order has changed.
@@ -47,13 +47,8 @@ pub enum Status {
     /// bracket-style orders that are not active yet because the primary
     /// order has not filled yet.
     Held,
+    #[default]
     Unknown,
-}
-
-impl Default for Status {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 lowercase_enum_display!(Status);

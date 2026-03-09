@@ -23,15 +23,15 @@ pub struct Bar {
 
 impl Bar {
     pub fn average(&self) -> f64 {
-        (&self.low + &self.high) / 2.0
+        (self.low + self.high) / 2.0
     }
 
     pub fn difference(&self) -> f64 {
-        &self.close - &self.open
+        self.close - self.open
     }
 
     pub fn difference_percent(&self) -> f64 {
-        (self.difference() / &self.open) * 100.0
+        (self.difference() / self.open) * 100.0
     }
 
     pub fn displacement_from_value(&self, value: f64) -> f64 {
@@ -51,10 +51,10 @@ impl Bar {
 
         Self {
             timestamp,
-            open: open.clone(),
-            close: close.clone(),
-            low: self.low.clone().min(other.clone().low),
-            high: self.high.clone().max(other.clone().high),
+            open: *open,
+            close: *close,
+            low: self.low.min(other.low),
+            high: self.high.max(other.high),
             ..Default::default()
         }
     }

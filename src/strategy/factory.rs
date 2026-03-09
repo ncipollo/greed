@@ -50,6 +50,7 @@ impl<'a> StrategyProviderFactory<'a> {
                     self.config_path.clone(),
                     Duration::from_secs(self.config.interval),
                     strategy_config,
+                    self.platform.clone(),
                 )
                 .await?;
                 Ok(Box::new(provider))

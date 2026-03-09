@@ -45,7 +45,7 @@ impl PercentOps for f64 {
     }
 
     fn percent_below(&self, target: f64) -> Self {
-        let difference = target.clone() - self;
+        let difference = target - self;
         let percent = difference / target;
         percent * 100.0
     }

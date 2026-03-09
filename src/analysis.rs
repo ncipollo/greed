@@ -5,9 +5,10 @@ use crate::asset::AssetSymbol;
 use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
 use chrono::Local;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub mod fetcher;
 pub mod result;
@@ -15,14 +16,14 @@ mod state;
 mod time_range;
 
 pub struct AssetAnalyzer {
-    mutable_state: Arc<Mutex<AnalysisState>>,
+    mutable_state: Rc<RefCell<AnalysisState>>,
     platform: Arc<dyn FinancialPlatform>,
 }
 
 impl AssetAnalyzer {
     pub fn new(platform: Arc<dyn FinancialPlatform>) -> Self {
         Self {
-            mutable_state: Arc::new(Mutex::new(Default::default())),
+            mutable_state: Rc::new(RefCell::new(Default::default())),
             platform: platform.clone(),
         }
     }
@@ -36,11 +37,10 @@ impl AssetAnalyzer {
     }
 
     async fn refresh_bars_if_needed(&self, assets: &Vec<AssetSymbol>) -> Result<(), GreedError> {
-        let mutable_state = self.mutable_state.clone();
-        let mut state = mutable_state.lock().unwrap();
-        if state.should_fetch(Local::now()) {
+        let should_fetch = self.mutable_state.borrow().should_fetch(Local::now());
+        if should_fetch {
             let fetch_result = self.fetch_bars(assets).await?;
-            *state = AnalysisState::new(fetch_result, Local::now());
+            *self.mutable_state.borrow_mut() = AnalysisState::new(fetch_result, Local::now());
         }
         Ok(())
     }
@@ -59,11 +59,6 @@ impl AssetAnalyzer {
     }
 
     fn bars_by_symbol(&self) -> Rc<HashMap<AssetSymbol, BarsResult>> {
-        self.mutable_state
-            .clone()
-            .lock()
-            .unwrap()
-            .bars_by_symbol
-            .clone()
+        self.mutable_state.borrow().bars_by_symbol.clone()
     }
 }

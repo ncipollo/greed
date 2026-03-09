@@ -22,7 +22,7 @@ pub struct Quote {
 
 impl Quote {
     pub fn spread(&self) -> f64 {
-        &self.ask_price - &self.bid_price
+        self.ask_price - self.bid_price
     }
 
     pub fn spread_percent(&self) -> f64 {
@@ -31,7 +31,7 @@ impl Quote {
         }
 
         let spread = self.spread();
-        (spread / &self.ask_price) * 100.0
+        (spread / self.ask_price) * 100.0
     }
 
     pub fn valid_ask(&self) -> bool {

@@ -42,14 +42,11 @@ impl TacticState {
     }
 
     pub fn open_order_value(&self, symbol: &AssetSymbol) -> f64 {
-        let ask_price = self
-            .quotes
-            .get(&symbol)
-            .map_or(0.0, |quote| quote.ask_price.clone());
-        self.open_orders.get(&symbol).map_or(0.0, |orders| {
+        let ask_price = self.quotes.get(symbol).map_or(0.0, |quote| quote.ask_price);
+        self.open_orders.get(symbol).map_or(0.0, |orders| {
             orders
                 .iter()
-                .map(|order| order.estimated_value(ask_price.clone()))
+                .map(|order| order.estimated_value(ask_price))
                 .reduce(|a, b| a + b)
                 .unwrap_or(0.0)
         })

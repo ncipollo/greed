@@ -1,7 +1,8 @@
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum OrderClass {
     /// Any non-bracket order (i.e., regular market, limit, or stop loss
     /// orders).
+    #[default]
     Simple,
     /// A bracket order is a chain of three orders that can be used to manage your
     /// position entry and exit. It is a common use case of an
@@ -16,12 +17,6 @@ pub enum OrderClass {
     /// stop-loss leg set. It essentially attached a single leg to an
     /// entry order.
     OneTriggersOther,
-}
-
-impl Default for OrderClass {
-    fn default() -> Self {
-        Self::Simple
-    }
 }
 
 #[cfg(test)]

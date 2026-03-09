@@ -15,13 +15,13 @@ impl DoBuyRule {
         Box::new(Self { buy_percent })
     }
 
-    fn actions(&self, state: &TacticState, assets: &Vec<TargetAsset>) -> Vec<Action> {
-        let mut remaining_cash = state.account.cash.clone();
+    fn actions(&self, state: &TacticState, assets: &[TargetAsset]) -> Vec<Action> {
+        let mut remaining_cash = state.account.cash;
         assets
             .iter()
             .filter_map(|asset| {
-                let amount = self.calculate_buy_amount(state, asset, remaining_cash.clone());
-                remaining_cash -= amount.clone();
+                let amount = self.calculate_buy_amount(state, asset, remaining_cash);
+                remaining_cash -= amount;
                 if amount > 0.0 {
                     Some(Action::buy_notional(asset.symbol.clone(), amount))
                 } else {
@@ -37,7 +37,7 @@ impl DoBuyRule {
         target_asset: &TargetAsset,
         remaining_cash: f64,
     ) -> f64 {
-        let equity = state.account.equity.clone();
+        let equity = state.account.equity;
         let target_percent = self.target_percent(state, target_asset);
 
         let position_value = self.position_value(state, target_asset);
@@ -60,7 +60,7 @@ impl DoBuyRule {
     fn position_value(&self, state: &TacticState, target_asset: &TargetAsset) -> f64 {
         let position = state.positions.get(&target_asset.symbol);
         position
-            .map(|p| p.average_entry_price.clone() * p.quantity.clone())
+            .map(|p| p.average_entry_price * p.quantity)
             .unwrap_or(0.0)
     }
 }

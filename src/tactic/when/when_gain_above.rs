@@ -21,7 +21,7 @@ impl WhenGainAboveRule {
         }
 
         let position = &state.positions[&target_asset.symbol];
-        let gain = position.unrealized_gain_total_percent.clone();
+        let gain = position.unrealized_gain_total_percent;
         gain.map(|g| {
             (g >= self.gain_above_percent)
                 .when_false(|| self.log_gain_not_above(g, &position.symbol))
