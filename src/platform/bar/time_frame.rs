@@ -1,14 +1,9 @@
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum TimeFrame {
     OneMinute,
     OneHour,
+    #[default]
     OneDay,
-}
-
-impl Default for TimeFrame {
-    fn default() -> Self {
-        TimeFrame::OneDay
-    }
 }
 
 #[cfg(test)]

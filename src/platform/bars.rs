@@ -31,7 +31,7 @@ impl Bars {
             return None;
         }
         let values = self.bars.iter().map(func).collect::<Vec<_>>();
-        return median(values);
+        median(values)
     }
 
     pub fn positive_percent_median(&self) -> Option<f64> {

@@ -46,3 +46,27 @@ impl Tool for WebFetchTool {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn definition_name() {
+        let tool = WebFetchTool;
+        let definition = tool.definition("".to_string()).await;
+        assert_eq!(definition.name, "web_fetch");
+    }
+
+    #[tokio::test]
+    async fn definition_has_description() {
+        let tool = WebFetchTool;
+        let definition = tool.definition("".to_string()).await;
+        assert!(!definition.description.is_empty());
+    }
+
+    #[test]
+    fn max_response_chars_constant() {
+        assert_eq!(MAX_RESPONSE_CHARS, 10_000);
+    }
+}

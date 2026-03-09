@@ -6,6 +6,7 @@ pub trait NumFromFloat {
     fn from_f64(float: f64) -> Self;
 }
 
+#[allow(dead_code)]
 pub trait NumFloor {
     fn floor_with(&self, precision: u32) -> Self;
 }

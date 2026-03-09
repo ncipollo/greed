@@ -1,7 +1,8 @@
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum TimeInForce {
     /// The order is good for the day, and it will be canceled
     /// automatically at the end of Regular Trading Hours if unfilled.
+    #[default]
     Day,
     /// The order is only executed if the entire order quantity can
     /// be filled, otherwise the order is canceled.
@@ -17,12 +18,6 @@ pub enum TimeInForce {
     /// This order is eligible to execute only in the market closing
     /// auction. Any unfilled orders after the close will be canceled.
     UntilMarketClose,
-}
-
-impl Default for TimeInForce {
-    fn default() -> Self {
-        Self::Day
-    }
 }
 
 #[cfg(test)]

@@ -43,3 +43,29 @@ impl Tool for AccountTool {
         Ok(account.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::platform::account::Account;
+    use crate::platform::MockPlatform;
+
+    #[tokio::test]
+    async fn call_returns_account_info() {
+        let platform = MockPlatform::new().with_account(Account::fixture()).arc();
+        let tool = AccountTool::new(platform);
+        let result = tool.call(AccountArgs {}).await.unwrap();
+        assert_eq!(
+            result,
+            "buying power: 1000.00, equity: 500.00, cash: 500.00"
+        );
+    }
+
+    #[tokio::test]
+    async fn call_returns_default_account() {
+        let platform = MockPlatform::new().arc();
+        let tool = AccountTool::new(platform);
+        let result = tool.call(AccountArgs {}).await.unwrap();
+        assert_eq!(result, "buying power: 0.00, equity: 0.00, cash: 0.00");
+    }
+}

@@ -1,15 +1,10 @@
 use crate::lowercase_enum_display;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum OrderSide {
+    #[default]
     Buy,
     Sell,
-}
-
-impl Default for OrderSide {
-    fn default() -> Self {
-        Self::Buy
-    }
 }
 
 lowercase_enum_display!(OrderSide);

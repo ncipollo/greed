@@ -77,7 +77,7 @@ impl AlpacaPlatform {
         };
         self.bars(bars_request)
             .await
-            .map(|b| Quote::from(b))
+            .map(Quote::from)
             .unwrap_or(quote)
     }
 }
@@ -110,7 +110,7 @@ impl FinancialPlatform for AlpacaPlatform {
         })
     }
 
-    async fn latest_quotes(&self, symbols: &Vec<AssetSymbol>) -> Result<Vec<Quote>, GreedError> {
+    async fn latest_quotes(&self, symbols: &[AssetSymbol]) -> Result<Vec<Quote>, GreedError> {
         let symbol_strings = symbols.iter().map(|s| &s.symbol).collect::<Vec<_>>();
         let latest_req = apca::data::v2::last_quotes::GetReqInit {
             ..Default::default()

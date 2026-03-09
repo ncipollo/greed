@@ -5,7 +5,11 @@ pub mod asset_class;
 pub mod bar;
 pub mod bars;
 pub mod id;
+#[cfg(test)]
+mod mock;
 pub mod noop;
+#[cfg(test)]
+pub use mock::MockPlatform;
 pub mod order;
 pub mod position;
 pub mod quote;
@@ -32,7 +36,7 @@ use std::sync::Arc;
 pub trait FinancialPlatform: Send + Sync {
     async fn account(&self) -> Result<Account, GreedError>;
     async fn bars(&self, bars_request: BarRequest) -> Result<Bars, GreedError>;
-    async fn latest_quotes(&self, symbols: &Vec<AssetSymbol>) -> Result<Vec<Quote>, GreedError>;
+    async fn latest_quotes(&self, symbols: &[AssetSymbol]) -> Result<Vec<Quote>, GreedError>;
     async fn place_order(&self, order_request: OrderRequest) -> Result<Order, GreedError>;
     async fn positions(&self) -> Result<Vec<Position>, GreedError>;
     async fn open_orders(&self) -> Result<Vec<Order>, GreedError>;

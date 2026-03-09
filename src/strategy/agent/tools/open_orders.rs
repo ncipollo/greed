@@ -49,3 +49,40 @@ impl Tool for OpenOrdersTool {
         Ok(output)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::asset::AssetSymbol;
+    use crate::platform::order::Order;
+    use crate::platform::MockPlatform;
+
+    #[tokio::test]
+    async fn call_empty_open_orders() {
+        let platform = MockPlatform::new().arc();
+        let tool = OpenOrdersTool::new(platform);
+        let result = tool.call(OpenOrdersArgs {}).await.unwrap();
+        assert_eq!(result, "No open orders.");
+    }
+
+    #[tokio::test]
+    async fn call_with_open_orders() {
+        let order = Order::fixture(AssetSymbol::new("VTI"));
+        let expected = order.to_string();
+        let platform = MockPlatform::new().with_open_orders(vec![order]).arc();
+        let tool = OpenOrdersTool::new(platform);
+        let result = tool.call(OpenOrdersArgs {}).await.unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[tokio::test]
+    async fn call_multiple_open_orders() {
+        let o1 = Order::fixture(AssetSymbol::new("VTI"));
+        let o2 = Order::fixture(AssetSymbol::new("VXUS"));
+        let expected = format!("{}\n{}", o1, o2);
+        let platform = MockPlatform::new().with_open_orders(vec![o1, o2]).arc();
+        let tool = OpenOrdersTool::new(platform);
+        let result = tool.call(OpenOrdersArgs {}).await.unwrap();
+        assert_eq!(result, expected);
+    }
+}

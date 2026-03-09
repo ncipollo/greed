@@ -5,7 +5,7 @@ pub fn median(values: Vec<f64>) -> Option<f64> {
     if len == 0 {
         return None;
     }
-    if len % 2 == 0 {
+    if len.is_multiple_of(2) {
         let mid = len / 2;
         Some((sorted[mid - 1] + sorted[mid]) / 2.0)
     } else {

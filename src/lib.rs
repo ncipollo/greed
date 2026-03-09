@@ -31,7 +31,7 @@ pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
 }
 
 pub async fn fetch_quote(
-    assets: &Vec<AssetSymbol>,
+    assets: &[AssetSymbol],
     platform_type: &PlatformType,
     platform_args: PlatformArgs,
 ) -> Result<(), GreedError> {

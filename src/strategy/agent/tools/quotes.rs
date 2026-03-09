@@ -61,3 +61,50 @@ impl Tool for QuotesTool {
         Ok(output)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::asset::AssetSymbol;
+    use crate::platform::quote::Quote;
+    use crate::platform::MockPlatform;
+
+    #[tokio::test]
+    async fn call_empty_quotes() {
+        let platform = MockPlatform::new().arc();
+        let tool = QuotesTool::new(platform);
+        let result = tool.call(QuotesArgs { symbols: vec![] }).await.unwrap();
+        assert_eq!(result, "No quotes found.");
+    }
+
+    #[tokio::test]
+    async fn call_with_quotes() {
+        let quote = Quote::fixture(AssetSymbol::new("VTI"));
+        let expected = quote.to_string();
+        let platform = MockPlatform::new().with_quotes(vec![quote]).arc();
+        let tool = QuotesTool::new(platform);
+        let result = tool
+            .call(QuotesArgs {
+                symbols: vec!["VTI".to_string()],
+            })
+            .await
+            .unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[tokio::test]
+    async fn call_multiple_quotes() {
+        let q1 = Quote::fixture(AssetSymbol::new("VTI"));
+        let q2 = Quote::fixture(AssetSymbol::new("VXUS"));
+        let expected = format!("{}\n{}", q1, q2);
+        let platform = MockPlatform::new().with_quotes(vec![q1, q2]).arc();
+        let tool = QuotesTool::new(platform);
+        let result = tool
+            .call(QuotesArgs {
+                symbols: vec!["VTI".to_string(), "VXUS".to_string()],
+            })
+            .await
+            .unwrap();
+        assert_eq!(result, expected);
+    }
+}

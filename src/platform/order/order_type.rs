@@ -1,8 +1,9 @@
 use crate::lowercase_enum_display;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum OrderType {
     /// A market order.
+    #[default]
     Market,
     /// A limit order.
     Limit,
@@ -12,12 +13,6 @@ pub enum OrderType {
     StopLimit,
     /// A trailing stop order.
     TrailingStop,
-}
-
-impl Default for OrderType {
-    fn default() -> Self {
-        Self::Market
-    }
 }
 
 lowercase_enum_display!(OrderType);

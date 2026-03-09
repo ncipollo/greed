@@ -1,17 +1,12 @@
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum AssetClass {
     /// Crypto currencies.
     Crypto,
     /// US equities.
     UsEquity,
     /// An unknown asset class.
+    #[default]
     Unknown,
-}
-
-impl Default for AssetClass {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 #[cfg(test)]

@@ -49,3 +49,40 @@ impl Tool for PositionsTool {
         Ok(output)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::asset::AssetSymbol;
+    use crate::platform::position::Position;
+    use crate::platform::MockPlatform;
+
+    #[tokio::test]
+    async fn call_empty_positions() {
+        let platform = MockPlatform::new().arc();
+        let tool = PositionsTool::new(platform);
+        let result = tool.call(PositionsArgs {}).await.unwrap();
+        assert_eq!(result, "No positions held.");
+    }
+
+    #[tokio::test]
+    async fn call_with_positions() {
+        let position = Position::fixture(AssetSymbol::new("VTI"));
+        let expected = position.to_string();
+        let platform = MockPlatform::new().with_positions(vec![position]).arc();
+        let tool = PositionsTool::new(platform);
+        let result = tool.call(PositionsArgs {}).await.unwrap();
+        assert_eq!(result, expected);
+    }
+
+    #[tokio::test]
+    async fn call_multiple_positions() {
+        let p1 = Position::fixture(AssetSymbol::new("VTI"));
+        let p2 = Position::fixture(AssetSymbol::new("VXUS"));
+        let expected = format!("{}\n{}", p1, p2);
+        let platform = MockPlatform::new().with_positions(vec![p1, p2]).arc();
+        let tool = PositionsTool::new(platform);
+        let result = tool.call(PositionsArgs {}).await.unwrap();
+        assert_eq!(result, expected);
+    }
+}

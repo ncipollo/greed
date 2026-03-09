@@ -24,11 +24,11 @@ impl TacticConfig {
     pub fn assets(&self) -> Vec<AssetSymbol> {
         let buy_assets = self.buy.assets();
         let sell_assets = self.sell.assets();
-        return vec![buy_assets, sell_assets]
+        vec![buy_assets, sell_assets]
             .into_iter()
             .flat_map(|thing| thing.into_iter())
             .unique()
-            .collect::<Vec<_>>();
+            .collect::<Vec<_>>()
     }
 }
 
