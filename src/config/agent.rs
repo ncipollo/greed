@@ -1,5 +1,6 @@
 use crate::error::GreedError;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::path::Path;
 use tokio::fs;
 
@@ -60,7 +61,15 @@ pub struct AgentConfig {
 impl AgentConfig {
     pub async fn from_path<P: AsRef<Path>>(path: P) -> Result<AgentConfig, GreedError> {
         let file_contents = fs::read_to_string(path).await?;
-        Ok(toml::from_str(&file_contents)?)
+        let config: AgentConfig = toml::from_str(&file_contents)?;
+        config.resolve_env_vars()
+    }
+
+    fn resolve_env_vars(self) -> Result<AgentConfig, GreedError> {
+        Ok(AgentConfig {
+            agent_provider: self.agent_provider.resolve_env_vars()?,
+            ..self
+        })
     }
 }
 
@@ -68,6 +77,25 @@ impl AgentConfig {
 #[serde(tag = "type")]
 pub enum AgentProvider {
     Ollama { url: String, model: String },
+}
+
+impl AgentProvider {
+    fn resolve_env_vars(self) -> Result<AgentProvider, GreedError> {
+        match self {
+            AgentProvider::Ollama { url, model } => Ok(AgentProvider::Ollama {
+                url: resolve_env_var_url(&url)?,
+                model,
+            }),
+        }
+    }
+}
+
+fn resolve_env_var_url(url: &str) -> Result<String, GreedError> {
+    if let Some(var_name) = url.strip_prefix('$') {
+        Ok(env::var(var_name)?)
+    } else {
+        Ok(url.to_string())
+    }
 }
 
 #[cfg(test)]
@@ -104,6 +132,48 @@ mod tests {
         assert!(config.web_fetch);
         assert!(config.read_note);
         assert!(config.write_note);
+    }
+
+    #[test]
+    fn agent_provider_resolve_url_literal() {
+        let provider = AgentProvider::Ollama {
+            url: "http://localhost:11434".to_string(),
+            model: "llama3".to_string(),
+        };
+        let resolved = provider.resolve_env_vars().unwrap();
+        assert_eq!(
+            resolved,
+            AgentProvider::Ollama {
+                url: "http://localhost:11434".to_string(),
+                model: "llama3".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn agent_provider_resolve_url_env_var() {
+        env::set_var("TEST_OLLAMA_URL_56", "http://remote:11434");
+        let provider = AgentProvider::Ollama {
+            url: "$TEST_OLLAMA_URL_56".to_string(),
+            model: "llama3".to_string(),
+        };
+        let resolved = provider.resolve_env_vars().unwrap();
+        assert_eq!(
+            resolved,
+            AgentProvider::Ollama {
+                url: "http://remote:11434".to_string(),
+                model: "llama3".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn agent_provider_resolve_url_missing_env_var() {
+        let provider = AgentProvider::Ollama {
+            url: "$GREED_NONEXISTENT_VAR_XYZ".to_string(),
+            model: "llama3".to_string(),
+        };
+        assert!(provider.resolve_env_vars().is_err());
     }
 
     #[test]
