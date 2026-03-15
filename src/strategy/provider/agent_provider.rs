@@ -19,6 +19,7 @@ pub struct AgentStrategyProvider {
     platform: Arc<dyn FinancialPlatform>,
     #[allow(dead_code)]
     loop_interval: Duration,
+    working_dir: PathBuf,
 }
 
 impl AgentStrategyProvider {
@@ -29,12 +30,14 @@ impl AgentStrategyProvider {
         platform: Arc<dyn FinancialPlatform>,
     ) -> Result<Self, GreedError> {
         let agent_path = path_for_config(&config_path, &strategy_config)?;
+        let working_dir = agent_path.parent().unwrap_or(&agent_path).to_path_buf();
         let agent_config = AgentConfig::from_path(agent_path).await?;
         Ok(Self {
             strategy_config,
             agent_config,
             platform,
             loop_interval,
+            working_dir,
         })
     }
 }
@@ -44,7 +47,11 @@ impl StrategyRunnerProvider for AgentStrategyProvider {
     async fn provide_strategy_runner(&self) -> Result<Box<dyn StrategyRunner>, GreedError> {
         let name = self.strategy_config.properties().name;
         info!("running agent strategy: {name}");
-        let runner = AgentStrategyRunner::new(self.agent_config.clone(), self.platform.clone());
+        let runner = AgentStrategyRunner::new(
+            self.agent_config.clone(),
+            self.platform.clone(),
+            self.working_dir.clone(),
+        );
         Ok(Box::new(runner))
     }
 

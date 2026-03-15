@@ -23,6 +23,10 @@ pub struct AgentToolsConfig {
     pub sell: bool,
     #[serde(default = "default_true")]
     pub web_fetch: bool,
+    #[serde(default = "default_true")]
+    pub read_note: bool,
+    #[serde(default = "default_true")]
+    pub write_note: bool,
 }
 
 impl Default for AgentToolsConfig {
@@ -35,6 +39,8 @@ impl Default for AgentToolsConfig {
             buy: true,
             sell: true,
             web_fetch: true,
+            read_note: true,
+            write_note: true,
         }
     }
 }
@@ -78,6 +84,8 @@ mod tests {
         assert!(config.buy);
         assert!(config.sell);
         assert!(config.web_fetch);
+        assert!(config.read_note);
+        assert!(config.write_note);
     }
 
     #[test]
@@ -94,6 +102,8 @@ mod tests {
         assert!(!config.buy);
         assert!(!config.sell);
         assert!(config.web_fetch);
+        assert!(config.read_note);
+        assert!(config.write_note);
     }
 
     #[test]
