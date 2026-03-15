@@ -6,28 +6,38 @@ use crate::strategy::agent::tools::buy::BuyTool;
 use crate::strategy::agent::tools::open_orders::OpenOrdersTool;
 use crate::strategy::agent::tools::positions::PositionsTool;
 use crate::strategy::agent::tools::quotes::QuotesTool;
+use crate::strategy::agent::tools::read_note::ReadNoteTool;
 use crate::strategy::agent::tools::sell::SellTool;
 use crate::strategy::agent::tools::web_fetch::WebFetchTool;
+use crate::strategy::agent::tools::write_note::WriteNoteTool;
 use crate::strategy::runner::StrategyRunner;
 use async_trait::async_trait;
+use chrono::Local;
 use log::{info, warn};
 use rig::client::completion::CompletionClient;
 use rig::client::Nothing;
-use rig::tool::ToolDyn;
 use rig::completion::Prompt;
 use rig::providers::ollama;
+use rig::tool::ToolDyn;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 pub struct AgentStrategyRunner {
     agent_config: AgentConfig,
     platform: Arc<dyn FinancialPlatform>,
+    working_dir: PathBuf,
 }
 
 impl AgentStrategyRunner {
-    pub fn new(agent_config: AgentConfig, platform: Arc<dyn FinancialPlatform>) -> Self {
+    pub fn new(
+        agent_config: AgentConfig,
+        platform: Arc<dyn FinancialPlatform>,
+        working_dir: PathBuf,
+    ) -> Self {
         Self {
             agent_config,
             platform,
+            working_dir,
         }
     }
 
@@ -48,8 +58,9 @@ impl AgentStrategyRunner {
             parts.join(" ")
         };
 
+        let now = Local::now().format("%Y-%m-%d %H:%M:%S %z");
         format!(
-            "{}\n\nAsset restrictions: {}",
+            "Current date and time: {now}\n\n{}\n\nAsset restrictions: {}",
             self.agent_config.prompt, restrictions
         )
     }
@@ -104,6 +115,12 @@ impl StrategyRunner for AgentStrategyRunner {
         }
         if tool_config.web_fetch {
             tool_vec.push(Box::new(WebFetchTool));
+        }
+        if tool_config.read_note {
+            tool_vec.push(Box::new(ReadNoteTool::new(self.working_dir.clone())));
+        }
+        if tool_config.write_note {
+            tool_vec.push(Box::new(WriteNoteTool::new(self.working_dir.clone())));
         }
 
         let agent = client
