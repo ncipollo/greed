@@ -1,10 +1,12 @@
 pub mod analyze;
+pub mod init;
 mod orders;
 pub mod quote;
 pub mod run;
 mod status;
 
 use crate::cli::analyze::AnalyzeArgs;
+use crate::cli::init::InitArgs;
 use crate::cli::orders::OrdersArgs;
 use crate::cli::quote::QuoteArgs;
 use crate::cli::run::RunCommandArgs;
@@ -21,6 +23,8 @@ pub struct Cli {
 pub enum Command {
     #[command(about = "Analyze stocks")]
     Analyze(AnalyzeArgs),
+    #[command(about = "Generate a starter config file")]
+    Init(InitArgs),
     #[command(about = "Fetch recent orders")]
     Orders(OrdersArgs),
     #[command(about = "Fetch quote")]

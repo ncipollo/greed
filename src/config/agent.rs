@@ -92,7 +92,12 @@ impl AgentProvider {
 
 fn resolve_env_var_url(url: &str) -> Result<String, GreedError> {
     if let Some(var_name) = url.strip_prefix('$') {
-        Ok(env::var(var_name)?)
+        env::var(var_name).map_err(|_| {
+            GreedError::new(&format!(
+                "agent url environment variable '{}' is not set",
+                var_name
+            ))
+        })
     } else {
         Ok(url.to_string())
     }
@@ -173,7 +178,12 @@ mod tests {
             url: "$GREED_NONEXISTENT_VAR_XYZ".to_string(),
             model: "llama3".to_string(),
         };
-        assert!(provider.resolve_env_vars().is_err());
+        let err = provider.resolve_env_vars().unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("agent url environment variable 'GREED_NONEXISTENT_VAR_XYZ' is not set"),
+            "unexpected error message: {err}"
+        );
     }
 
     #[test]
