@@ -17,3 +17,6 @@ target/
 
 # Claude
 .claude/settings.local.json
+
+# IntelliJ
+.idea/csv-editor.xml
