@@ -11,11 +11,6 @@ pub struct Account {
     pub cash: f64,
     /// The currency the account uses.
     pub currency: String,
-    /// The current number of day trades that have been made in the last
-    /// five trading days (including today).
-    pub daytrade_count: u64,
-    /// If this account has been flagged as a day trading account or not.
-    pub day_trader: bool,
     /// Real-time mark-to-market value of all long positions held in the account.
     pub market_value_long: f64,
     /// Real-time mark-to-market value of all short positions held in the account.
