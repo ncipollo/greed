@@ -11,7 +11,7 @@ version = "0.5.2"
 exclude = ["fixtures/"]
 
 [dependencies]
-apca = "0.30.0"
+apca = "0.31.0"
 approx = "0.5.1"
 async-trait = "0.1.74"
 chrono = { version = "0.4.38", features = ["serde"] }
