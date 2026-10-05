@@ -44,11 +44,11 @@ mod tests {
     fn yesterday_range() {
         let ranges = create_ranges();
         let expected_start = Utc
-            .with_ymd_and_hms(2023, 12, 01, 0, 0, 0)
+            .with_ymd_and_hms(2023, 12, 1, 0, 0, 0)
             .earliest()
             .unwrap();
         let expected_end = Utc
-            .with_ymd_and_hms(2023, 12, 01, 23, 59, 0)
+            .with_ymd_and_hms(2023, 12, 1, 23, 59, 0)
             .earliest()
             .unwrap();
         let expected = expected_start..expected_end;
@@ -63,7 +63,7 @@ mod tests {
             .earliest()
             .unwrap();
         let expected_end = Utc
-            .with_ymd_and_hms(2023, 12, 03, 23, 59, 0)
+            .with_ymd_and_hms(2023, 12, 3, 23, 59, 0)
             .earliest()
             .unwrap();
         let expected = expected_start..expected_end;

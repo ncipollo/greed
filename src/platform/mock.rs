@@ -21,6 +21,12 @@ pub struct MockPlatform {
     placed_orders: Mutex<Vec<OrderRequest>>,
 }
 
+impl Default for MockPlatform {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockPlatform {
     pub fn new() -> Self {
         Self {

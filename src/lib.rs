@@ -11,6 +11,7 @@ pub mod asset;
 mod bool;
 pub mod config;
 mod date;
+mod db;
 mod enum_display;
 pub mod error;
 mod fixture;
@@ -26,6 +27,7 @@ pub mod template;
 mod trading_days;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
+    db::bootstrap()?;
     let runner = GreedRunner::from_args(args).await?;
     runner.run_loop().await;
     Ok(())
