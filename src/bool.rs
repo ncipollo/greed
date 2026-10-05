@@ -28,7 +28,7 @@ mod tests {
     fn test_when_false_false() {
         let mut value = 0;
         let result = false.when_false(|| value = 1);
-        assert_eq!(result, false);
+        assert!(!result);
         assert_eq!(value, 1);
     }
 
@@ -36,7 +36,7 @@ mod tests {
     fn test_when_false_true() {
         let mut value = 0;
         let result = true.when_false(|| value = 1);
-        assert_eq!(result, true);
+        assert!(result);
         assert_eq!(value, 0);
     }
 
@@ -44,7 +44,7 @@ mod tests {
     fn test_when_true_false() {
         let mut value = 0;
         let result = false.when_true(|| value = 1);
-        assert_eq!(result, false);
+        assert!(!result);
         assert_eq!(value, 0);
     }
 
@@ -52,7 +52,7 @@ mod tests {
     fn test_when_true_true() {
         let mut value = 0;
         let result = true.when_true(|| value = 1);
-        assert_eq!(result, true);
+        assert!(result);
         assert_eq!(value, 1);
     }
 }

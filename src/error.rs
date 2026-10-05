@@ -49,6 +49,7 @@ greed_error_from!(std::io::Error);
 greed_error_from!(toml::de::Error);
 greed_error_from!(VarError);
 greed_error_from!(apca::Error);
+greed_error_from!(duckdb::Error);
 
 #[cfg(test)]
 mod test {
