@@ -2,6 +2,7 @@ use crate::asset::AssetSymbol;
 use crate::config::agent::{AgentConfig, AgentProvider};
 use crate::platform::FinancialPlatform;
 use crate::strategy::agent::tools::account::AccountTool;
+use crate::strategy::agent::tools::asset_history::AssetHistoryTool;
 use crate::strategy::agent::tools::buy::BuyTool;
 use crate::strategy::agent::tools::open_orders::OpenOrdersTool;
 use crate::strategy::agent::tools::positions::PositionsTool;
@@ -102,6 +103,9 @@ impl StrategyRunner for AgentStrategyRunner {
         }
         if tool_config.quotes {
             tool_vec.push(Box::new(QuotesTool::new(platform.clone())));
+        }
+        if tool_config.asset_history {
+            tool_vec.push(Box::new(AssetHistoryTool::new(platform.clone())));
         }
         if tool_config.buy {
             tool_vec.push(Box::new(BuyTool::new(
