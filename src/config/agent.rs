@@ -19,6 +19,8 @@ pub struct AgentToolsConfig {
     #[serde(default = "default_true")]
     pub quotes: bool,
     #[serde(default = "default_true")]
+    pub asset_history: bool,
+    #[serde(default = "default_true")]
     pub buy: bool,
     #[serde(default = "default_true")]
     pub sell: bool,
@@ -37,6 +39,7 @@ impl Default for AgentToolsConfig {
             positions: true,
             open_orders: true,
             quotes: true,
+            asset_history: true,
             buy: true,
             sell: true,
             web_fetch: true,
@@ -114,6 +117,7 @@ mod tests {
         assert!(config.positions);
         assert!(config.open_orders);
         assert!(config.quotes);
+        assert!(config.asset_history);
         assert!(config.buy);
         assert!(config.sell);
         assert!(config.web_fetch);
@@ -132,6 +136,7 @@ mod tests {
         assert!(config.positions);
         assert!(config.open_orders);
         assert!(config.quotes);
+        assert!(config.asset_history);
         assert!(!config.buy);
         assert!(!config.sell);
         assert!(config.web_fetch);
