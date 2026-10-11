@@ -1,5 +1,6 @@
 pub mod access_control;
 pub mod account;
+pub mod asset_history;
 pub mod buy;
 pub mod open_orders;
 pub mod positions;

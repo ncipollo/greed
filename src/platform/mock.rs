@@ -17,6 +17,7 @@ pub struct MockPlatform {
     open_orders: Vec<Order>,
     recent_orders: Vec<Order>,
     quotes: Vec<Quote>,
+    bars: Bars,
     place_order_result: Order,
     placed_orders: Mutex<Vec<OrderRequest>>,
 }
@@ -35,6 +36,7 @@ impl MockPlatform {
             open_orders: Vec::new(),
             recent_orders: Vec::new(),
             quotes: Vec::new(),
+            bars: Bars::default(),
             place_order_result: Order::default(),
             placed_orders: Mutex::new(Vec::new()),
         }
@@ -65,6 +67,11 @@ impl MockPlatform {
         self
     }
 
+    pub fn with_bars(mut self, bars: Bars) -> Self {
+        self.bars = bars;
+        self
+    }
+
     pub fn with_place_order_result(mut self, order: Order) -> Self {
         self.place_order_result = order;
         self
@@ -86,7 +93,7 @@ impl FinancialPlatform for MockPlatform {
     }
 
     async fn bars(&self, _bars_request: BarRequest) -> Result<Bars, GreedError> {
-        Ok(Bars::default())
+        Ok(self.bars.clone())
     }
 
     async fn latest_quotes(&self, _symbols: &[AssetSymbol]) -> Result<Vec<Quote>, GreedError> {
