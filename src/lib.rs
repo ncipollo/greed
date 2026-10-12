@@ -27,8 +27,8 @@ pub mod template;
 mod trading_days;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
-    db::bootstrap()?;
-    let runner = GreedRunner::from_args(args).await?;
+    let connection = db::bootstrap()?;
+    let runner = GreedRunner::from_args(args, connection).await?;
     runner.run_loop().await;
     Ok(())
 }
