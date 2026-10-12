@@ -1,12 +1,14 @@
 use crate::asset::AssetSymbol;
 use crate::config::simple::SimpleConfig;
 use crate::config::Config;
+use crate::db;
 use crate::error::GreedError;
 use crate::platform;
 use crate::platform::FinancialPlatform;
 use crate::strategy::factory::StrategyProviderFactory;
 use crate::strategy::provider::StrategyRunnerProvider;
 use crate::strategy::runner::{StrategyRunner, TacticStrategyRunner};
+use duckdb::Connection;
 use log::warn;
 use std::ffi::OsStr;
 use std::path::PathBuf;
@@ -25,6 +27,8 @@ pub struct GreedRunner {
     config_strategy: Box<dyn StrategyRunner>,
     strategy_providers: Vec<Box<dyn StrategyRunnerProvider>>,
     config_assets: Vec<AssetSymbol>,
+    platform: Arc<dyn FinancialPlatform>,
+    connection: Connection,
 }
 
 impl GreedRunner {
@@ -32,6 +36,7 @@ impl GreedRunner {
         config: Config,
         config_path: PathBuf,
         platform: Arc<dyn FinancialPlatform>,
+        connection: Connection,
     ) -> Result<Self, GreedError> {
         let config_strategy = Box::new(TacticStrategyRunner::from_config(&config, &platform));
         let factory = StrategyProviderFactory::new(&config, config_path, &platform);
@@ -50,14 +55,19 @@ impl GreedRunner {
             config_strategy,
             strategy_providers,
             config_assets,
+            platform,
+            connection,
         })
     }
 
-    pub async fn from_args(args: GreedRunnerArgs) -> Result<GreedRunner, GreedError> {
+    pub async fn from_args(
+        args: GreedRunnerArgs,
+        connection: Connection,
+    ) -> Result<GreedRunner, GreedError> {
         let config_path = args.config_path.clone();
         let config = GreedRunner::read_config(&args).await?;
         let platform = platform::for_type(&config.platform, args.into())?;
-        Self::new(config, config_path, platform).await
+        Self::new(config, config_path, platform, connection).await
     }
 
     async fn read_config(args: &GreedRunnerArgs) -> Result<Config, GreedError> {
@@ -89,6 +99,8 @@ impl GreedRunner {
             }
             // Run the general strategy from the top level config
             self.config_strategy.run(&self.config_assets).await;
+            // Capture portfolio status history for this cycle.
+            self.record_portfolio_status().await;
             // Sleep for the loop interval then start again.
             sleep(loop_interval).await;
         }
@@ -101,5 +113,18 @@ impl GreedRunner {
             runners.push(runner);
         }
         Ok(runners)
+    }
+
+    // A DB hiccup must not stop trading automation, so failures are logged and swallowed here.
+    // The insert is synchronous for now; switch to tokio::task::spawn_blocking if it proves slow.
+    async fn record_portfolio_status(&self) {
+        match self.platform.account().await {
+            Ok(account) => {
+                if let Err(e) = db::portfolio_status::insert(&self.connection, &account) {
+                    warn!("failed to write portfolio status: {}", e);
+                }
+            }
+            Err(e) => warn!("failed to fetch account for portfolio status: {}", e),
+        }
     }
 }

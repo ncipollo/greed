@@ -1,4 +1,5 @@
 pub mod migrations;
+pub mod portfolio_status;
 
 use crate::error::GreedError;
 use duckdb::Connection;
