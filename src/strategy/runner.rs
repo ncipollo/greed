@@ -4,10 +4,11 @@ use crate::config::Config;
 use crate::platform::FinancialPlatform;
 use crate::tactic::TacticRunner;
 use async_trait::async_trait;
+use duckdb::Connection;
 use log::{info, warn};
 #[cfg(test)]
 use std::any::Any;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -37,7 +38,11 @@ impl TacticStrategyRunner {
         }
     }
 
-    pub fn from_config(config: &Config, platform: &Arc<dyn FinancialPlatform>) -> Self {
+    pub fn from_config(
+        config: &Config,
+        platform: &Arc<dyn FinancialPlatform>,
+        connection: &Arc<Mutex<Connection>>,
+    ) -> Self {
         let loop_interval = Duration::from_secs(config.interval);
 
         let tactic_runners = config
@@ -45,7 +50,12 @@ impl TacticStrategyRunner {
             .clone()
             .into_iter()
             .map(|tactic_config| {
-                TacticRunner::new(tactic_config.clone(), platform.clone(), Default::default())
+                TacticRunner::new(
+                    tactic_config.clone(),
+                    platform.clone(),
+                    Default::default(),
+                    connection.clone(),
+                )
             })
             .collect();
         Self::new(loop_interval, Default::default(), tactic_runners)
@@ -89,7 +99,8 @@ mod tests {
     async fn from_config_empty_tactics() {
         let config = fixture::config("config_minimal.toml").await;
         let platform = NoOpPlatform::arc();
-        let runner = TacticStrategyRunner::from_config(&config, &platform);
+        let connection = fixture::db_connection();
+        let runner = TacticStrategyRunner::from_config(&config, &platform, &connection);
         assert_eq!(runner.loop_interval, Duration::from_secs(60));
         assert_eq!(runner.tactic_runner_count(), 0);
     }
@@ -98,7 +109,8 @@ mod tests {
     async fn from_config_with_tactics() {
         let config = fixture::config("config_single_tactic.toml").await;
         let platform = NoOpPlatform::arc();
-        let runner = TacticStrategyRunner::from_config(&config, &platform);
+        let connection = fixture::db_connection();
+        let runner = TacticStrategyRunner::from_config(&config, &platform, &connection);
         assert_eq!(runner.loop_interval, Duration::from_secs(300));
         assert_eq!(runner.tactic_runner_count(), 1);
     }

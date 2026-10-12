@@ -4,6 +4,7 @@ use crate::asset::AssetSymbol;
 use crate::config::quote_fetcher_config::QuoteFetcherConfig;
 use crate::config::strategy::StrategyProperties;
 use crate::config::tactic::TacticConfig;
+use crate::db;
 use crate::error::GreedError;
 use crate::platform::account::Account;
 use crate::platform::order::Order;
@@ -14,11 +15,12 @@ use crate::tactic::r#do::DoResult;
 use crate::tactic::rule::RuleType::{Buy, Sell};
 use crate::tactic::rule::{RuleType, TacticRuleset};
 use crate::tactic::state::TacticState;
+use duckdb::Connection;
 use itertools::Itertools;
 use log::{info, warn};
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 mod action;
 mod r#do;
@@ -33,6 +35,7 @@ mod when;
 pub struct TacticRunner {
     asset_analyzer: AssetAnalyzer,
     config: TacticConfig,
+    connection: Arc<Mutex<Connection>>,
     platform: Arc<dyn FinancialPlatform>,
     strategy_properties: StrategyProperties,
 }
@@ -42,10 +45,12 @@ impl TacticRunner {
         config: TacticConfig,
         platform: Arc<dyn FinancialPlatform>,
         strategy_properties: StrategyProperties,
+        connection: Arc<Mutex<Connection>>,
     ) -> Self {
         Self {
             asset_analyzer: AssetAnalyzer::new(platform.clone()),
             config,
+            connection,
             platform,
             strategy_properties,
         }
@@ -96,12 +101,21 @@ impl TacticRunner {
         let quotes = self.platform.latest_quotes(symbols).await?;
         for quote in &quotes {
             info!("-- {}", quote);
+            self.record_quote(quote);
         }
         let by_symbol = quotes
             .into_iter()
             .map(|q| (q.symbol.clone(), q))
             .collect::<HashMap<_, _>>();
         Ok(by_symbol)
+    }
+
+    // A DB hiccup must not interrupt tactic evaluation, so failures are logged and swallowed here.
+    fn record_quote(&self, quote: &Quote) {
+        let connection = self.connection.lock().expect("stock quote connection lock");
+        if let Err(e) = db::stock_quotes::insert(&connection, quote) {
+            warn!("failed to write stock quote: {}", e);
+        }
     }
 
     async fn fetch_positions(&self) -> Result<HashMap<AssetSymbol, Position>, GreedError> {

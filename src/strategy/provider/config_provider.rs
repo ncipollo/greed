@@ -8,11 +8,13 @@ use crate::strategy::reader::read_tactics_from_config;
 use crate::strategy::runner::{StrategyRunner, TacticStrategyRunner};
 use crate::tactic::TacticRunner;
 use async_trait::async_trait;
+use duckdb::Connection;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub struct ConfigStrategyProvider {
+    connection: Arc<Mutex<Connection>>,
     loop_interval: Duration,
     platform: Arc<dyn FinancialPlatform>,
     strategy_config: StrategyConfig,
@@ -25,9 +27,11 @@ impl ConfigStrategyProvider {
         loop_interval: Duration,
         platform: Arc<dyn FinancialPlatform>,
         strategy_config: StrategyConfig,
+        connection: Arc<Mutex<Connection>>,
     ) -> Result<Self, GreedError> {
         let tactic_configs = read_tactics_from_config(&config_path, &strategy_config).await?;
         Ok(Self {
+            connection,
             loop_interval,
             platform,
             strategy_config,
@@ -47,6 +51,7 @@ impl StrategyRunnerProvider for ConfigStrategyProvider {
                     tactic_config.clone(),
                     self.platform.clone(),
                     self.strategy_config.properties(),
+                    self.connection.clone(),
                 )
             })
             .collect();
@@ -119,6 +124,7 @@ mod tests {
             Duration::from_secs(1),
             NoOpPlatform::arc(),
             strategy_config,
+            fixture::db_connection(),
         )
         .await
         .expect("should create provider")
