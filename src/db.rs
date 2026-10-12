@@ -1,5 +1,6 @@
 pub mod migrations;
 pub mod portfolio_status;
+pub mod stock_quotes;
 
 use crate::error::GreedError;
 use duckdb::Connection;

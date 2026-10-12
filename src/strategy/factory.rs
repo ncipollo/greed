@@ -5,13 +5,15 @@ use crate::platform::FinancialPlatform;
 use crate::strategy::provider::agent_provider::AgentStrategyProvider;
 use crate::strategy::provider::config_provider::ConfigStrategyProvider;
 use crate::strategy::provider::StrategyRunnerProvider;
+use duckdb::Connection;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub struct StrategyProviderFactory<'a> {
     config: &'a Config,
     config_path: PathBuf,
+    connection: &'a Arc<Mutex<Connection>>,
     platform: &'a Arc<dyn FinancialPlatform>,
 }
 
@@ -20,10 +22,12 @@ impl<'a> StrategyProviderFactory<'a> {
         config: &'a Config,
         config_path: PathBuf,
         platform: &'a Arc<dyn FinancialPlatform>,
+        connection: &'a Arc<Mutex<Connection>>,
     ) -> StrategyProviderFactory<'a> {
         Self {
             config,
             config_path,
+            connection,
             platform,
         }
     }
@@ -61,6 +65,7 @@ impl<'a> StrategyProviderFactory<'a> {
                     Duration::from_secs(self.config.interval),
                     self.platform.clone(),
                     strategy_config,
+                    self.connection.clone(),
                 )
                 .await?;
                 Ok(Box::new(provider))

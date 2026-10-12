@@ -12,7 +12,7 @@ use duckdb::Connection;
 use log::warn;
 use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -28,7 +28,7 @@ pub struct GreedRunner {
     strategy_providers: Vec<Box<dyn StrategyRunnerProvider>>,
     config_assets: Vec<AssetSymbol>,
     platform: Arc<dyn FinancialPlatform>,
-    connection: Connection,
+    connection: Arc<Mutex<Connection>>,
 }
 
 impl GreedRunner {
@@ -38,8 +38,13 @@ impl GreedRunner {
         platform: Arc<dyn FinancialPlatform>,
         connection: Connection,
     ) -> Result<Self, GreedError> {
-        let config_strategy = Box::new(TacticStrategyRunner::from_config(&config, &platform));
-        let factory = StrategyProviderFactory::new(&config, config_path, &platform);
+        let connection = Arc::new(Mutex::new(connection));
+        let config_strategy = Box::new(TacticStrategyRunner::from_config(
+            &config,
+            &platform,
+            &connection,
+        ));
+        let factory = StrategyProviderFactory::new(&config, config_path, &platform, &connection);
         let strategy_providers = factory.create_providers().await?;
 
         // Accumulate assets from all providers
@@ -120,7 +125,11 @@ impl GreedRunner {
     async fn record_portfolio_status(&self) {
         match self.platform.account().await {
             Ok(account) => {
-                if let Err(e) = db::portfolio_status::insert(&self.connection, &account) {
+                let connection = self
+                    .connection
+                    .lock()
+                    .expect("portfolio status connection lock");
+                if let Err(e) = db::portfolio_status::insert(&connection, &account) {
                     warn!("failed to write portfolio status: {}", e);
                 }
             }
