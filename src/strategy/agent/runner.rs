@@ -9,6 +9,7 @@ use crate::strategy::agent::tools::positions::PositionsTool;
 use crate::strategy::agent::tools::quotes::QuotesTool;
 use crate::strategy::agent::tools::read_note::ReadNoteTool;
 use crate::strategy::agent::tools::sell::SellTool;
+use crate::strategy::agent::tools::web_browse::WebBrowseTool;
 use crate::strategy::agent::tools::web_fetch::WebFetchTool;
 use crate::strategy::agent::tools::write_note::WriteNoteTool;
 use crate::strategy::runner::StrategyRunner;
@@ -119,6 +120,9 @@ impl StrategyRunner for AgentStrategyRunner {
         }
         if tool_config.web_fetch {
             tool_vec.push(Box::new(WebFetchTool));
+        }
+        if tool_config.web_browse {
+            tool_vec.push(Box::new(WebBrowseTool));
         }
         if tool_config.read_note {
             tool_vec.push(Box::new(ReadNoteTool::new(self.working_dir.clone())));

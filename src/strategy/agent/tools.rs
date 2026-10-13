@@ -7,6 +7,7 @@ pub mod positions;
 pub mod quotes;
 pub mod read_note;
 pub mod sell;
+pub mod web_browse;
 pub mod web_fetch;
 pub mod write_note;
 
@@ -31,6 +32,12 @@ impl From<crate::error::GreedError> for ToolCallError {
 
 impl From<reqwest::Error> for ToolCallError {
     fn from(e: reqwest::Error) -> Self {
+        ToolCallError(e.to_string())
+    }
+}
+
+impl From<anyhow::Error> for ToolCallError {
+    fn from(e: anyhow::Error) -> Self {
         ToolCallError(e.to_string())
     }
 }

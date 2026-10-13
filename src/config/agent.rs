@@ -26,6 +26,8 @@ pub struct AgentToolsConfig {
     pub sell: bool,
     #[serde(default = "default_true")]
     pub web_fetch: bool,
+    #[serde(default)]
+    pub web_browse: bool,
     #[serde(default = "default_true")]
     pub read_note: bool,
     #[serde(default = "default_true")]
@@ -43,6 +45,7 @@ impl Default for AgentToolsConfig {
             buy: true,
             sell: true,
             web_fetch: true,
+            web_browse: false,
             read_note: true,
             write_note: true,
         }
@@ -121,6 +124,7 @@ mod tests {
         assert!(config.buy);
         assert!(config.sell);
         assert!(config.web_fetch);
+        assert!(!config.web_browse);
         assert!(config.read_note);
         assert!(config.write_note);
     }
@@ -140,8 +144,18 @@ mod tests {
         assert!(!config.buy);
         assert!(!config.sell);
         assert!(config.web_fetch);
+        assert!(!config.web_browse);
         assert!(config.read_note);
         assert!(config.write_note);
+    }
+
+    #[test]
+    fn agent_tools_config_deserialize_web_browse_enabled() {
+        let toml = r#"
+            web_browse = true
+        "#;
+        let config: AgentToolsConfig = toml::from_str(toml).unwrap();
+        assert!(config.web_browse);
     }
 
     #[test]
@@ -224,5 +238,6 @@ mod tests {
         assert!(!config.tools.buy);
         assert!(config.tools.sell);
         assert!(!config.tools.web_fetch);
+        assert!(!config.tools.web_browse);
     }
 }
