@@ -145,21 +145,21 @@ impl GreedRunner {
 mod test {
     use crate::asset::AssetSymbol;
     use crate::config::Config;
-    use crate::db;
+    use crate::db::migrations;
     use crate::fixture;
     use crate::platform::account::Account;
     use crate::platform::quote::Quote;
     use crate::platform::MockPlatform;
     use crate::run::GreedRunner;
     use duckdb::Connection;
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
     use std::time::Duration;
-    use uuid::Uuid;
 
     #[tokio::test]
     async fn run_tick_writes_portfolio_status_row_per_tick() {
-        let db_path = temp_db_path();
-        let connection = db::bootstrap_at(&db_path).expect("bootstrap should succeed");
+        let connection = Connection::open_in_memory().expect("in-memory connection");
+        migrations::apply(&connection).expect("migrations should apply");
+        let assert_connection = connection.try_clone().expect("clone connection");
         let platform = MockPlatform::new().with_account(Account::fixture()).arc();
         let config = Config {
             interval: 1,
@@ -172,16 +172,15 @@ mod test {
         for _ in 0..10 {
             runner.run_tick(Duration::from_secs(1)).await;
         }
-        drop(runner);
 
-        assert_eq!(portfolio_status_count(&db_path), 10);
-        std::fs::remove_file(&db_path).ok();
+        assert_eq!(table_row_count(&assert_connection, "portfolio_status"), 10);
     }
 
     #[tokio::test]
     async fn run_tick_writes_stock_quote_row_per_tick() {
-        let db_path = temp_db_path();
-        let connection = db::bootstrap_at(&db_path).expect("bootstrap should succeed");
+        let connection = Connection::open_in_memory().expect("in-memory connection");
+        migrations::apply(&connection).expect("migrations should apply");
+        let assert_connection = connection.try_clone().expect("clone connection");
         let mut config = fixture::config("config_single_tactic.toml").await;
         config.interval = 0;
         let platform = MockPlatform::new()
@@ -195,27 +194,12 @@ mod test {
         for _ in 0..10 {
             runner.run_tick(Duration::from_secs(0)).await;
         }
-        drop(runner);
 
-        assert_eq!(portfolio_status_count(&db_path), 10);
-        assert_eq!(stock_quotes_count(&db_path), 10);
-        std::fs::remove_file(&db_path).ok();
+        assert_eq!(table_row_count(&assert_connection, "portfolio_status"), 10);
+        assert_eq!(table_row_count(&assert_connection, "stock_quotes"), 10);
     }
 
-    fn temp_db_path() -> PathBuf {
-        std::env::temp_dir().join(format!("greed_test_{}.duckdb", Uuid::new_v4()))
-    }
-
-    fn portfolio_status_count(db_path: &Path) -> i64 {
-        table_row_count(db_path, "portfolio_status")
-    }
-
-    fn stock_quotes_count(db_path: &Path) -> i64 {
-        table_row_count(db_path, "stock_quotes")
-    }
-
-    fn table_row_count(db_path: &Path, table: &str) -> i64 {
-        let connection = Connection::open(db_path).expect("reopen connection");
+    fn table_row_count(connection: &Connection, table: &str) -> i64 {
         connection
             .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
                 row.get(0)
