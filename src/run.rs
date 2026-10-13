@@ -88,27 +88,30 @@ impl GreedRunner {
     pub async fn run_loop(&self) {
         let loop_interval = Duration::from_secs(self.run_interval);
         loop {
-            // Create strategy runners from providers
-            let strategy_runners_result = self.provide_strategy_runners().await;
-            if let Err(e) = strategy_runners_result {
-                // If we fail we will sleep for a bit then try again
-                warn!("error creating strategy runners: {}", e);
-                sleep(loop_interval).await;
-                continue;
-            }
-            // Run each strategy runner
-            let strategy_runners = strategy_runners_result.unwrap();
-            for runner in strategy_runners {
-                let _ = runner.run(&self.config_assets).await;
-                sleep(loop_interval).await;
-            }
-            // Run the general strategy from the top level config
-            self.config_strategy.run(&self.config_assets).await;
-            // Capture portfolio status history for this cycle.
-            self.record_portfolio_status().await;
-            // Sleep for the loop interval then start again.
+            self.run_tick(loop_interval).await;
             sleep(loop_interval).await;
         }
+    }
+
+    async fn run_tick(&self, loop_interval: Duration) {
+        // Create strategy runners from providers
+        let strategy_runners = match self.provide_strategy_runners().await {
+            Ok(runners) => runners,
+            Err(e) => {
+                // If we fail we will sleep for a bit then try again
+                warn!("error creating strategy runners: {}", e);
+                return;
+            }
+        };
+        // Run each strategy runner
+        for runner in strategy_runners {
+            let _ = runner.run(&self.config_assets).await;
+            sleep(loop_interval).await;
+        }
+        // Run the general strategy from the top level config
+        self.config_strategy.run(&self.config_assets).await;
+        // Capture portfolio status history for this cycle.
+        self.record_portfolio_status().await;
     }
 
     async fn provide_strategy_runners(&self) -> Result<Vec<Box<dyn StrategyRunner>>, GreedError> {
@@ -135,5 +138,72 @@ impl GreedRunner {
             }
             Err(e) => warn!("failed to fetch account for portfolio status: {}", e),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::asset::AssetSymbol;
+    use crate::config::Config;
+    use crate::db::migrations;
+    use crate::fixture;
+    use crate::platform::account::Account;
+    use crate::platform::quote::Quote;
+    use crate::platform::MockPlatform;
+    use crate::run::GreedRunner;
+    use duckdb::Connection;
+    use std::path::PathBuf;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn run_tick_writes_portfolio_status_row_per_tick() {
+        let connection = Connection::open_in_memory().expect("in-memory connection");
+        migrations::apply(&connection).expect("migrations should apply");
+        let assert_connection = connection.try_clone().expect("clone connection");
+        let platform = MockPlatform::new().with_account(Account::fixture()).arc();
+        let config = Config {
+            interval: 1,
+            ..Default::default()
+        };
+        let runner = GreedRunner::new(config, PathBuf::from("unused.toml"), platform, connection)
+            .await
+            .expect("runner should build");
+
+        for _ in 0..10 {
+            runner.run_tick(Duration::from_secs(1)).await;
+        }
+
+        assert_eq!(table_row_count(&assert_connection, "portfolio_status"), 10);
+    }
+
+    #[tokio::test]
+    async fn run_tick_writes_stock_quote_row_per_tick() {
+        let connection = Connection::open_in_memory().expect("in-memory connection");
+        migrations::apply(&connection).expect("migrations should apply");
+        let assert_connection = connection.try_clone().expect("clone connection");
+        let mut config = fixture::config("config_single_tactic.toml").await;
+        config.interval = 0;
+        let platform = MockPlatform::new()
+            .with_account(Account::fixture())
+            .with_quotes(vec![Quote::fixture(AssetSymbol::new("VTI"))])
+            .arc();
+        let runner = GreedRunner::new(config, PathBuf::from("unused.toml"), platform, connection)
+            .await
+            .expect("runner should build");
+
+        for _ in 0..10 {
+            runner.run_tick(Duration::from_secs(0)).await;
+        }
+
+        assert_eq!(table_row_count(&assert_connection, "portfolio_status"), 10);
+        assert_eq!(table_row_count(&assert_connection, "stock_quotes"), 10);
+    }
+
+    fn table_row_count(connection: &Connection, table: &str) -> i64 {
+        connection
+            .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                row.get(0)
+            })
+            .expect("table should be queryable")
     }
 }
