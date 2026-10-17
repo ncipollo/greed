@@ -9,7 +9,7 @@ use greed::platform::args::PlatformArgs;
 use greed::template;
 use greed::{
     analyze_stocks, fetch_portfolio_status_history, fetch_quote, fetch_recent_orders, fetch_status,
-    greed_loop,
+    fetch_stock_quote_history, greed_loop,
 };
 
 use crate::cli::history::HistoryCommand;
@@ -39,6 +39,15 @@ async fn async_main(log_config: Config) {
                 fetch_portfolio_status_history(range)
                     .await
                     .expect("status history fetch failed");
+            }
+            HistoryCommand::QuoteHistory(quote_history_args) => {
+                let history_range = HistoryRange::from(&quote_history_args.history_range);
+                let range = history_range
+                    .resolve(Utc::now())
+                    .expect("failed to resolve history range");
+                fetch_stock_quote_history(&quote_history_args.symbols, range)
+                    .await
+                    .expect("quote history fetch failed");
             }
         },
         Command::Init(args) => {

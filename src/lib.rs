@@ -3,6 +3,7 @@ use crate::asset::AssetSymbol;
 use crate::config::platform::PlatformType;
 use crate::error::GreedError;
 use crate::platform::args::PlatformArgs;
+use crate::platform::quote::Quote;
 use crate::run::{GreedRunner, GreedRunnerArgs};
 use chrono::{DateTime, Utc};
 use std::ops::Range;
@@ -101,6 +102,25 @@ pub async fn fetch_portfolio_status_history(range: Range<DateTime<Utc>>) -> Resu
     Ok(())
 }
 
+pub async fn fetch_stock_quote_history(
+    symbols: &[AssetSymbol],
+    range: Range<DateTime<Utc>>,
+) -> Result<(), GreedError> {
+    let connection = db::bootstrap()?;
+    let quotes = db::stock_quotes::select_in_range(&connection, range)?;
+    for quote in quotes
+        .into_iter()
+        .filter(|q| matches_symbol_filter(symbols, q))
+    {
+        println!("{}", quote);
+    }
+    Ok(())
+}
+
+fn matches_symbol_filter(symbols: &[AssetSymbol], quote: &Quote) -> bool {
+    symbols.is_empty() || symbols.contains(&quote.symbol)
+}
+
 fn print_price_explainer() {
     println!("ask price = lowest price where someone is willing to sell a share");
     println!("bid price = highest price someone is willing to pay for a share");
@@ -122,4 +142,35 @@ pub async fn analyze_stocks(
         println!("{}", bars)
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn matches_symbol_filter_empty_list_matches_everything() {
+        assert!(matches_symbol_filter(
+            &[],
+            &Quote::fixture(AssetSymbol::new("VTI"))
+        ));
+    }
+
+    #[test]
+    fn matches_symbol_filter_matches_listed_symbol() {
+        let symbols = vec![AssetSymbol::new("VTI"), AssetSymbol::new("AAPL")];
+        assert!(matches_symbol_filter(
+            &symbols,
+            &Quote::fixture(AssetSymbol::new("VTI"))
+        ));
+    }
+
+    #[test]
+    fn matches_symbol_filter_rejects_unlisted_symbol() {
+        let symbols = vec![AssetSymbol::new("AAPL")];
+        assert!(!matches_symbol_filter(
+            &symbols,
+            &Quote::fixture(AssetSymbol::new("VTI"))
+        ));
+    }
 }
