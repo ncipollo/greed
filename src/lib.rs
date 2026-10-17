@@ -4,6 +4,8 @@ use crate::config::platform::PlatformType;
 use crate::error::GreedError;
 use crate::platform::args::PlatformArgs;
 use crate::run::{GreedRunner, GreedRunnerArgs};
+use chrono::{DateTime, Utc};
+use std::ops::Range;
 
 mod analysis;
 mod assert;
@@ -16,6 +18,7 @@ mod enum_display;
 pub mod error;
 mod fixture;
 mod float;
+pub mod history_range;
 mod num;
 mod pager;
 pub mod platform;
@@ -85,6 +88,15 @@ pub async fn fetch_status(
     let orders = platform.open_orders().await?;
     for order in &orders {
         println!("-- {}", order);
+    }
+    Ok(())
+}
+
+pub async fn fetch_portfolio_status_history(range: Range<DateTime<Utc>>) -> Result<(), GreedError> {
+    let connection = db::bootstrap()?;
+    let records = db::portfolio_status::select_in_range(&connection, range)?;
+    for record in records {
+        println!("{}", record);
     }
     Ok(())
 }
