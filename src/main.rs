@@ -1,12 +1,18 @@
+use chrono::Utc;
 use clap::{CommandFactory, Parser};
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode};
 
 use greed::error::GreedError;
+use greed::history_range::HistoryRange;
 use greed::platform::args::PlatformArgs;
 use greed::template;
-use greed::{analyze_stocks, fetch_quote, fetch_recent_orders, fetch_status, greed_loop};
+use greed::{
+    analyze_stocks, fetch_portfolio_status_history, fetch_quote, fetch_recent_orders, fetch_status,
+    greed_loop,
+};
 
+use crate::cli::history::HistoryCommand;
 use crate::cli::{Cli, Command};
 
 mod cli;
@@ -24,6 +30,17 @@ async fn async_main(log_config: Config) {
     let cli = Cli::parse();
     let command = cli.command;
     match command {
+        Command::History(args) => match args.command {
+            HistoryCommand::Status(status_args) => {
+                let history_range = HistoryRange::from(&status_args.history_range);
+                let range = history_range
+                    .resolve(Utc::now())
+                    .expect("failed to resolve history range");
+                fetch_portfolio_status_history(range)
+                    .await
+                    .expect("status history fetch failed");
+            }
+        },
         Command::Init(args) => {
             generate_config_template(args)
                 .await
