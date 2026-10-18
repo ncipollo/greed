@@ -2,6 +2,7 @@ use crate::cli::history::quote_history::QuoteHistoryArgs;
 use crate::cli::history::status::StatusHistoryArgs;
 use clap::{Args, Subcommand};
 
+mod output_format;
 mod quote_history;
 mod range;
 mod status;

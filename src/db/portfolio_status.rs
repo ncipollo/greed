@@ -4,6 +4,7 @@ use crate::platform::account::Account;
 use crate::platform::id::Id;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use duckdb::{params, Connection};
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
 
@@ -24,8 +25,10 @@ pub fn insert(connection: &Connection, account: &Account) -> Result<(), GreedErr
     Ok(())
 }
 
+#[derive(Serialize)]
 pub struct PortfolioStatusRecord {
     pub timestamp: DateTime<Utc>,
+    #[serde(flatten)]
     pub account: Account,
 }
 
@@ -94,10 +97,11 @@ pub fn select_in_range(
 #[cfg(test)]
 mod test {
     use crate::db::migrations;
-    use crate::db::portfolio_status::{insert, select_in_range};
+    use crate::db::portfolio_status::{insert, select_in_range, PortfolioStatusRecord};
     use crate::platform::account::Account;
     use chrono::{NaiveDate, TimeZone, Utc};
     use duckdb::{params, Connection};
+    use serde_json::json;
 
     #[test]
     fn insert_adds_a_row_to_portfolio_status() {
@@ -188,6 +192,36 @@ mod test {
         let records = select_in_range(&connection, start..end).expect("select should succeed");
 
         assert!(records.is_empty());
+    }
+
+    #[test]
+    fn serialize_flattens_account_fields_into_the_record() {
+        let record = PortfolioStatusRecord {
+            timestamp: Utc.with_ymd_and_hms(2026, 1, 1, 12, 0, 0).unwrap(),
+            account: Account {
+                buying_power: 100.0,
+                cash: 50.0,
+                currency: "USD".to_string(),
+                market_value_long: 10.0,
+                market_value_short: 5.0,
+                equity: 200.0,
+                ..Default::default()
+            },
+        };
+
+        let json = serde_json::to_value(&record).expect("failed to serialize");
+        let expected = json!({
+            "timestamp": "2026-01-01T12:00:00Z",
+            "id": "00000000-0000-0000-0000-000000000000",
+            "buying_power": 100.0,
+            "cash": 50.0,
+            "currency": "USD",
+            "market_value_long": 10.0,
+            "market_value_short": 5.0,
+            "equity": 200.0,
+        });
+
+        assert_eq!(json, expected)
     }
 
     fn naive_date(year: i32, month: u32, day: u32) -> chrono::NaiveDateTime {
