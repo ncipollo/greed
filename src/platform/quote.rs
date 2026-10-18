@@ -1,10 +1,11 @@
 use std::fmt::{Display, Formatter};
 
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 
 use crate::asset::AssetSymbol;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct Quote {
     pub time: DateTime<Utc>,
     /// The ask price.
@@ -74,6 +75,32 @@ mod test {
     use crate::asset::AssetSymbol;
     use crate::platform::quote::Quote;
     use approx::assert_relative_eq;
+    use chrono::{TimeZone, Utc};
+    use serde_json::json;
+
+    #[test]
+    fn serialize() {
+        let quote = Quote {
+            time: Utc.with_ymd_and_hms(2026, 1, 1, 12, 0, 0).unwrap(),
+            ask_price: 200.0,
+            ask_size: 3,
+            bid_price: 100.0,
+            bid_size: 5,
+            symbol: AssetSymbol::new("vti"),
+        };
+
+        let json = serde_json::to_value(&quote).expect("failed to serialize");
+        let expected = json!({
+            "time": "2026-01-01T12:00:00Z",
+            "ask_price": 200.0,
+            "ask_size": 3,
+            "bid_price": 100.0,
+            "bid_size": 5,
+            "symbol": "vti",
+        });
+
+        assert_eq!(json, expected)
+    }
 
     #[test]
     fn display() {

@@ -45,9 +45,13 @@ async fn async_main(log_config: Config) {
                 let range = history_range
                     .resolve(Utc::now())
                     .expect("failed to resolve history range");
-                fetch_stock_quote_history(&quote_history_args.symbols, range)
-                    .await
-                    .expect("quote history fetch failed");
+                fetch_stock_quote_history(
+                    &quote_history_args.symbols,
+                    range,
+                    quote_history_args.output_format.format,
+                )
+                .await
+                .expect("quote history fetch failed");
             }
         },
         Command::Init(args) => {

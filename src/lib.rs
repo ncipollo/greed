@@ -117,14 +117,22 @@ pub async fn fetch_portfolio_status_history(
 pub async fn fetch_stock_quote_history(
     symbols: &[AssetSymbol],
     range: Range<DateTime<Utc>>,
+    format: OutputFormat,
 ) -> Result<(), GreedError> {
     let connection = db::bootstrap()?;
-    let quotes = db::stock_quotes::select_in_range(&connection, range)?;
-    for quote in quotes
+    let quotes: Vec<Quote> = db::stock_quotes::select_in_range(&connection, range)?
         .into_iter()
         .filter(|q| matches_symbol_filter(symbols, q))
-    {
-        println!("{}", quote);
+        .collect();
+    match format {
+        OutputFormat::Text => {
+            for quote in quotes {
+                println!("{}", quote);
+            }
+        }
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&quotes)?);
+        }
     }
     Ok(())
 }
