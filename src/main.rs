@@ -36,7 +36,7 @@ async fn async_main(log_config: Config) {
                 let range = history_range
                     .resolve(Utc::now())
                     .expect("failed to resolve history range");
-                fetch_portfolio_status_history(range)
+                fetch_portfolio_status_history(range, status_args.output_format.format)
                     .await
                     .expect("status history fetch failed");
             }

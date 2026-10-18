@@ -2,6 +2,7 @@ use crate::analysis::AssetAnalyzer;
 use crate::asset::AssetSymbol;
 use crate::config::platform::PlatformType;
 use crate::error::GreedError;
+use crate::output_format::OutputFormat;
 use crate::platform::args::PlatformArgs;
 use crate::platform::quote::Quote;
 use crate::run::{GreedRunner, GreedRunnerArgs};
@@ -21,6 +22,7 @@ mod fixture;
 mod float;
 pub mod history_range;
 mod num;
+pub mod output_format;
 mod pager;
 pub mod platform;
 pub mod run;
@@ -93,11 +95,21 @@ pub async fn fetch_status(
     Ok(())
 }
 
-pub async fn fetch_portfolio_status_history(range: Range<DateTime<Utc>>) -> Result<(), GreedError> {
+pub async fn fetch_portfolio_status_history(
+    range: Range<DateTime<Utc>>,
+    format: OutputFormat,
+) -> Result<(), GreedError> {
     let connection = db::bootstrap()?;
     let records = db::portfolio_status::select_in_range(&connection, range)?;
-    for record in records {
-        println!("{}", record);
+    match format {
+        OutputFormat::Text => {
+            for record in records {
+                println!("{}", record);
+            }
+        }
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&records)?);
+        }
     }
     Ok(())
 }

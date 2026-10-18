@@ -1,7 +1,8 @@
 use crate::platform::id::Id;
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct Account {
     /// The account's status.
     pub id: Id,
@@ -47,6 +48,7 @@ impl Display for Account {
 #[cfg(test)]
 mod test {
     use crate::platform::account::Account;
+    use serde_json::json;
 
     #[test]
     fn display() {
@@ -59,5 +61,31 @@ mod test {
         let display = account.to_string();
         let expected = "buying power: 100.00, equity: 200.00, cash: 50.00";
         assert_eq!(display, expected)
+    }
+
+    #[test]
+    fn serialize() {
+        let account = Account {
+            buying_power: 100.0,
+            cash: 50.0,
+            currency: "USD".to_string(),
+            market_value_long: 10.0,
+            market_value_short: 5.0,
+            equity: 200.0,
+            ..Default::default()
+        };
+
+        let json = serde_json::to_value(&account).expect("failed to serialize");
+        let expected = json!({
+            "id": "00000000-0000-0000-0000-000000000000",
+            "buying_power": 100.0,
+            "cash": 50.0,
+            "currency": "USD",
+            "market_value_long": 10.0,
+            "market_value_short": 5.0,
+            "equity": 200.0,
+        });
+
+        assert_eq!(json, expected)
     }
 }
