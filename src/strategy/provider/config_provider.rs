@@ -17,6 +17,7 @@ pub struct ConfigStrategyProvider {
     connection: Arc<Mutex<Connection>>,
     loop_interval: Duration,
     platform: Arc<dyn FinancialPlatform>,
+    record_history: bool,
     strategy_config: StrategyConfig,
     tactic_configs: Vec<TacticConfig>,
 }
@@ -28,12 +29,14 @@ impl ConfigStrategyProvider {
         platform: Arc<dyn FinancialPlatform>,
         strategy_config: StrategyConfig,
         connection: Arc<Mutex<Connection>>,
+        record_history: bool,
     ) -> Result<Self, GreedError> {
         let tactic_configs = read_tactics_from_config(&config_path, &strategy_config).await?;
         Ok(Self {
             connection,
             loop_interval,
             platform,
+            record_history,
             strategy_config,
             tactic_configs,
         })
@@ -52,6 +55,7 @@ impl StrategyRunnerProvider for ConfigStrategyProvider {
                     self.platform.clone(),
                     self.strategy_config.properties(),
                     self.connection.clone(),
+                    self.record_history,
                 )
             })
             .collect();
@@ -125,6 +129,7 @@ mod tests {
             NoOpPlatform::arc(),
             strategy_config,
             fixture::db_connection(),
+            true,
         )
         .await
         .expect("should create provider")

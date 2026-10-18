@@ -20,6 +20,7 @@ use tokio::time::sleep;
 pub struct GreedRunnerArgs {
     pub config_path: PathBuf,
     pub is_simulated: bool,
+    pub record_history: bool,
 }
 
 pub struct GreedRunner {
@@ -29,6 +30,7 @@ pub struct GreedRunner {
     config_assets: Vec<AssetSymbol>,
     platform: Arc<dyn FinancialPlatform>,
     connection: Arc<Mutex<Connection>>,
+    record_history: bool,
 }
 
 impl GreedRunner {
@@ -37,14 +39,22 @@ impl GreedRunner {
         config_path: PathBuf,
         platform: Arc<dyn FinancialPlatform>,
         connection: Connection,
+        record_history: bool,
     ) -> Result<Self, GreedError> {
         let connection = Arc::new(Mutex::new(connection));
         let config_strategy = Box::new(TacticStrategyRunner::from_config(
             &config,
             &platform,
             &connection,
+            record_history,
         ));
-        let factory = StrategyProviderFactory::new(&config, config_path, &platform, &connection);
+        let factory = StrategyProviderFactory::new(
+            &config,
+            config_path,
+            &platform,
+            &connection,
+            record_history,
+        );
         let strategy_providers = factory.create_providers().await?;
 
         // Accumulate assets from all providers
@@ -62,6 +72,7 @@ impl GreedRunner {
             config_assets,
             platform,
             connection,
+            record_history,
         })
     }
 
@@ -70,9 +81,10 @@ impl GreedRunner {
         connection: Connection,
     ) -> Result<GreedRunner, GreedError> {
         let config_path = args.config_path.clone();
+        let record_history = args.record_history;
         let config = GreedRunner::read_config(&args).await?;
         let platform = platform::for_type(&config.platform, args.into())?;
-        Self::new(config, config_path, platform, connection).await
+        Self::new(config, config_path, platform, connection, record_history).await
     }
 
     async fn read_config(args: &GreedRunnerArgs) -> Result<Config, GreedError> {
@@ -126,6 +138,9 @@ impl GreedRunner {
     // A DB hiccup must not stop trading automation, so failures are logged and swallowed here.
     // The insert is synchronous for now; switch to tokio::task::spawn_blocking if it proves slow.
     async fn record_portfolio_status(&self) {
+        if !self.record_history {
+            return;
+        }
         match self.platform.account().await {
             Ok(account) => {
                 let connection = self
@@ -165,9 +180,15 @@ mod test {
             interval: 1,
             ..Default::default()
         };
-        let runner = GreedRunner::new(config, PathBuf::from("unused.toml"), platform, connection)
-            .await
-            .expect("runner should build");
+        let runner = GreedRunner::new(
+            config,
+            PathBuf::from("unused.toml"),
+            platform,
+            connection,
+            true,
+        )
+        .await
+        .expect("runner should build");
 
         for _ in 0..10 {
             runner.run_tick(Duration::from_secs(1)).await;
@@ -187,9 +208,15 @@ mod test {
             .with_account(Account::fixture())
             .with_quotes(vec![Quote::fixture(AssetSymbol::new("VTI"))])
             .arc();
-        let runner = GreedRunner::new(config, PathBuf::from("unused.toml"), platform, connection)
-            .await
-            .expect("runner should build");
+        let runner = GreedRunner::new(
+            config,
+            PathBuf::from("unused.toml"),
+            platform,
+            connection,
+            true,
+        )
+        .await
+        .expect("runner should build");
 
         for _ in 0..10 {
             runner.run_tick(Duration::from_secs(0)).await;
@@ -197,6 +224,35 @@ mod test {
 
         assert_eq!(table_row_count(&assert_connection, "portfolio_status"), 10);
         assert_eq!(table_row_count(&assert_connection, "stock_quotes"), 10);
+    }
+
+    #[tokio::test]
+    async fn run_tick_skips_writes_when_record_history_disabled() {
+        let connection = Connection::open_in_memory().expect("in-memory connection");
+        migrations::apply(&connection).expect("migrations should apply");
+        let assert_connection = connection.try_clone().expect("clone connection");
+        let mut config = fixture::config("config_strategic.toml").await;
+        config.interval = 0;
+        let platform = MockPlatform::new()
+            .with_account(Account::fixture())
+            .with_quotes(vec![Quote::fixture(AssetSymbol::new("VTI"))])
+            .arc();
+        let runner = GreedRunner::new(
+            config,
+            fixture::path("config_strategic.toml"),
+            platform,
+            connection,
+            false,
+        )
+        .await
+        .expect("runner should build");
+
+        for _ in 0..10 {
+            runner.run_tick(Duration::from_secs(0)).await;
+        }
+
+        assert_eq!(table_row_count(&assert_connection, "portfolio_status"), 0);
+        assert_eq!(table_row_count(&assert_connection, "stock_quotes"), 0);
     }
 
     fn table_row_count(connection: &Connection, table: &str) -> i64 {

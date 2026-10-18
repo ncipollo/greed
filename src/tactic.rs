@@ -37,6 +37,7 @@ pub struct TacticRunner {
     config: TacticConfig,
     connection: Arc<Mutex<Connection>>,
     platform: Arc<dyn FinancialPlatform>,
+    record_history: bool,
     strategy_properties: StrategyProperties,
 }
 
@@ -46,12 +47,14 @@ impl TacticRunner {
         platform: Arc<dyn FinancialPlatform>,
         strategy_properties: StrategyProperties,
         connection: Arc<Mutex<Connection>>,
+        record_history: bool,
     ) -> Self {
         Self {
             asset_analyzer: AssetAnalyzer::new(platform.clone()),
             config,
             connection,
             platform,
+            record_history,
             strategy_properties,
         }
     }
@@ -112,6 +115,9 @@ impl TacticRunner {
 
     // A DB hiccup must not interrupt tactic evaluation, so failures are logged and swallowed here.
     fn record_quote(&self, quote: &Quote) {
+        if !self.record_history {
+            return;
+        }
         let connection = self.connection.lock().expect("stock quote connection lock");
         if let Err(e) = db::stock_quotes::insert(&connection, quote) {
             warn!("failed to write stock quote: {}", e);

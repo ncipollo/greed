@@ -15,6 +15,7 @@ pub struct StrategyProviderFactory<'a> {
     config_path: PathBuf,
     connection: &'a Arc<Mutex<Connection>>,
     platform: &'a Arc<dyn FinancialPlatform>,
+    record_history: bool,
 }
 
 impl<'a> StrategyProviderFactory<'a> {
@@ -23,12 +24,14 @@ impl<'a> StrategyProviderFactory<'a> {
         config_path: PathBuf,
         platform: &'a Arc<dyn FinancialPlatform>,
         connection: &'a Arc<Mutex<Connection>>,
+        record_history: bool,
     ) -> StrategyProviderFactory<'a> {
         Self {
             config,
             config_path,
             connection,
             platform,
+            record_history,
         }
     }
 
@@ -66,6 +69,7 @@ impl<'a> StrategyProviderFactory<'a> {
                     self.platform.clone(),
                     strategy_config,
                     self.connection.clone(),
+                    self.record_history,
                 )
                 .await?;
                 Ok(Box::new(provider))

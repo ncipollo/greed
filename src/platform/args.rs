@@ -23,6 +23,7 @@ mod test {
         let runner_args = GreedRunnerArgs {
             config_path: Default::default(),
             is_simulated: true,
+            record_history: false,
         };
         let platform_args: PlatformArgs = runner_args.into();
         let expected = PlatformArgs { is_simulated: true };
