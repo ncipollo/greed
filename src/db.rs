@@ -12,25 +12,69 @@ pub fn default_path() -> PathBuf {
     PathBuf::from(DEFAULT_DB_FILENAME)
 }
 
-pub fn bootstrap() -> Result<Connection, GreedError> {
-    bootstrap_at(&default_path())
-}
-
 pub fn bootstrap_at(path: &Path) -> Result<Connection, GreedError> {
     let connection = Connection::open(path)?;
     migrations::apply(&connection)?;
     Ok(connection)
 }
 
+pub fn path_for_run(config_path: &Path, override_path: Option<&Path>) -> PathBuf {
+    if let Some(override_path) = override_path {
+        return override_path.to_path_buf();
+    }
+    match config_path.parent() {
+        Some(parent) => parent.join(DEFAULT_DB_FILENAME),
+        None => default_path(),
+    }
+}
+
+pub fn path_for_override(override_path: Option<&Path>) -> PathBuf {
+    override_path
+        .map(Path::to_path_buf)
+        .unwrap_or_else(default_path)
+}
+
 #[cfg(test)]
 mod test {
-    use crate::db::{bootstrap_at, default_path};
-    use std::path::PathBuf;
+    use crate::db::{bootstrap_at, default_path, path_for_override, path_for_run};
+    use std::path::{Path, PathBuf};
     use uuid::Uuid;
 
     #[test]
     fn default_path_is_well_known_filename() {
         assert_eq!(default_path(), PathBuf::from("greed.duckdb"));
+    }
+
+    #[test]
+    fn path_for_run_prefers_override_when_given() {
+        let resolved = path_for_run(
+            Path::new("/configs/my_config.toml"),
+            Some(Path::new("/elsewhere/custom.duckdb")),
+        );
+        assert_eq!(resolved, PathBuf::from("/elsewhere/custom.duckdb"));
+    }
+
+    #[test]
+    fn path_for_run_colocates_with_config_parent_directory() {
+        let resolved = path_for_run(Path::new("/configs/my_config.toml"), None);
+        assert_eq!(resolved, PathBuf::from("/configs/greed.duckdb"));
+    }
+
+    #[test]
+    fn path_for_run_falls_back_to_default_path_when_config_has_no_parent() {
+        let resolved = path_for_run(Path::new("/"), None);
+        assert_eq!(resolved, default_path());
+    }
+
+    #[test]
+    fn path_for_override_prefers_override_when_given() {
+        let resolved = path_for_override(Some(Path::new("/elsewhere/custom.duckdb")));
+        assert_eq!(resolved, PathBuf::from("/elsewhere/custom.duckdb"));
+    }
+
+    #[test]
+    fn path_for_override_defaults_to_well_known_filename_when_omitted() {
+        assert_eq!(path_for_override(None), default_path());
     }
 
     #[test]

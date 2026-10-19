@@ -19,6 +19,7 @@ use tokio::time::sleep;
 #[derive(Debug, Default, PartialEq)]
 pub struct GreedRunnerArgs {
     pub config_path: PathBuf,
+    pub db_path: Option<PathBuf>,
     pub is_simulated: bool,
     pub record_history: bool,
 }

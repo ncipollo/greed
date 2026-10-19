@@ -8,6 +8,7 @@ use crate::platform::quote::Quote;
 use crate::run::{GreedRunner, GreedRunnerArgs};
 use chrono::{DateTime, Utc};
 use std::ops::Range;
+use std::path::PathBuf;
 
 mod analysis;
 mod assert;
@@ -33,7 +34,8 @@ pub mod template;
 mod trading_days;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
-    let connection = db::bootstrap()?;
+    let db_path = db::path_for_run(&args.config_path, args.db_path.as_deref());
+    let connection = db::bootstrap_at(&db_path)?;
     let runner = GreedRunner::from_args(args, connection).await?;
     runner.run_loop().await;
     Ok(())
@@ -98,8 +100,10 @@ pub async fn fetch_status(
 pub async fn fetch_portfolio_status_history(
     range: Range<DateTime<Utc>>,
     format: OutputFormat,
+    db_path: Option<PathBuf>,
 ) -> Result<(), GreedError> {
-    let connection = db::bootstrap()?;
+    let path = db::path_for_override(db_path.as_deref());
+    let connection = db::bootstrap_at(&path)?;
     let records = db::portfolio_status::select_in_range(&connection, range)?;
     match format {
         OutputFormat::Text => {
@@ -118,8 +122,10 @@ pub async fn fetch_stock_quote_history(
     symbols: &[AssetSymbol],
     range: Range<DateTime<Utc>>,
     format: OutputFormat,
+    db_path: Option<PathBuf>,
 ) -> Result<(), GreedError> {
-    let connection = db::bootstrap()?;
+    let path = db::path_for_override(db_path.as_deref());
+    let connection = db::bootstrap_at(&path)?;
     let quotes: Vec<Quote> = db::stock_quotes::select_in_range(&connection, range)?
         .into_iter()
         .filter(|q| matches_symbol_filter(symbols, q))

@@ -7,6 +7,9 @@ pub struct RunCommandArgs {
     /// Path to the greed configuration toml file
     #[arg(value_name = "PATH")]
     config_path: PathBuf,
+    /// Override the path to the DuckDB database file. Defaults to "greed.duckdb" next to the config file.
+    #[arg(long, value_name = "PATH")]
+    db_path: Option<PathBuf>,
     /// Use a simulated financial platform instead of a live account.
     #[arg(short = 's', long)]
     is_simulated: bool,
@@ -19,6 +22,7 @@ impl From<RunCommandArgs> for GreedRunnerArgs {
     fn from(value: RunCommandArgs) -> Self {
         Self {
             config_path: value.config_path.clone(),
+            db_path: value.db_path,
             is_simulated: value.is_simulated,
             record_history: value.record_history,
         }
@@ -35,12 +39,14 @@ mod test {
     fn runner_args_from() {
         let command_args = RunCommandArgs {
             config_path: PathBuf::from("path"),
+            db_path: Some(PathBuf::from("db_path")),
             is_simulated: true,
             record_history: true,
         };
         let runner_args: GreedRunnerArgs = command_args.into();
         let expected = GreedRunnerArgs {
             config_path: PathBuf::from("path"),
+            db_path: Some(PathBuf::from("db_path")),
             is_simulated: true,
             record_history: true,
         };

@@ -36,9 +36,13 @@ async fn async_main(log_config: Config) {
                 let range = history_range
                     .resolve(Utc::now())
                     .expect("failed to resolve history range");
-                fetch_portfolio_status_history(range, status_args.output_format.format)
-                    .await
-                    .expect("status history fetch failed");
+                fetch_portfolio_status_history(
+                    range,
+                    status_args.output_format.format,
+                    status_args.db_path,
+                )
+                .await
+                .expect("status history fetch failed");
             }
             HistoryCommand::QuoteHistory(quote_history_args) => {
                 let history_range = HistoryRange::from(&quote_history_args.history_range);
@@ -49,6 +53,7 @@ async fn async_main(log_config: Config) {
                     &quote_history_args.symbols,
                     range,
                     quote_history_args.output_format.format,
+                    quote_history_args.db_path,
                 )
                 .await
                 .expect("quote history fetch failed");
