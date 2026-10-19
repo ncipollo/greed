@@ -30,7 +30,8 @@ pub struct GreedRunner {
     strategy_providers: Vec<Box<dyn StrategyRunnerProvider>>,
     config_assets: Vec<AssetSymbol>,
     platform: Arc<dyn FinancialPlatform>,
-    connection: Arc<Mutex<Connection>>,
+    connection: Arc<Mutex<Option<Connection>>>,
+    db_path: PathBuf,
     record_history: bool,
 }
 
@@ -39,10 +40,10 @@ impl GreedRunner {
         config: Config,
         config_path: PathBuf,
         platform: Arc<dyn FinancialPlatform>,
-        connection: Connection,
+        db_path: PathBuf,
         record_history: bool,
     ) -> Result<Self, GreedError> {
-        let connection = Arc::new(Mutex::new(connection));
+        let connection = Arc::new(Mutex::new(None));
         let config_strategy = Box::new(TacticStrategyRunner::from_config(
             &config,
             &platform,
@@ -73,19 +74,20 @@ impl GreedRunner {
             config_assets,
             platform,
             connection,
+            db_path,
             record_history,
         })
     }
 
     pub async fn from_args(
         args: GreedRunnerArgs,
-        connection: Connection,
+        db_path: PathBuf,
     ) -> Result<GreedRunner, GreedError> {
         let config_path = args.config_path.clone();
         let record_history = args.record_history;
         let config = GreedRunner::read_config(&args).await?;
         let platform = platform::for_type(&config.platform, args.into())?;
-        Self::new(config, config_path, platform, connection, record_history).await
+        Self::new(config, config_path, platform, db_path, record_history).await
     }
 
     async fn read_config(args: &GreedRunnerArgs) -> Result<Config, GreedError> {
@@ -116,6 +118,8 @@ impl GreedRunner {
                 return;
             }
         };
+        // Open the DB for this tick's writes; held only for the writes below.
+        self.open_tick_connection().await;
         // Run each strategy runner
         for runner in strategy_runners {
             let _ = runner.run(&self.config_assets).await;
@@ -125,6 +129,24 @@ impl GreedRunner {
         self.config_strategy.run(&self.config_assets).await;
         // Capture portfolio status history for this cycle.
         self.record_portfolio_status().await;
+        // Close the DB now that this tick's writes are done, releasing the lock.
+        self.close_tick_connection();
+    }
+
+    async fn open_tick_connection(&self) {
+        if !self.record_history {
+            return;
+        }
+        match db::open_for_write_with_retry(&self.db_path).await {
+            Ok(connection) => {
+                *self.connection.lock().expect("connection slot lock") = Some(connection);
+            }
+            Err(e) => warn!("failed to open db for this tick's writes: {}", e),
+        }
+    }
+
+    fn close_tick_connection(&self) {
+        self.connection.lock().expect("connection slot lock").take();
     }
 
     async fn provide_strategy_runners(&self) -> Result<Vec<Box<dyn StrategyRunner>>, GreedError> {
@@ -144,11 +166,14 @@ impl GreedRunner {
         }
         match self.platform.account().await {
             Ok(account) => {
-                let connection = self
+                let guard = self
                     .connection
                     .lock()
                     .expect("portfolio status connection lock");
-                if let Err(e) = db::portfolio_status::insert(&connection, &account) {
+                let Some(connection) = guard.as_ref() else {
+                    return;
+                };
+                if let Err(e) = db::portfolio_status::insert(connection, &account) {
                     warn!("failed to write portfolio status: {}", e);
                 }
             }
@@ -161,7 +186,7 @@ impl GreedRunner {
 mod test {
     use crate::asset::AssetSymbol;
     use crate::config::Config;
-    use crate::db::migrations;
+    use crate::db::bootstrap_at;
     use crate::fixture;
     use crate::platform::account::Account;
     use crate::platform::quote::Quote;
@@ -170,12 +195,12 @@ mod test {
     use duckdb::Connection;
     use std::path::PathBuf;
     use std::time::Duration;
+    use uuid::Uuid;
 
     #[tokio::test]
     async fn run_tick_writes_portfolio_status_row_per_tick() {
-        let connection = Connection::open_in_memory().expect("in-memory connection");
-        migrations::apply(&connection).expect("migrations should apply");
-        let assert_connection = connection.try_clone().expect("clone connection");
+        let db_path = temp_db_path();
+        bootstrap_at(&db_path).expect("bootstrap should succeed");
         let platform = MockPlatform::new().with_account(Account::fixture()).arc();
         let config = Config {
             interval: 1,
@@ -185,7 +210,7 @@ mod test {
             config,
             PathBuf::from("unused.toml"),
             platform,
-            connection,
+            db_path.clone(),
             true,
         )
         .await
@@ -195,14 +220,14 @@ mod test {
             runner.run_tick(Duration::from_secs(1)).await;
         }
 
-        assert_eq!(table_row_count(&assert_connection, "portfolio_status"), 10);
+        assert_eq!(table_row_count(&db_path, "portfolio_status"), 10);
+        std::fs::remove_file(&db_path).ok();
     }
 
     #[tokio::test]
     async fn run_tick_writes_stock_quote_row_per_tick() {
-        let connection = Connection::open_in_memory().expect("in-memory connection");
-        migrations::apply(&connection).expect("migrations should apply");
-        let assert_connection = connection.try_clone().expect("clone connection");
+        let db_path = temp_db_path();
+        bootstrap_at(&db_path).expect("bootstrap should succeed");
         let mut config = fixture::config("config_single_tactic.toml").await;
         config.interval = 0;
         let platform = MockPlatform::new()
@@ -213,7 +238,7 @@ mod test {
             config,
             PathBuf::from("unused.toml"),
             platform,
-            connection,
+            db_path.clone(),
             true,
         )
         .await
@@ -223,15 +248,15 @@ mod test {
             runner.run_tick(Duration::from_secs(0)).await;
         }
 
-        assert_eq!(table_row_count(&assert_connection, "portfolio_status"), 10);
-        assert_eq!(table_row_count(&assert_connection, "stock_quotes"), 10);
+        assert_eq!(table_row_count(&db_path, "portfolio_status"), 10);
+        assert_eq!(table_row_count(&db_path, "stock_quotes"), 10);
+        std::fs::remove_file(&db_path).ok();
     }
 
     #[tokio::test]
     async fn run_tick_skips_writes_when_record_history_disabled() {
-        let connection = Connection::open_in_memory().expect("in-memory connection");
-        migrations::apply(&connection).expect("migrations should apply");
-        let assert_connection = connection.try_clone().expect("clone connection");
+        let db_path = temp_db_path();
+        bootstrap_at(&db_path).expect("bootstrap should succeed");
         let mut config = fixture::config("config_strategic.toml").await;
         config.interval = 0;
         let platform = MockPlatform::new()
@@ -242,7 +267,7 @@ mod test {
             config,
             fixture::path("config_strategic.toml"),
             platform,
-            connection,
+            db_path.clone(),
             false,
         )
         .await
@@ -252,15 +277,21 @@ mod test {
             runner.run_tick(Duration::from_secs(0)).await;
         }
 
-        assert_eq!(table_row_count(&assert_connection, "portfolio_status"), 0);
-        assert_eq!(table_row_count(&assert_connection, "stock_quotes"), 0);
+        assert_eq!(table_row_count(&db_path, "portfolio_status"), 0);
+        assert_eq!(table_row_count(&db_path, "stock_quotes"), 0);
+        std::fs::remove_file(&db_path).ok();
     }
 
-    fn table_row_count(connection: &Connection, table: &str) -> i64 {
+    fn table_row_count(db_path: &PathBuf, table: &str) -> i64 {
+        let connection = Connection::open(db_path).expect("db should be queryable");
         connection
             .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
                 row.get(0)
             })
             .expect("table should be queryable")
+    }
+
+    fn temp_db_path() -> PathBuf {
+        std::env::temp_dir().join(format!("greed_test_{}.duckdb", Uuid::new_v4()))
     }
 }

@@ -41,7 +41,7 @@ impl TacticStrategyRunner {
     pub fn from_config(
         config: &Config,
         platform: &Arc<dyn FinancialPlatform>,
-        connection: &Arc<Mutex<Connection>>,
+        connection: &Arc<Mutex<Option<Connection>>>,
         record_history: bool,
     ) -> Self {
         let loop_interval = Duration::from_secs(config.interval);
@@ -101,7 +101,7 @@ mod tests {
     async fn from_config_empty_tactics() {
         let config = fixture::config("config_minimal.toml").await;
         let platform = NoOpPlatform::arc();
-        let connection = fixture::db_connection();
+        let connection = Arc::new(Mutex::new(None));
         let runner = TacticStrategyRunner::from_config(&config, &platform, &connection, true);
         assert_eq!(runner.loop_interval, Duration::from_secs(60));
         assert_eq!(runner.tactic_runner_count(), 0);
@@ -111,7 +111,7 @@ mod tests {
     async fn from_config_with_tactics() {
         let config = fixture::config("config_single_tactic.toml").await;
         let platform = NoOpPlatform::arc();
-        let connection = fixture::db_connection();
+        let connection = Arc::new(Mutex::new(None));
         let runner = TacticStrategyRunner::from_config(&config, &platform, &connection, true);
         assert_eq!(runner.loop_interval, Duration::from_secs(300));
         assert_eq!(runner.tactic_runner_count(), 1);

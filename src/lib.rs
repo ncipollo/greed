@@ -35,8 +35,8 @@ mod trading_days;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
     let db_path = db::path_for_run(&args.config_path, args.db_path.as_deref());
-    let connection = db::bootstrap_at(&db_path)?;
-    let runner = GreedRunner::from_args(args, connection).await?;
+    db::bootstrap_at_with_retry(&db_path).await?;
+    let runner = GreedRunner::from_args(args, db_path).await?;
     runner.run_loop().await;
     Ok(())
 }
@@ -103,8 +103,10 @@ pub async fn fetch_portfolio_status_history(
     db_path: Option<PathBuf>,
 ) -> Result<(), GreedError> {
     let path = db::path_for_override(db_path.as_deref());
-    let connection = db::bootstrap_at(&path)?;
-    let records = db::portfolio_status::select_in_range(&connection, range)?;
+    let records = match db::open_read_only_with_retry(&path).await? {
+        Some(connection) => db::portfolio_status::select_in_range(&connection, range)?,
+        None => Vec::new(),
+    };
     match format {
         OutputFormat::Text => {
             for record in records {
@@ -125,11 +127,13 @@ pub async fn fetch_stock_quote_history(
     db_path: Option<PathBuf>,
 ) -> Result<(), GreedError> {
     let path = db::path_for_override(db_path.as_deref());
-    let connection = db::bootstrap_at(&path)?;
-    let quotes: Vec<Quote> = db::stock_quotes::select_in_range(&connection, range)?
-        .into_iter()
-        .filter(|q| matches_symbol_filter(symbols, q))
-        .collect();
+    let quotes: Vec<Quote> = match db::open_read_only_with_retry(&path).await? {
+        Some(connection) => db::stock_quotes::select_in_range(&connection, range)?
+            .into_iter()
+            .filter(|q| matches_symbol_filter(symbols, q))
+            .collect(),
+        None => Vec::new(),
+    };
     match format {
         OutputFormat::Text => {
             for quote in quotes {

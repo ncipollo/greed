@@ -1,9 +1,10 @@
 pub mod migrations;
 pub mod portfolio_status;
+mod retry;
 pub mod stock_quotes;
 
 use crate::error::GreedError;
-use duckdb::Connection;
+use duckdb::{AccessMode, Config, Connection};
 use std::path::{Path, PathBuf};
 
 const DEFAULT_DB_FILENAME: &str = "greed.duckdb";
@@ -16,6 +17,37 @@ pub fn bootstrap_at(path: &Path) -> Result<Connection, GreedError> {
     let connection = Connection::open(path)?;
     migrations::apply(&connection)?;
     Ok(connection)
+}
+
+pub async fn bootstrap_at_with_retry(path: &Path) -> Result<Connection, GreedError> {
+    retry::with_backoff(|| bootstrap_at(path)).await
+}
+
+/// Opens a connection for writing without re-checking the schema. Callers must
+/// have already ensured the schema exists via `bootstrap_at`, since a brief
+/// per-tick write window shouldn't pay for a migration check on every open.
+pub fn open_for_write(path: &Path) -> Result<Connection, GreedError> {
+    Connection::open(path).map_err(GreedError::from)
+}
+
+pub async fn open_for_write_with_retry(path: &Path) -> Result<Connection, GreedError> {
+    retry::with_backoff(|| open_for_write(path)).await
+}
+
+fn open_read_only_now(path: &Path) -> Result<Connection, GreedError> {
+    let config = Config::default().access_mode(AccessMode::ReadOnly)?;
+    Connection::open_with_flags(path, config).map_err(GreedError::from)
+}
+
+/// Opens a read-only connection with a bounded retry on lock contention.
+/// Returns `Ok(None)` when the database file doesn't exist yet, since a
+/// read-only open can't create the schema the way a read-write open would.
+pub async fn open_read_only_with_retry(path: &Path) -> Result<Option<Connection>, GreedError> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let connection = retry::with_backoff(|| open_read_only_now(path)).await?;
+    Ok(Some(connection))
 }
 
 pub fn path_for_run(config_path: &Path, override_path: Option<&Path>) -> PathBuf {
@@ -36,8 +68,12 @@ pub fn path_for_override(override_path: Option<&Path>) -> PathBuf {
 
 #[cfg(test)]
 mod test {
-    use crate::db::{bootstrap_at, default_path, path_for_override, path_for_run};
+    use crate::db::{
+        bootstrap_at, default_path, open_for_write, open_for_write_with_retry,
+        open_read_only_with_retry, path_for_override, path_for_run,
+    };
     use std::path::{Path, PathBuf};
+    use std::time::Duration;
     use uuid::Uuid;
 
     #[test]
@@ -94,6 +130,49 @@ mod test {
         bootstrap_at(&path).expect("first bootstrap should succeed");
         bootstrap_at(&path).expect("second bootstrap should succeed");
 
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn open_for_write_with_retry_succeeds_once_lock_is_released() {
+        let path = temp_db_path();
+        bootstrap_at(&path).expect("bootstrap should succeed");
+        let holder = open_for_write(&path).expect("initial open should succeed");
+
+        let path_clone = path.clone();
+        let retry_task = tokio::spawn(async move { open_for_write_with_retry(&path_clone).await });
+
+        tokio::time::sleep(Duration::from_millis(60)).await;
+        drop(holder);
+
+        let result = retry_task.await.expect("retry task should not panic");
+        assert!(result.is_ok());
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn open_read_only_with_retry_returns_none_for_missing_file() {
+        let path = temp_db_path();
+
+        let result = open_read_only_with_retry(&path)
+            .await
+            .expect("missing file should not error");
+
+        assert!(result.is_none());
+        assert!(!path.exists());
+    }
+
+    #[tokio::test]
+    async fn open_read_only_with_retry_opens_existing_file() {
+        let path = temp_db_path();
+        bootstrap_at(&path).expect("bootstrap should succeed");
+
+        let result = open_read_only_with_retry(&path)
+            .await
+            .expect("read-only open should succeed");
+
+        assert!(result.is_some());
         std::fs::remove_file(&path).ok();
     }
 
