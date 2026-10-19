@@ -2,6 +2,7 @@ use crate::cli::history::output_format::OutputFormatArgs;
 use crate::cli::history::range::HistoryRangeArgs;
 use clap::Args;
 use greed::asset::AssetSymbol;
+use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct QuoteHistoryArgs {
@@ -12,6 +13,9 @@ pub struct QuoteHistoryArgs {
     pub history_range: HistoryRangeArgs,
     #[command(flatten)]
     pub output_format: OutputFormatArgs,
+    /// Override the path to the DuckDB database file. Defaults to "greed.duckdb" in the current directory.
+    #[arg(long, value_name = "PATH")]
+    pub db_path: Option<PathBuf>,
 }
 
 #[cfg(test)]
@@ -114,5 +118,44 @@ mod test {
             Cli::try_parse_from(["greed", "history", "quote-history", "--format", "bogus"]);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn parses_explicit_db_path() {
+        let cli = Cli::try_parse_from([
+            "greed",
+            "history",
+            "quote-history",
+            "--db-path",
+            "custom.duckdb",
+        ])
+        .expect("should parse with an explicit db path");
+
+        let crate::cli::Command::History(history_args) = cli.command else {
+            panic!("expected History command");
+        };
+        let crate::cli::history::HistoryCommand::QuoteHistory(args) = history_args.command else {
+            panic!("expected QuoteHistory subcommand");
+        };
+
+        assert_eq!(
+            args.db_path,
+            Some(std::path::PathBuf::from("custom.duckdb"))
+        );
+    }
+
+    #[test]
+    fn defaults_db_path_to_none_when_omitted() {
+        let cli = Cli::try_parse_from(["greed", "history", "quote-history"])
+            .expect("should parse with no db path flag");
+
+        let crate::cli::Command::History(history_args) = cli.command else {
+            panic!("expected History command");
+        };
+        let crate::cli::history::HistoryCommand::QuoteHistory(args) = history_args.command else {
+            panic!("expected QuoteHistory subcommand");
+        };
+
+        assert_eq!(args.db_path, None);
     }
 }

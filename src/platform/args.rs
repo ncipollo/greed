@@ -22,6 +22,7 @@ mod test {
     fn from() {
         let runner_args = GreedRunnerArgs {
             config_path: Default::default(),
+            db_path: None,
             is_simulated: true,
             record_history: false,
         };

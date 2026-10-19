@@ -46,6 +46,13 @@ To record portfolio status and stock quote history to the local DuckDB database 
 greed run --record-history <path_to_config>
 ```
 
+By default, `greed run`'s DuckDB database file (`greed.duckdb`) is created next to the config file you pass in. Use `--db-path` to override this, and to point `history status` / `history quote-history` (which have no config file to colocate with, so they default to the current directory) at that same location:
+
+```bash
+greed run --record-history --db-path /data/greed.duckdb <path_to_config>
+greed history status --db-path /data/greed.duckdb
+```
+
 # Configuration
 
 ## Simple Configuration
