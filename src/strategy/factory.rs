@@ -13,7 +13,7 @@ use std::time::Duration;
 pub struct StrategyProviderFactory<'a> {
     config: &'a Config,
     config_path: PathBuf,
-    connection: &'a Arc<Mutex<Connection>>,
+    connection: &'a Arc<Mutex<Option<Connection>>>,
     platform: &'a Arc<dyn FinancialPlatform>,
     record_history: bool,
 }
@@ -23,7 +23,7 @@ impl<'a> StrategyProviderFactory<'a> {
         config: &'a Config,
         config_path: PathBuf,
         platform: &'a Arc<dyn FinancialPlatform>,
-        connection: &'a Arc<Mutex<Connection>>,
+        connection: &'a Arc<Mutex<Option<Connection>>>,
         record_history: bool,
     ) -> StrategyProviderFactory<'a> {
         Self {

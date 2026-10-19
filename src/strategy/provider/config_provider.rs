@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub struct ConfigStrategyProvider {
-    connection: Arc<Mutex<Connection>>,
+    connection: Arc<Mutex<Option<Connection>>>,
     loop_interval: Duration,
     platform: Arc<dyn FinancialPlatform>,
     record_history: bool,
@@ -28,7 +28,7 @@ impl ConfigStrategyProvider {
         loop_interval: Duration,
         platform: Arc<dyn FinancialPlatform>,
         strategy_config: StrategyConfig,
-        connection: Arc<Mutex<Connection>>,
+        connection: Arc<Mutex<Option<Connection>>>,
         record_history: bool,
     ) -> Result<Self, GreedError> {
         let tactic_configs = read_tactics_from_config(&config_path, &strategy_config).await?;
@@ -128,7 +128,7 @@ mod tests {
             Duration::from_secs(1),
             NoOpPlatform::arc(),
             strategy_config,
-            fixture::db_connection(),
+            Arc::new(Mutex::new(None)),
             true,
         )
         .await

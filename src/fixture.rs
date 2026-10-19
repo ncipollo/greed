@@ -3,20 +3,7 @@ use crate::config::simple::SimpleConfig;
 #[cfg(test)]
 use crate::config::Config;
 #[cfg(test)]
-use crate::db;
-#[cfg(test)]
-use duckdb::Connection;
-#[cfg(test)]
 use std::path::PathBuf;
-#[cfg(test)]
-use std::sync::{Arc, Mutex};
-
-#[cfg(test)]
-pub fn db_connection() -> Arc<Mutex<Connection>> {
-    let connection = Connection::open_in_memory().expect("in-memory connection");
-    db::migrations::apply(&connection).expect("migrations should apply");
-    Arc::new(Mutex::new(connection))
-}
 
 #[cfg(test)]
 pub async fn config(file: &str) -> Config {

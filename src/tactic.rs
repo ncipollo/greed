@@ -35,7 +35,7 @@ mod when;
 pub struct TacticRunner {
     asset_analyzer: AssetAnalyzer,
     config: TacticConfig,
-    connection: Arc<Mutex<Connection>>,
+    connection: Arc<Mutex<Option<Connection>>>,
     platform: Arc<dyn FinancialPlatform>,
     record_history: bool,
     strategy_properties: StrategyProperties,
@@ -46,7 +46,7 @@ impl TacticRunner {
         config: TacticConfig,
         platform: Arc<dyn FinancialPlatform>,
         strategy_properties: StrategyProperties,
-        connection: Arc<Mutex<Connection>>,
+        connection: Arc<Mutex<Option<Connection>>>,
         record_history: bool,
     ) -> Self {
         Self {
@@ -118,8 +118,11 @@ impl TacticRunner {
         if !self.record_history {
             return;
         }
-        let connection = self.connection.lock().expect("stock quote connection lock");
-        if let Err(e) = db::stock_quotes::insert(&connection, quote) {
+        let guard = self.connection.lock().expect("stock quote connection lock");
+        let Some(connection) = guard.as_ref() else {
+            return;
+        };
+        if let Err(e) = db::stock_quotes::insert(connection, quote) {
             warn!("failed to write stock quote: {}", e);
         }
     }
