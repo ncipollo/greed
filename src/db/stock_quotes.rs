@@ -23,6 +23,18 @@ pub fn insert(connection: &Connection, quote: &Quote) -> Result<(), GreedError> 
     Ok(())
 }
 
+pub fn insert_many(connection: &mut Connection, quotes: &[Quote]) -> Result<(), GreedError> {
+    if quotes.is_empty() {
+        return Ok(());
+    }
+    let tx = connection.transaction()?;
+    for quote in quotes {
+        insert(&tx, quote)?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
 pub fn select_in_range(
     connection: &Connection,
     range: Range<DateTime<Utc>>,
@@ -66,7 +78,7 @@ mod test {
     use crate::asset::AssetSymbol;
     use crate::date::NaiveDateTimeConvert;
     use crate::db::migrations;
-    use crate::db::stock_quotes::{insert, select_in_range};
+    use crate::db::stock_quotes::{insert, insert_many, select_in_range};
     use crate::platform::quote::Quote;
     use chrono::{NaiveDate, TimeZone, Utc};
     use duckdb::{params, Connection};
@@ -125,6 +137,45 @@ mod test {
         let connection = Connection::open_in_memory().expect("in-memory connection");
 
         let result = insert(&connection, &Quote::fixture(AssetSymbol::new("VTI")));
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn insert_many_writes_a_row_per_quote() {
+        let mut connection = Connection::open_in_memory().expect("in-memory connection");
+        migrations::apply(&connection).expect("migrations should apply");
+        let quotes = vec![
+            Quote::fixture(AssetSymbol::new("VTI")),
+            Quote::fixture(AssetSymbol::new("UVXY")),
+        ];
+
+        insert_many(&mut connection, &quotes).expect("insert_many should succeed");
+
+        let count: i64 = connection
+            .query_row("SELECT COUNT(*) FROM stock_quotes", [], |row| row.get(0))
+            .expect("stock_quotes should be queryable");
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn insert_many_is_noop_for_empty_slice() {
+        let mut connection = Connection::open_in_memory().expect("in-memory connection");
+        migrations::apply(&connection).expect("migrations should apply");
+
+        insert_many(&mut connection, &[]).expect("insert_many should succeed");
+
+        let count: i64 = connection
+            .query_row("SELECT COUNT(*) FROM stock_quotes", [], |row| row.get(0))
+            .expect("stock_quotes should be queryable");
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn insert_many_returns_err_for_missing_table() {
+        let mut connection = Connection::open_in_memory().expect("in-memory connection");
+
+        let result = insert_many(&mut connection, &[Quote::fixture(AssetSymbol::new("VTI"))]);
 
         assert!(result.is_err());
     }

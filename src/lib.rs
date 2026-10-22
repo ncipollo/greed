@@ -26,6 +26,7 @@ mod num;
 pub mod output_format;
 mod pager;
 pub mod platform;
+mod quote_accumulator;
 pub mod run;
 mod statistics;
 mod strategy;
