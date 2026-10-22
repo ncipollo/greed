@@ -4,23 +4,22 @@ use crate::asset::AssetSymbol;
 use crate::config::quote_fetcher_config::QuoteFetcherConfig;
 use crate::config::strategy::StrategyProperties;
 use crate::config::tactic::TacticConfig;
-use crate::db;
 use crate::error::GreedError;
 use crate::platform::account::Account;
 use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::FinancialPlatform;
+use crate::quote_accumulator::QuoteAccumulator;
 use crate::tactic::r#do::DoResult;
 use crate::tactic::rule::RuleType::{Buy, Sell};
 use crate::tactic::rule::{RuleType, TacticRuleset};
 use crate::tactic::state::TacticState;
-use duckdb::Connection;
 use itertools::Itertools;
 use log::{info, warn};
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 mod action;
 mod r#do;
@@ -35,9 +34,8 @@ mod when;
 pub struct TacticRunner {
     asset_analyzer: AssetAnalyzer,
     config: TacticConfig,
-    connection: Arc<Mutex<Option<Connection>>>,
     platform: Arc<dyn FinancialPlatform>,
-    record_history: bool,
+    quote_accumulator: QuoteAccumulator,
     strategy_properties: StrategyProperties,
 }
 
@@ -46,15 +44,13 @@ impl TacticRunner {
         config: TacticConfig,
         platform: Arc<dyn FinancialPlatform>,
         strategy_properties: StrategyProperties,
-        connection: Arc<Mutex<Option<Connection>>>,
-        record_history: bool,
+        quote_accumulator: QuoteAccumulator,
     ) -> Self {
         Self {
             asset_analyzer: AssetAnalyzer::new(platform.clone()),
             config,
-            connection,
             platform,
-            record_history,
+            quote_accumulator,
             strategy_properties,
         }
     }
@@ -104,27 +100,13 @@ impl TacticRunner {
         let quotes = self.platform.latest_quotes(symbols).await?;
         for quote in &quotes {
             info!("-- {}", quote);
-            self.record_quote(quote);
         }
+        self.quote_accumulator.extend(&quotes);
         let by_symbol = quotes
             .into_iter()
             .map(|q| (q.symbol.clone(), q))
             .collect::<HashMap<_, _>>();
         Ok(by_symbol)
-    }
-
-    // A DB hiccup must not interrupt tactic evaluation, so failures are logged and swallowed here.
-    fn record_quote(&self, quote: &Quote) {
-        if !self.record_history {
-            return;
-        }
-        let guard = self.connection.lock().expect("stock quote connection lock");
-        let Some(connection) = guard.as_ref() else {
-            return;
-        };
-        if let Err(e) = db::stock_quotes::insert(connection, quote) {
-            warn!("failed to write stock quote: {}", e);
-        }
     }
 
     async fn fetch_positions(&self) -> Result<HashMap<AssetSymbol, Position>, GreedError> {

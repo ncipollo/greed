@@ -2,20 +2,19 @@ use crate::config::strategy::StrategyConfig;
 use crate::config::Config;
 use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
+use crate::quote_accumulator::QuoteAccumulator;
 use crate::strategy::provider::agent_provider::AgentStrategyProvider;
 use crate::strategy::provider::config_provider::ConfigStrategyProvider;
 use crate::strategy::provider::StrategyRunnerProvider;
-use duckdb::Connection;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 pub struct StrategyProviderFactory<'a> {
     config: &'a Config,
     config_path: PathBuf,
-    connection: &'a Arc<Mutex<Option<Connection>>>,
     platform: &'a Arc<dyn FinancialPlatform>,
-    record_history: bool,
+    quote_accumulator: &'a QuoteAccumulator,
 }
 
 impl<'a> StrategyProviderFactory<'a> {
@@ -23,15 +22,13 @@ impl<'a> StrategyProviderFactory<'a> {
         config: &'a Config,
         config_path: PathBuf,
         platform: &'a Arc<dyn FinancialPlatform>,
-        connection: &'a Arc<Mutex<Option<Connection>>>,
-        record_history: bool,
+        quote_accumulator: &'a QuoteAccumulator,
     ) -> StrategyProviderFactory<'a> {
         Self {
             config,
             config_path,
-            connection,
             platform,
-            record_history,
+            quote_accumulator,
         }
     }
 
@@ -68,8 +65,7 @@ impl<'a> StrategyProviderFactory<'a> {
                     Duration::from_secs(self.config.interval),
                     self.platform.clone(),
                     strategy_config,
-                    self.connection.clone(),
-                    self.record_history,
+                    self.quote_accumulator.clone(),
                 )
                 .await?;
                 Ok(Box::new(provider))

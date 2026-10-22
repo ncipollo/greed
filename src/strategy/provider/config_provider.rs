@@ -3,21 +3,20 @@ use crate::config::strategy::StrategyConfig;
 use crate::config::tactic::TacticConfig;
 use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
+use crate::quote_accumulator::QuoteAccumulator;
 use crate::strategy::provider::StrategyRunnerProvider;
 use crate::strategy::reader::read_tactics_from_config;
 use crate::strategy::runner::{StrategyRunner, TacticStrategyRunner};
 use crate::tactic::TacticRunner;
 use async_trait::async_trait;
-use duckdb::Connection;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 pub struct ConfigStrategyProvider {
-    connection: Arc<Mutex<Option<Connection>>>,
     loop_interval: Duration,
     platform: Arc<dyn FinancialPlatform>,
-    record_history: bool,
+    quote_accumulator: QuoteAccumulator,
     strategy_config: StrategyConfig,
     tactic_configs: Vec<TacticConfig>,
 }
@@ -28,15 +27,13 @@ impl ConfigStrategyProvider {
         loop_interval: Duration,
         platform: Arc<dyn FinancialPlatform>,
         strategy_config: StrategyConfig,
-        connection: Arc<Mutex<Option<Connection>>>,
-        record_history: bool,
+        quote_accumulator: QuoteAccumulator,
     ) -> Result<Self, GreedError> {
         let tactic_configs = read_tactics_from_config(&config_path, &strategy_config).await?;
         Ok(Self {
-            connection,
             loop_interval,
             platform,
-            record_history,
+            quote_accumulator,
             strategy_config,
             tactic_configs,
         })
@@ -54,8 +51,7 @@ impl StrategyRunnerProvider for ConfigStrategyProvider {
                     tactic_config.clone(),
                     self.platform.clone(),
                     self.strategy_config.properties(),
-                    self.connection.clone(),
-                    self.record_history,
+                    self.quote_accumulator.clone(),
                 )
             })
             .collect();
@@ -128,8 +124,7 @@ mod tests {
             Duration::from_secs(1),
             NoOpPlatform::arc(),
             strategy_config,
-            Arc::new(Mutex::new(None)),
-            true,
+            QuoteAccumulator::new(),
         )
         .await
         .expect("should create provider")

@@ -5,6 +5,7 @@ use crate::db;
 use crate::error::GreedError;
 use crate::platform;
 use crate::platform::FinancialPlatform;
+use crate::quote_accumulator::QuoteAccumulator;
 use crate::strategy::factory::StrategyProviderFactory;
 use crate::strategy::provider::StrategyRunnerProvider;
 use crate::strategy::runner::{StrategyRunner, TacticStrategyRunner};
@@ -31,6 +32,7 @@ pub struct GreedRunner {
     config_assets: Vec<AssetSymbol>,
     platform: Arc<dyn FinancialPlatform>,
     connection: Arc<Mutex<Option<Connection>>>,
+    quote_accumulator: QuoteAccumulator,
     db_path: PathBuf,
     record_history: bool,
 }
@@ -44,19 +46,14 @@ impl GreedRunner {
         record_history: bool,
     ) -> Result<Self, GreedError> {
         let connection = Arc::new(Mutex::new(None));
+        let quote_accumulator = QuoteAccumulator::new();
         let config_strategy = Box::new(TacticStrategyRunner::from_config(
             &config,
             &platform,
-            &connection,
-            record_history,
+            &quote_accumulator,
         ));
-        let factory = StrategyProviderFactory::new(
-            &config,
-            config_path,
-            &platform,
-            &connection,
-            record_history,
-        );
+        let factory =
+            StrategyProviderFactory::new(&config, config_path, &platform, &quote_accumulator);
         let strategy_providers = factory.create_providers().await?;
 
         // Accumulate assets from all providers
@@ -74,6 +71,7 @@ impl GreedRunner {
             config_assets,
             platform,
             connection,
+            quote_accumulator,
             db_path,
             record_history,
         })
@@ -129,6 +127,8 @@ impl GreedRunner {
         self.config_strategy.run(&self.config_assets).await;
         // Capture portfolio status history for this cycle.
         self.record_portfolio_status().await;
+        // Flush this tick's deduped quotes in a single batch write.
+        self.record_quotes();
         // Close the DB now that this tick's writes are done, releasing the lock.
         self.close_tick_connection();
     }
@@ -178,6 +178,23 @@ impl GreedRunner {
                 }
             }
             Err(e) => warn!("failed to fetch account for portfolio status: {}", e),
+        }
+    }
+
+    // A DB hiccup must not stop trading automation, so failures are logged and swallowed here.
+    // The accumulator is drained unconditionally so it never grows unbounded across ticks,
+    // even when `record_history` is disabled.
+    fn record_quotes(&self) {
+        let quotes = self.quote_accumulator.drain();
+        if !self.record_history || quotes.is_empty() {
+            return;
+        }
+        let mut guard = self.connection.lock().expect("stock quote connection lock");
+        let Some(connection) = guard.as_mut() else {
+            return;
+        };
+        if let Err(e) = db::stock_quotes::insert_many(connection, &quotes) {
+            warn!("failed to write stock quotes: {}", e);
         }
     }
 }
@@ -249,6 +266,36 @@ mod test {
         }
 
         assert_eq!(table_row_count(&db_path, "portfolio_status"), 10);
+        assert_eq!(table_row_count(&db_path, "stock_quotes"), 10);
+        std::fs::remove_file(&db_path).ok();
+    }
+
+    #[tokio::test]
+    async fn run_tick_dedupes_quotes_from_multiple_tactics_watching_same_symbol() {
+        let db_path = temp_db_path();
+        bootstrap_at(&db_path).expect("bootstrap should succeed");
+        let mut config = fixture::config("config_multi_tactic.toml").await;
+        config.interval = 0;
+        // MockPlatform::latest_quotes ignores the requested symbols, so both of
+        // this config's tactics fetch (and would, pre-fix, each write) this same quote.
+        let platform = MockPlatform::new()
+            .with_account(Account::fixture())
+            .with_quotes(vec![Quote::fixture(AssetSymbol::new("VTI"))])
+            .arc();
+        let runner = GreedRunner::new(
+            config,
+            PathBuf::from("unused.toml"),
+            platform,
+            db_path.clone(),
+            true,
+        )
+        .await
+        .expect("runner should build");
+
+        for _ in 0..10 {
+            runner.run_tick(Duration::from_secs(0)).await;
+        }
+
         assert_eq!(table_row_count(&db_path, "stock_quotes"), 10);
         std::fs::remove_file(&db_path).ok();
     }
