@@ -1,5 +1,6 @@
 use crate::date::NaiveDateTimeConvert;
 use crate::error::GreedError;
+use crate::interval::RollupInterval;
 use crate::platform::account::Account;
 use crate::platform::id::Id;
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -94,10 +95,98 @@ pub fn select_in_range(
     Ok(records)
 }
 
+/// A rollup of `portfolio_status` rows averaged into a single `interval`-wide
+/// bucket, produced by [`select_rollup_in_range`]. `currency` is carried through
+/// as-is (via `ANY_VALUE`) rather than averaged, since it's constant per account.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PortfolioStatusRollup {
+    pub bucket: DateTime<Utc>,
+    pub avg_buying_power: f64,
+    pub avg_cash: f64,
+    pub avg_equity: f64,
+    pub avg_market_value_long: f64,
+    pub avg_market_value_short: f64,
+    pub currency: String,
+}
+
+impl Display for PortfolioStatusRollup {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} -- avg buying power: {:.2}, avg equity: {:.2}, avg cash: {:.2}, avg market value long: {:.2}, avg market value short: {:.2} {}",
+            self.bucket.format("%Y-%m-%d %H:%M:%S UTC"),
+            self.avg_buying_power,
+            self.avg_equity,
+            self.avg_cash,
+            self.avg_market_value_long,
+            self.avg_market_value_short,
+            self.currency,
+        )
+    }
+}
+
+pub fn select_rollup_in_range(
+    connection: &Connection,
+    range: Range<DateTime<Utc>>,
+    interval: &RollupInterval,
+) -> Result<Vec<PortfolioStatusRollup>, GreedError> {
+    let sql = format!(
+        "SELECT time_bucket({interval}, timestamp) AS bucket,
+             AVG(buying_power) AS avg_buying_power, AVG(cash) AS avg_cash, AVG(equity) AS avg_equity,
+             AVG(market_value_long) AS avg_market_value_long, AVG(market_value_short) AS avg_market_value_short,
+             ANY_VALUE(currency) AS currency
+         FROM portfolio_status
+         WHERE timestamp >= ?1 AND timestamp <= ?2
+         GROUP BY bucket
+         ORDER BY bucket ASC",
+        interval = interval.to_duckdb_literal(),
+    );
+    let mut statement = connection.prepare(&sql)?;
+    let rows = statement.query_map(
+        params![range.start.naive_utc(), range.end.naive_utc()],
+        |row| {
+            Ok((
+                row.get::<_, NaiveDateTime>(0)?,
+                row.get::<_, f64>(1)?,
+                row.get::<_, f64>(2)?,
+                row.get::<_, f64>(3)?,
+                row.get::<_, f64>(4)?,
+                row.get::<_, f64>(5)?,
+                row.get::<_, String>(6)?,
+            ))
+        },
+    )?;
+    let mut rollups = Vec::new();
+    for row in rows {
+        let (
+            bucket,
+            avg_buying_power,
+            avg_cash,
+            avg_equity,
+            avg_market_value_long,
+            avg_market_value_short,
+            currency,
+        ) = row?;
+        rollups.push(PortfolioStatusRollup {
+            bucket: bucket.to_utc(),
+            avg_buying_power,
+            avg_cash,
+            avg_equity,
+            avg_market_value_long,
+            avg_market_value_short,
+            currency,
+        });
+    }
+    Ok(rollups)
+}
+
 #[cfg(test)]
 mod test {
     use crate::db::migrations;
-    use crate::db::portfolio_status::{insert, select_in_range, PortfolioStatusRecord};
+    use crate::db::portfolio_status::{
+        insert, select_in_range, select_rollup_in_range, PortfolioStatusRecord,
+    };
+    use crate::interval::RollupInterval;
     use crate::platform::account::Account;
     use chrono::{NaiveDate, TimeZone, Utc};
     use duckdb::{params, Connection};
@@ -224,10 +313,86 @@ mod test {
         assert_eq!(json, expected)
     }
 
+    #[test]
+    fn select_rollup_in_range_averages_fields_within_bucket() {
+        let connection = Connection::open_in_memory().expect("in-memory connection");
+        migrations::apply(&connection).expect("migrations should apply");
+        insert_fixture_row(&connection, naive_datetime(2026, 1, 1, 10, 0, 10), 100.0);
+        insert_fixture_row(&connection, naive_datetime(2026, 1, 1, 10, 0, 40), 200.0);
+
+        let start = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 1, 2, 0, 0, 0).unwrap();
+        let interval: RollupInterval = "1m".parse().expect("should parse");
+        let rollups = select_rollup_in_range(&connection, start..end, &interval)
+            .expect("rollup select should succeed");
+
+        assert_eq!(rollups.len(), 1);
+        assert_eq!(rollups[0].avg_buying_power, 150.0);
+        assert_eq!(rollups[0].currency, "USD");
+    }
+
+    #[test]
+    fn select_rollup_in_range_returns_empty_when_nothing_in_range() {
+        let connection = Connection::open_in_memory().expect("in-memory connection");
+        migrations::apply(&connection).expect("migrations should apply");
+        insert_fixture_row(&connection, naive_datetime(2026, 1, 1, 10, 0, 0), 100.0);
+
+        let start = Utc.with_ymd_and_hms(2026, 2, 1, 0, 0, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 2, 2, 0, 0, 0).unwrap();
+        let interval: RollupInterval = "1h".parse().expect("should parse");
+        let rollups = select_rollup_in_range(&connection, start..end, &interval)
+            .expect("rollup select should succeed");
+
+        assert!(rollups.is_empty());
+    }
+
+    #[test]
+    fn select_rollup_in_range_returns_one_bucket_when_interval_wider_than_range() {
+        let connection = Connection::open_in_memory().expect("in-memory connection");
+        migrations::apply(&connection).expect("migrations should apply");
+        insert_fixture_row(&connection, naive_datetime(2026, 1, 1, 1, 0, 0), 100.0);
+        insert_fixture_row(&connection, naive_datetime(2026, 1, 1, 23, 0, 0), 300.0);
+
+        let start = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 1, 2, 0, 0, 0).unwrap();
+        let interval: RollupInterval = "1d".parse().expect("should parse");
+        let rollups = select_rollup_in_range(&connection, start..end, &interval)
+            .expect("rollup select should succeed");
+
+        assert_eq!(rollups.len(), 1);
+        assert_eq!(rollups[0].avg_buying_power, 200.0);
+    }
+
+    #[test]
+    fn select_rollup_in_range_returns_err_for_missing_table() {
+        let connection = Connection::open_in_memory().expect("in-memory connection");
+        let interval: RollupInterval = "1m".parse().expect("should parse");
+
+        let start = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 1, 2, 0, 0, 0).unwrap();
+        let result = select_rollup_in_range(&connection, start..end, &interval);
+
+        assert!(result.is_err());
+    }
+
     fn naive_date(year: i32, month: u32, day: u32) -> chrono::NaiveDateTime {
         NaiveDate::from_ymd_opt(year, month, day)
             .unwrap()
             .and_hms_opt(0, 0, 0)
+            .unwrap()
+    }
+
+    fn naive_datetime(
+        year: i32,
+        month: u32,
+        day: u32,
+        hour: u32,
+        min: u32,
+        sec: u32,
+    ) -> chrono::NaiveDateTime {
+        NaiveDate::from_ymd_opt(year, month, day)
+            .unwrap()
+            .and_hms_opt(hour, min, sec)
             .unwrap()
     }
 
