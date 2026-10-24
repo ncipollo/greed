@@ -38,6 +38,7 @@ async fn async_main(log_config: Config) {
                     .expect("failed to resolve history range");
                 fetch_portfolio_status_history(
                     range,
+                    status_args.interval,
                     status_args.output_format.format,
                     status_args.db_path,
                 )
@@ -52,6 +53,7 @@ async fn async_main(log_config: Config) {
                 fetch_stock_quote_history(
                     &quotes_args.symbols,
                     range,
+                    quotes_args.interval,
                     quotes_args.output_format.format,
                     quotes_args.db_path,
                 )

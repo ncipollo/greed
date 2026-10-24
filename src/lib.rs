@@ -2,6 +2,7 @@ use crate::analysis::AssetAnalyzer;
 use crate::asset::AssetSymbol;
 use crate::config::platform::PlatformType;
 use crate::error::GreedError;
+use crate::interval::RollupInterval;
 use crate::output_format::OutputFormat;
 use crate::platform::args::PlatformArgs;
 use crate::platform::quote::Quote;
@@ -23,6 +24,7 @@ pub mod error;
 mod fixture;
 mod float;
 pub mod history_range;
+pub mod interval;
 mod num;
 pub mod output_format;
 mod pager;
@@ -101,22 +103,45 @@ pub async fn fetch_status(
 
 pub async fn fetch_portfolio_status_history(
     range: Range<DateTime<Utc>>,
+    interval: Option<RollupInterval>,
     format: OutputFormat,
     db_path: Option<PathBuf>,
 ) -> Result<(), GreedError> {
     let path = db::path_for_override(db_path.as_deref());
-    let records = match db::open_read_only_with_retry(&path).await? {
-        Some(connection) => db::portfolio_status::select_in_range(&connection, range)?,
-        None => Vec::new(),
-    };
-    match format {
-        OutputFormat::Text => {
-            for record in records {
-                println!("{}", record);
+    match interval {
+        Some(interval) => {
+            let rollups = match db::open_read_only_with_retry(&path).await? {
+                Some(connection) => {
+                    db::portfolio_status::select_rollup_in_range(&connection, range, &interval)?
+                }
+                None => Vec::new(),
+            };
+            match format {
+                OutputFormat::Text => {
+                    for rollup in rollups {
+                        println!("{}", rollup);
+                    }
+                }
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&rollups)?);
+                }
             }
         }
-        OutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&records)?);
+        None => {
+            let records = match db::open_read_only_with_retry(&path).await? {
+                Some(connection) => db::portfolio_status::select_in_range(&connection, range)?,
+                None => Vec::new(),
+            };
+            match format {
+                OutputFormat::Text => {
+                    for record in records {
+                        println!("{}", record);
+                    }
+                }
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&records)?);
+                }
+            }
         }
     }
     Ok(())
@@ -125,42 +150,76 @@ pub async fn fetch_portfolio_status_history(
 pub async fn fetch_stock_quote_history(
     symbols: &[AssetSymbol],
     range: Range<DateTime<Utc>>,
+    interval: Option<RollupInterval>,
     format: OutputFormat,
     db_path: Option<PathBuf>,
 ) -> Result<(), GreedError> {
     let path = db::path_for_override(db_path.as_deref());
-    let quotes: Vec<Quote> = match db::open_read_only_with_retry(&path).await? {
-        Some(connection) => db::stock_quotes::select_in_range(&connection, range)?
-            .into_iter()
-            .filter(|q| matches_symbol_filter(symbols, q))
-            .collect(),
-        None => Vec::new(),
-    };
-    match format {
-        OutputFormat::Text => {
-            let mut table = Table::new();
-            table.set_header(["Time", "Symbol", "Ask", "Bid", "Spread", "Spread %"]);
-            for quote in quotes {
-                table.add_row([
-                    quote.fmt_time(&chrono::Local),
-                    quote.symbol.to_string(),
-                    format!("{:.2}", quote.ask_price),
-                    format!("{:.2}", quote.bid_price),
-                    format!("{:.2}", quote.spread()),
-                    format!("{:.2}%", quote.spread_percent()),
-                ]);
+    match interval {
+        Some(interval) => {
+            let rollups = match db::open_read_only_with_retry(&path).await? {
+                Some(connection) => {
+                    db::stock_quotes::select_rollup_in_range(&connection, range, &interval)?
+                        .into_iter()
+                        .filter(|r| matches_symbol_filter(symbols, &r.symbol))
+                        .collect()
+                }
+                None => Vec::new(),
+            };
+            match format {
+                OutputFormat::Text => {
+                    let mut table = Table::new();
+                    table.set_header(["Bucket", "Symbol", "Avg Ask", "Avg Bid"]);
+                    for rollup in rollups {
+                        table.add_row([
+                            rollup.bucket.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+                            rollup.symbol.to_string(),
+                            format!("{:.2}", rollup.avg_ask_price),
+                            format!("{:.2}", rollup.avg_bid_price),
+                        ]);
+                    }
+                    println!("{table}");
+                }
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&rollups)?);
+                }
             }
-            println!("{table}");
         }
-        OutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&quotes)?);
+        None => {
+            let quotes: Vec<Quote> = match db::open_read_only_with_retry(&path).await? {
+                Some(connection) => db::stock_quotes::select_in_range(&connection, range)?
+                    .into_iter()
+                    .filter(|q| matches_symbol_filter(symbols, &q.symbol))
+                    .collect(),
+                None => Vec::new(),
+            };
+            match format {
+                OutputFormat::Text => {
+                    let mut table = Table::new();
+                    table.set_header(["Time", "Symbol", "Ask", "Bid", "Spread", "Spread %"]);
+                    for quote in quotes {
+                        table.add_row([
+                            quote.fmt_time(&chrono::Local),
+                            quote.symbol.to_string(),
+                            format!("{:.2}", quote.ask_price),
+                            format!("{:.2}", quote.bid_price),
+                            format!("{:.2}", quote.spread()),
+                            format!("{:.2}%", quote.spread_percent()),
+                        ]);
+                    }
+                    println!("{table}");
+                }
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string_pretty(&quotes)?);
+                }
+            }
         }
     }
     Ok(())
 }
 
-fn matches_symbol_filter(symbols: &[AssetSymbol], quote: &Quote) -> bool {
-    symbols.is_empty() || symbols.contains(&quote.symbol)
+fn matches_symbol_filter(symbols: &[AssetSymbol], symbol: &AssetSymbol) -> bool {
+    symbols.is_empty() || symbols.contains(symbol)
 }
 
 fn print_price_explainer() {
@@ -192,27 +251,18 @@ mod test {
 
     #[test]
     fn matches_symbol_filter_empty_list_matches_everything() {
-        assert!(matches_symbol_filter(
-            &[],
-            &Quote::fixture(AssetSymbol::new("VTI"))
-        ));
+        assert!(matches_symbol_filter(&[], &AssetSymbol::new("VTI")));
     }
 
     #[test]
     fn matches_symbol_filter_matches_listed_symbol() {
         let symbols = vec![AssetSymbol::new("VTI"), AssetSymbol::new("AAPL")];
-        assert!(matches_symbol_filter(
-            &symbols,
-            &Quote::fixture(AssetSymbol::new("VTI"))
-        ));
+        assert!(matches_symbol_filter(&symbols, &AssetSymbol::new("VTI")));
     }
 
     #[test]
     fn matches_symbol_filter_rejects_unlisted_symbol() {
         let symbols = vec![AssetSymbol::new("AAPL")];
-        assert!(!matches_symbol_filter(
-            &symbols,
-            &Quote::fixture(AssetSymbol::new("VTI"))
-        ));
+        assert!(!matches_symbol_filter(&symbols, &AssetSymbol::new("VTI")));
     }
 }

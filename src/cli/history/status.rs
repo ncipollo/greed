@@ -1,12 +1,16 @@
 use crate::cli::history::output_format::OutputFormatArgs;
 use crate::cli::history::range::HistoryRangeArgs;
 use clap::Args;
+use greed::interval::RollupInterval;
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct StatusHistoryArgs {
     #[command(flatten)]
     pub history_range: HistoryRangeArgs,
+    /// Roll results up into averages per interval (e.g. "30s", "5m", "1h", "1d"); omit for raw rows.
+    #[arg(long)]
+    pub interval: Option<RollupInterval>,
     #[command(flatten)]
     pub output_format: OutputFormatArgs,
     /// Override the path to the DuckDB database file. Defaults to "greed.duckdb" in the current directory.
@@ -73,6 +77,43 @@ mod test {
             args.db_path,
             Some(std::path::PathBuf::from("custom.duckdb"))
         );
+    }
+
+    #[test]
+    fn parses_explicit_interval() {
+        let cli = Cli::try_parse_from(["greed", "history", "status", "--interval", "1h"])
+            .expect("should parse with an explicit interval");
+
+        let crate::cli::Command::History(history_args) = cli.command else {
+            panic!("expected History command");
+        };
+        let crate::cli::history::HistoryCommand::Status(args) = history_args.command else {
+            panic!("expected Status subcommand");
+        };
+
+        assert!(args.interval.is_some());
+    }
+
+    #[test]
+    fn defaults_interval_to_none_when_omitted() {
+        let cli = Cli::try_parse_from(["greed", "history", "status"])
+            .expect("should parse with no interval flag");
+
+        let crate::cli::Command::History(history_args) = cli.command else {
+            panic!("expected History command");
+        };
+        let crate::cli::history::HistoryCommand::Status(args) = history_args.command else {
+            panic!("expected Status subcommand");
+        };
+
+        assert!(args.interval.is_none());
+    }
+
+    #[test]
+    fn rejects_invalid_interval_value() {
+        let result = Cli::try_parse_from(["greed", "history", "status", "--interval", "bogus"]);
+
+        assert!(result.is_err());
     }
 
     #[test]
