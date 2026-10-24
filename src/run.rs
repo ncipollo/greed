@@ -9,11 +9,10 @@ use crate::quote_accumulator::QuoteAccumulator;
 use crate::strategy::factory::StrategyProviderFactory;
 use crate::strategy::provider::StrategyRunnerProvider;
 use crate::strategy::runner::{StrategyRunner, TacticStrategyRunner};
-use duckdb::Connection;
 use log::warn;
 use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -31,7 +30,6 @@ pub struct GreedRunner {
     strategy_providers: Vec<Box<dyn StrategyRunnerProvider>>,
     config_assets: Vec<AssetSymbol>,
     platform: Arc<dyn FinancialPlatform>,
-    connection: Arc<Mutex<Option<Connection>>>,
     quote_accumulator: QuoteAccumulator,
     db_path: PathBuf,
     record_history: bool,
@@ -45,7 +43,6 @@ impl GreedRunner {
         db_path: PathBuf,
         record_history: bool,
     ) -> Result<Self, GreedError> {
-        let connection = Arc::new(Mutex::new(None));
         let quote_accumulator = QuoteAccumulator::new();
         let config_strategy = Box::new(TacticStrategyRunner::from_config(
             &config,
@@ -70,7 +67,6 @@ impl GreedRunner {
             strategy_providers,
             config_assets,
             platform,
-            connection,
             quote_accumulator,
             db_path,
             record_history,
@@ -116,8 +112,6 @@ impl GreedRunner {
                 return;
             }
         };
-        // Open the DB for this tick's writes; held only for the writes below.
-        self.open_tick_connection().await;
         // Run each strategy runner
         for runner in strategy_runners {
             let _ = runner.run(&self.config_assets).await;
@@ -125,28 +119,8 @@ impl GreedRunner {
         }
         // Run the general strategy from the top level config
         self.config_strategy.run(&self.config_assets).await;
-        // Capture portfolio status history for this cycle.
-        self.record_portfolio_status().await;
-        // Flush this tick's deduped quotes in a single batch write.
-        self.record_quotes();
-        // Close the DB now that this tick's writes are done, releasing the lock.
-        self.close_tick_connection();
-    }
-
-    async fn open_tick_connection(&self) {
-        if !self.record_history {
-            return;
-        }
-        match db::open_for_write_with_retry(&self.db_path).await {
-            Ok(connection) => {
-                *self.connection.lock().expect("connection slot lock") = Some(connection);
-            }
-            Err(e) => warn!("failed to open db for this tick's writes: {}", e),
-        }
-    }
-
-    fn close_tick_connection(&self) {
-        self.connection.lock().expect("connection slot lock").take();
+        // Capture portfolio status and quote history for this cycle.
+        self.record_history().await;
     }
 
     async fn provide_strategy_runners(&self) -> Result<Vec<Box<dyn StrategyRunner>>, GreedError> {
@@ -159,42 +133,36 @@ impl GreedRunner {
     }
 
     // A DB hiccup must not stop trading automation, so failures are logged and swallowed here.
-    // The insert is synchronous for now; switch to tokio::task::spawn_blocking if it proves slow.
-    async fn record_portfolio_status(&self) {
+    // Everything that needs the network happens before the DB is opened, so the write lock is
+    // held only for the brief inserts. The accumulator is drained unconditionally so it never
+    // grows unbounded across ticks, even when `record_history` is disabled.
+    // The inserts are synchronous for now; switch to tokio::task::spawn_blocking if they prove slow.
+    async fn record_history(&self) {
+        let quotes = self.quote_accumulator.drain();
         if !self.record_history {
             return;
         }
-        match self.platform.account().await {
-            Ok(account) => {
-                let guard = self
-                    .connection
-                    .lock()
-                    .expect("portfolio status connection lock");
-                let Some(connection) = guard.as_ref() else {
-                    return;
-                };
-                if let Err(e) = db::portfolio_status::insert(connection, &account) {
-                    warn!("failed to write portfolio status: {}", e);
-                }
+        let account = match self.platform.account().await {
+            Ok(account) => account,
+            Err(e) => {
+                warn!("failed to fetch account for portfolio status: {}", e);
+                return;
             }
-            Err(e) => warn!("failed to fetch account for portfolio status: {}", e),
-        }
-    }
-
-    // A DB hiccup must not stop trading automation, so failures are logged and swallowed here.
-    // The accumulator is drained unconditionally so it never grows unbounded across ticks,
-    // even when `record_history` is disabled.
-    fn record_quotes(&self) {
-        let quotes = self.quote_accumulator.drain();
-        if !self.record_history || quotes.is_empty() {
-            return;
-        }
-        let mut guard = self.connection.lock().expect("stock quote connection lock");
-        let Some(connection) = guard.as_mut() else {
-            return;
         };
-        if let Err(e) = db::stock_quotes::insert_many(connection, &quotes) {
-            warn!("failed to write stock quotes: {}", e);
+        let mut connection = match db::open_for_write_with_retry(&self.db_path).await {
+            Ok(connection) => connection,
+            Err(e) => {
+                warn!("failed to open db for this tick's writes: {}", e);
+                return;
+            }
+        };
+        if let Err(e) = db::portfolio_status::insert(&connection, &account) {
+            warn!("failed to write portfolio status: {}", e);
+        }
+        if !quotes.is_empty() {
+            if let Err(e) = db::stock_quotes::insert_many(&mut connection, &quotes) {
+                warn!("failed to write stock quotes: {}", e);
+            }
         }
     }
 }
