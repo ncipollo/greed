@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use serde::Serialize;
 
 use crate::asset::AssetSymbol;
@@ -41,6 +41,16 @@ impl Quote {
 
     pub fn valid_bid(&self) -> bool {
         self.bid_price > 0.0
+    }
+
+    pub fn fmt_time<TZ: TimeZone>(&self, time_zone: &TZ) -> String
+    where
+        TZ::Offset: Display,
+    {
+        self.time
+            .with_timezone(time_zone)
+            .format("%Y-%m-%d %H:%M")
+            .to_string()
     }
 
     #[cfg(test)]
@@ -113,6 +123,15 @@ mod test {
         let display = format!("{}", quote);
         let expected = "VTI ask: 200.46, bid: 100.12, spread: 100.33 (50.05%)";
         assert_eq!(display, expected)
+    }
+
+    #[test]
+    fn fmt_time_with_time_zone() {
+        let quote = Quote {
+            time: Utc.with_ymd_and_hms(2026, 1, 1, 12, 30, 0).unwrap(),
+            ..Default::default()
+        };
+        assert_eq!(quote.fmt_time(&Utc), "2026-01-01 12:30");
     }
 
     #[test]

@@ -7,6 +7,7 @@ use crate::platform::args::PlatformArgs;
 use crate::platform::quote::Quote;
 use crate::run::{GreedRunner, GreedRunnerArgs};
 use chrono::{DateTime, Utc};
+use comfy_table::Table;
 use std::ops::Range;
 use std::path::PathBuf;
 
@@ -137,9 +138,19 @@ pub async fn fetch_stock_quote_history(
     };
     match format {
         OutputFormat::Text => {
+            let mut table = Table::new();
+            table.set_header(["Time", "Symbol", "Ask", "Bid", "Spread", "Spread %"]);
             for quote in quotes {
-                println!("{}", quote);
+                table.add_row([
+                    quote.fmt_time(&chrono::Local),
+                    quote.symbol.to_string(),
+                    format!("{:.2}", quote.ask_price),
+                    format!("{:.2}", quote.bid_price),
+                    format!("{:.2}", quote.spread()),
+                    format!("{:.2}%", quote.spread_percent()),
+                ]);
             }
+            println!("{table}");
         }
         OutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(&quotes)?);
