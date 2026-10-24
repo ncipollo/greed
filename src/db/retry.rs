@@ -2,7 +2,7 @@ use crate::error::GreedError;
 use duckdb::Connection;
 use std::time::Duration;
 
-const MAX_ATTEMPTS: u32 = 5;
+const MAX_ATTEMPTS: u32 = 7;
 const INITIAL_BACKOFF_MS: u64 = 40;
 
 pub(crate) fn is_lock_conflict(message: &str) -> bool {
