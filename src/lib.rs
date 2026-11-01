@@ -31,6 +31,7 @@ mod pager;
 pub mod platform;
 mod quote_accumulator;
 pub mod run;
+pub mod server;
 mod statistics;
 mod strategy;
 mod tactic;
