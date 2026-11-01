@@ -15,6 +15,7 @@ anyhow = "1.0.104"
 apca = "0.31.0"
 approx = "0.5.1"
 async-trait = "0.1.74"
+axum = "0.8.9"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.47", features = ["derive", "string"] }
 clap_complete_command = "0.6.1"
