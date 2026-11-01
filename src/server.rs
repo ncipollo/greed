@@ -11,6 +11,10 @@ use tokio::net::TcpListener;
 pub use error::ApiError;
 pub use state::AppState;
 
+/// Default port the `greed server` command binds the HTTP API to when
+/// `--port` is omitted. Also shown as the default in `greed server --help`.
+pub const DEFAULT_PORT: u16 = 7777;
+
 /// Starts the HTTP server in the background and returns the address it
 /// bound to. Binds to an OS-assigned port so concurrent callers (e.g.
 /// tests) never collide.
@@ -26,16 +30,37 @@ pub async fn start(state: Arc<AppState>) -> Result<SocketAddr, GreedError> {
     Ok(addr)
 }
 
+/// Runs the HTTP server on `127.0.0.1:<port>` until the listener errors.
+/// Intended to run concurrently with the greed loop via `tokio::try_join!`
+/// in `greed_server_loop`; does not return under normal operation.
+pub async fn serve(state: Arc<AppState>, port: u16) -> Result<(), GreedError> {
+    let router = router::build_router(state);
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}")).await?;
+    axum::serve(listener, router).await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::config::platform::PlatformType;
+    use crate::platform::noop::NoOpPlatform;
     use crate::server::{start, AppState};
     use serde_json::Value;
+    use std::path::PathBuf;
     use std::sync::Arc;
+
+    fn test_state(platform_type: PlatformType, is_simulated: bool) -> Arc<AppState> {
+        Arc::new(AppState::new(
+            platform_type,
+            is_simulated,
+            NoOpPlatform::arc(),
+            PathBuf::from("unused.duckdb"),
+        ))
+    }
 
     #[tokio::test]
     async fn ping_endpoint_returns_pong() {
-        let addr = start(Arc::new(AppState::new(PlatformType::Alpaca, false)))
+        let addr = start(test_state(PlatformType::Alpaca, false))
             .await
             .unwrap();
         let response = reqwest::get(format!("http://{addr}/ping")).await.unwrap();
@@ -46,9 +71,7 @@ mod test {
 
     #[tokio::test]
     async fn server_info_endpoint_returns_state() {
-        let addr = start(Arc::new(AppState::new(PlatformType::Alpaca, true)))
-            .await
-            .unwrap();
+        let addr = start(test_state(PlatformType::Alpaca, true)).await.unwrap();
         let response = reqwest::get(format!("http://{addr}/server/info"))
             .await
             .unwrap();
@@ -61,7 +84,7 @@ mod test {
 
     #[tokio::test]
     async fn unknown_route_returns_json_error_body() {
-        let addr = start(Arc::new(AppState::new(PlatformType::Alpaca, false)))
+        let addr = start(test_state(PlatformType::Alpaca, false))
             .await
             .unwrap();
         let response = reqwest::get(format!("http://{addr}/does-not-exist"))

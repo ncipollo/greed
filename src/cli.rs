@@ -4,6 +4,7 @@ pub mod init;
 mod orders;
 pub mod quote;
 pub mod run;
+pub mod server;
 mod status;
 
 use crate::cli::analyze::AnalyzeArgs;
@@ -12,6 +13,7 @@ use crate::cli::init::InitArgs;
 use crate::cli::orders::OrdersArgs;
 use crate::cli::quote::QuoteArgs;
 use crate::cli::run::RunCommandArgs;
+use crate::cli::server::ServerCommandArgs;
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Debug, Parser)]
@@ -35,6 +37,8 @@ pub enum Command {
     Quote(QuoteArgs),
     #[command(about = "Run the main greed loop")]
     Run(RunCommandArgs),
+    #[command(about = "Run the main greed loop while also serving an HTTP API")]
+    Server(ServerCommandArgs),
     #[command(about = "Get your current creed status")]
     Status(status::StatusArgs),
     #[command(about = "prints out completions for the provided shell")]

@@ -15,7 +15,7 @@ pub struct ServerInfoResponse {
 pub async fn server_info_handler(State(state): State<Arc<AppState>>) -> Json<ServerInfoResponse> {
     Json(ServerInfoResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
-        platform: state.platform.clone(),
+        platform: state.platform_type.clone(),
         simulated: state.is_simulated,
     })
 }
@@ -23,14 +23,21 @@ pub async fn server_info_handler(State(state): State<Arc<AppState>>) -> Json<Ser
 #[cfg(test)]
 mod test {
     use crate::config::platform::PlatformType;
+    use crate::platform::noop::NoOpPlatform;
     use crate::server::handlers::server_info::{server_info_handler, ServerInfoResponse};
     use crate::server::state::AppState;
     use axum::extract::State;
+    use std::path::PathBuf;
     use std::sync::Arc;
 
     #[tokio::test]
     async fn server_info_echoes_state() {
-        let state = Arc::new(AppState::new(PlatformType::Alpaca, true));
+        let state = Arc::new(AppState::new(
+            PlatformType::Alpaca,
+            true,
+            NoOpPlatform::arc(),
+            PathBuf::from("unused.duckdb"),
+        ));
         let response = server_info_handler(State(state)).await.0;
         assert_eq!(
             response,

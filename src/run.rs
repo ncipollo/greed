@@ -1,4 +1,5 @@
 use crate::asset::AssetSymbol;
+use crate::config::platform::PlatformType;
 use crate::config::simple::SimpleConfig;
 use crate::config::Config;
 use crate::db;
@@ -77,11 +78,31 @@ impl GreedRunner {
         args: GreedRunnerArgs,
         db_path: PathBuf,
     ) -> Result<GreedRunner, GreedError> {
+        let (runner, _, _) = Self::from_args_with_platform(args, db_path).await?;
+        Ok(runner)
+    }
+
+    /// Like `from_args`, but also returns the platform type and the live
+    /// platform instance it built, so callers (e.g. the `server` command) can
+    /// reuse them elsewhere (e.g. in `AppState`) without reconstructing them.
+    pub(crate) async fn from_args_with_platform(
+        args: GreedRunnerArgs,
+        db_path: PathBuf,
+    ) -> Result<(GreedRunner, PlatformType, Arc<dyn FinancialPlatform>), GreedError> {
         let config_path = args.config_path.clone();
         let record_history = args.record_history;
         let config = GreedRunner::read_config(&args).await?;
-        let platform = platform::for_type(&config.platform, args.into())?;
-        Self::new(config, config_path, platform, db_path, record_history).await
+        let platform_type = config.platform.clone();
+        let platform = platform::for_type(&platform_type, args.into())?;
+        let runner = Self::new(
+            config,
+            config_path,
+            platform.clone(),
+            db_path,
+            record_history,
+        )
+        .await?;
+        Ok((runner, platform_type, platform))
     }
 
     async fn read_config(args: &GreedRunnerArgs) -> Result<Config, GreedError> {

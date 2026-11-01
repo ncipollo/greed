@@ -11,6 +11,7 @@ use chrono::{DateTime, Utc};
 use comfy_table::Table;
 use std::ops::Range;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 mod analysis;
 mod assert;
@@ -43,6 +44,35 @@ pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
     db::bootstrap_at_with_retry(&db_path).await?;
     let runner = GreedRunner::from_args(args, db_path).await?;
     runner.run_loop().await;
+    Ok(())
+}
+
+/// Runs the greed loop and the HTTP API concurrently, so other processes can
+/// observe/interact with this instance instead of starting a second,
+/// lock-contending CLI invocation.
+pub async fn greed_server_loop(args: GreedRunnerArgs, port: u16) -> Result<(), GreedError> {
+    let db_path = db::path_for_run(&args.config_path, args.db_path.as_deref());
+    db::bootstrap_at_with_retry(&db_path).await?;
+    let is_simulated = args.is_simulated;
+
+    let (runner, platform_type, platform) =
+        GreedRunner::from_args_with_platform(args, db_path.clone()).await?;
+    let state = Arc::new(server::AppState::new(
+        platform_type,
+        is_simulated,
+        platform,
+        db_path,
+    ));
+
+    // try_join! short-circuits on the first Err; run_loop() never resolves under
+    // normal operation, so this effectively exits only if the HTTP server fails.
+    tokio::try_join!(
+        async {
+            runner.run_loop().await;
+            Ok::<(), GreedError>(())
+        },
+        server::serve(state, port),
+    )?;
     Ok(())
 }
 

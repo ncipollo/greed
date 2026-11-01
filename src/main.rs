@@ -9,7 +9,7 @@ use greed::platform::args::PlatformArgs;
 use greed::template;
 use greed::{
     analyze_stocks, fetch_portfolio_status_history, fetch_quote, fetch_recent_orders, fetch_status,
-    fetch_stock_quote_history, greed_loop,
+    fetch_stock_quote_history, greed_loop, greed_server_loop,
 };
 
 use crate::cli::history::HistoryCommand;
@@ -93,6 +93,14 @@ async fn async_main(log_config: Config) {
         Command::Run(args) => {
             setup_logging(log_config);
             let result = greed_loop(args.into()).await;
+            if let Err(e) = result {
+                panic!("{}", e);
+            }
+        }
+        Command::Server(args) => {
+            setup_logging(log_config);
+            let port = args.port;
+            let result = greed_server_loop(args.into(), port).await;
             if let Err(e) = result {
                 panic!("{}", e);
             }
