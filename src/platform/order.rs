@@ -125,9 +125,75 @@ impl Display for Order {
 mod test {
     use crate::asset::AssetSymbol;
     use crate::date::DateTimeFixture;
+    use crate::platform::asset_class::AssetClass;
+    use crate::platform::id::Id;
     use crate::platform::order::amount::Amount;
+    use crate::platform::order::class::OrderClass;
+    use crate::platform::order::order_type::OrderType;
     use crate::platform::order::side::OrderSide;
+    use crate::platform::order::status::Status;
+    use crate::platform::order::time_in_force::TimeInForce;
     use crate::platform::order::Order;
+    use chrono::{TimeZone, Utc};
+    use serde_json::json;
+    use uuid::Uuid;
+
+    #[test]
+    fn serialize() {
+        let id = Uuid::parse_str("3b8a63f3-3b5c-4a3d-9d2b-7a2f8e9c0d1a").unwrap();
+        let order = Order {
+            id: Id::Uuid(id),
+            status: Status::PartiallyFilled,
+            created_at: Utc.with_ymd_and_hms(2026, 1, 1, 12, 0, 0).unwrap(),
+            updated_at: Some(Utc.with_ymd_and_hms(2026, 1, 1, 12, 1, 0).unwrap()),
+            submitted_at: Some(Utc.with_ymd_and_hms(2026, 1, 1, 12, 2, 0).unwrap()),
+            filled_at: None,
+            expired_at: None,
+            canceled_at: None,
+            asset_class: AssetClass::UsEquity,
+            symbol: AssetSymbol::new("vti"),
+            amount: Amount::Quantity(10.0),
+            filled_quantity: 5.into(),
+            order_type: OrderType::StopLimit,
+            class: OrderClass::OneCancelsOther,
+            side: OrderSide::Buy,
+            time_in_force: TimeInForce::FillOrKill,
+            limit_price: Some(100.into()),
+            stop_price: None,
+            trail_price: None,
+            trail_percent: None,
+            average_fill_price: None,
+            extended_hours: true,
+        };
+
+        let json = serde_json::to_value(&order).expect("failed to serialize");
+        let expected = json!({
+            "id": "3b8a63f3-3b5c-4a3d-9d2b-7a2f8e9c0d1a",
+            "status": "partially_filled",
+            "created_at": "2026-01-01T12:00:00Z",
+            "updated_at": "2026-01-01T12:01:00Z",
+            "submitted_at": "2026-01-01T12:02:00Z",
+            "filled_at": null,
+            "expired_at": null,
+            "canceled_at": null,
+            "asset_class": "us_equity",
+            "symbol": "vti",
+            "amount": {"quantity": 10.0},
+            "filled_quantity": "5",
+            "order_type": "stop_limit",
+            "class": "one_cancels_other",
+            "side": "buy",
+            "time_in_force": "fill_or_kill",
+            "limit_price": "100",
+            "stop_price": null,
+            "trail_price": null,
+            "trail_percent": null,
+            "average_fill_price": null,
+            "extended_hours": true,
+        });
+
+        assert_eq!(json, expected)
+    }
 
     #[test]
     fn estimated_value_quantity() {
