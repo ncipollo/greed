@@ -9,6 +9,7 @@ use crate::platform::order::status::Status;
 use crate::platform::order::time_in_force::TimeInForce;
 use chrono::{DateTime, TimeZone, Utc};
 use num_decimal::Num;
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 
 pub mod amount;
@@ -18,7 +19,7 @@ pub mod side;
 pub mod status;
 pub mod time_in_force;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct Order {
     /// The identifier associated with the order.
     pub id: Id,

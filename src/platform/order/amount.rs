@@ -1,6 +1,12 @@
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug, PartialEq)]
+/// Externally-tagged: serializes as `{"quantity": 1.0}` or `{"notional": 50.0}`.
+/// `rename_all = "snake_case"` keeps the tag consistent with every other enum's
+/// JSON representation in this API rather than the derive's default PascalCase
+/// (`{"Quantity": 1.0}`).
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Amount {
     Quantity(f64),
     Notional(f64),

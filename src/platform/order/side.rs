@@ -1,6 +1,8 @@
 use crate::lowercase_enum_display;
+use serde::Serialize;
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum OrderSide {
     #[default]
     Buy,

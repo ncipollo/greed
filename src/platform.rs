@@ -15,6 +15,7 @@ pub mod position;
 pub mod quote;
 pub mod request;
 pub mod side;
+pub mod status;
 
 use crate::asset::AssetSymbol;
 use crate::config::platform::PlatformType;
