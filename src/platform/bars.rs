@@ -1,8 +1,9 @@
 use crate::asset::AssetSymbol;
 use crate::platform::bar::Bar;
 use crate::statistics::median;
+use serde::Serialize;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct Bars {
     pub symbol: AssetSymbol,
     pub bars: Vec<Bar>,

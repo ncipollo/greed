@@ -1,8 +1,9 @@
 use crate::asset::AssetSymbol;
 use crate::platform::bars::Bars;
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct BarsResult {
     pub symbol: AssetSymbol,
     pub last_trading_day: Bars,
