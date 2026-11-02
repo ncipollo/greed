@@ -25,6 +25,10 @@ impl ApiError {
         Self::new(StatusCode::NOT_FOUND, message)
     }
 
+    pub fn bad_request(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::BAD_REQUEST, message)
+    }
+
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(StatusCode::INTERNAL_SERVER_ERROR, message)
     }
@@ -74,6 +78,14 @@ mod test {
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
         let body = body_json(response).await;
         assert_eq!(body["message"], "missing");
+    }
+
+    #[tokio::test]
+    async fn bad_request_has_json_message_body() {
+        let response = ApiError::bad_request("invalid").into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = body_json(response).await;
+        assert_eq!(body["message"], "invalid");
     }
 
     #[tokio::test]

@@ -6,6 +6,7 @@ use crate::interval::RollupInterval;
 use crate::output_format::OutputFormat;
 use crate::platform::args::PlatformArgs;
 use crate::platform::quote::Quote;
+use crate::platform::FinancialPlatform;
 use crate::run::{GreedRunner, GreedRunnerArgs};
 use chrono::{DateTime, Utc};
 use comfy_table::Table;
@@ -83,11 +84,22 @@ pub async fn fetch_quote(
 ) -> Result<(), GreedError> {
     print_price_explainer();
     let platform = platform::for_type(platform_type, platform_args)?;
-    let quotes = platform.latest_quotes(assets).await?;
+    let quotes = fetch_quote_data(assets, &platform).await?;
     for quote in quotes {
         println!("{}", quote)
     }
     Ok(())
+}
+
+/// Fetches the latest quotes for `symbols` from `platform`. Shared by the
+/// `greed quote` CLI command (`fetch_quote` above) and the `/quote` HTTP
+/// handler, so both "view" entry points go through a single call site into
+/// `FinancialPlatform::latest_quotes`.
+pub async fn fetch_quote_data(
+    symbols: &[AssetSymbol],
+    platform: &Arc<dyn FinancialPlatform>,
+) -> Result<Vec<Quote>, GreedError> {
+    platform.latest_quotes(symbols).await
 }
 
 pub async fn fetch_recent_orders(
