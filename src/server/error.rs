@@ -32,6 +32,10 @@ impl ApiError {
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(StatusCode::INTERNAL_SERVER_ERROR, message)
     }
+
+    pub fn bad_request(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::BAD_REQUEST, message)
+    }
 }
 
 #[derive(Serialize)]
@@ -94,6 +98,14 @@ mod test {
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
         let body = body_json(response).await;
         assert_eq!(body["message"], "boom");
+    }
+
+    #[tokio::test]
+    async fn bad_request_has_json_message_body() {
+        let response = ApiError::bad_request("nope").into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = body_json(response).await;
+        assert_eq!(body["message"], "nope");
     }
 
     #[test]
