@@ -187,6 +187,37 @@ mod test {
     }
 
     #[tokio::test]
+    async fn init_endpoint_returns_greed_template() {
+        let addr = start(test_state(PlatformType::Alpaca, false))
+            .await
+            .unwrap();
+        let response = reqwest::Client::new()
+            .post(format!("http://{addr}/init?config_type=greed"))
+            .send()
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
+        assert_eq!(body["filename"], "greed.toml");
+        assert_eq!(body["content"], crate::template::greed_config_template());
+    }
+
+    #[tokio::test]
+    async fn init_endpoint_unknown_config_type_returns_json_error_body() {
+        let addr = start(test_state(PlatformType::Alpaca, false))
+            .await
+            .unwrap();
+        let response = reqwest::Client::new()
+            .post(format!("http://{addr}/init?config_type=bogus"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::BAD_REQUEST);
+        let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
+        assert_eq!(body["message"], "unknown config type: bogus");
+    }
+
+    #[tokio::test]
     async fn unknown_route_returns_json_error_body() {
         let addr = start(test_state(PlatformType::Alpaca, false))
             .await
