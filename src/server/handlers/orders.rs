@@ -20,8 +20,8 @@ pub async fn orders_handler(
 mod test {
     use crate::asset::AssetSymbol;
     use crate::config::platform::PlatformType;
-    use crate::platform::mock::MockPlatform;
     use crate::platform::order::Order;
+    use crate::platform::MockPlatform;
     use crate::server::handlers::orders::orders_handler;
     use crate::server::state::AppState;
     use axum::extract::State;

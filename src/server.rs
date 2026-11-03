@@ -44,10 +44,10 @@ pub async fn serve(state: Arc<AppState>, port: u16) -> Result<(), GreedError> {
 mod test {
     use crate::asset::AssetSymbol;
     use crate::config::platform::PlatformType;
-    use crate::platform::mock::MockPlatform;
     use crate::platform::noop::NoOpPlatform;
     use crate::platform::order::Order;
     use crate::platform::FinancialPlatform;
+    use crate::platform::MockPlatform;
     use crate::server::{start, AppState};
     use serde_json::Value;
     use std::path::PathBuf;
