@@ -83,6 +83,33 @@ mod test {
     }
 
     #[tokio::test]
+    async fn status_endpoint_returns_account_without_positions_or_orders_by_default() {
+        let addr = start(test_state(PlatformType::Alpaca, false))
+            .await
+            .unwrap();
+        let response = reqwest::get(format!("http://{addr}/status")).await.unwrap();
+        assert!(response.status().is_success());
+        let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
+        assert!(body.get("account").is_some());
+        assert!(body.get("positions").is_none());
+        assert!(body.get("orders").is_none());
+    }
+
+    #[tokio::test]
+    async fn status_endpoint_includes_positions_and_orders_when_full() {
+        let addr = start(test_state(PlatformType::Alpaca, false))
+            .await
+            .unwrap();
+        let response = reqwest::get(format!("http://{addr}/status?full=true"))
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
+        assert_eq!(body["positions"], serde_json::json!([]));
+        assert_eq!(body["orders"], serde_json::json!([]));
+    }
+
+    #[tokio::test]
     async fn unknown_route_returns_json_error_body() {
         let addr = start(test_state(PlatformType::Alpaca, false))
             .await

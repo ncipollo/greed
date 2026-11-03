@@ -1,4 +1,7 @@
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+use serde::Serialize;
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TimeInForce {
     /// The order is good for the day, and it will be canceled
     /// automatically at the end of Regular Trading Hours if unfilled.

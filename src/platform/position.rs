@@ -1,13 +1,14 @@
 use std::fmt::{Display, Formatter};
 
 use num_decimal::Num;
+use serde::Serialize;
 
 use crate::asset::AssetSymbol;
 use crate::platform::asset_class::AssetClass;
 use crate::platform::id::Id;
 use crate::platform::side::Side;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct Position {
     pub id: Id,
     /// Asset class of the position

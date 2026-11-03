@@ -109,25 +109,20 @@ pub async fn fetch_status(
     show_full_status: bool,
 ) -> Result<(), GreedError> {
     let platform = platform::for_type(platform_type, platform_args)?;
-    // Fetch account info
-    let account = platform.account().await?;
-    println!("Account Info: {}", account);
-    // Bail if we're not showing full status
-    if !show_full_status {
-        return Ok(());
+    let status = platform::status::fetch(&*platform, show_full_status).await?;
+
+    println!("Account Info: {}", status.account);
+    if let Some(positions) = &status.positions {
+        println!("Open Positions:");
+        for position in positions {
+            println!("-- {}", position);
+        }
     }
-    // Fetch Open Positions
-    println!("Open Positions:");
-    let positions = platform.positions().await?;
-    positions
-        .iter()
-        .filter(|p| p.market_value.unwrap_or(0.0).abs() >= 0.01)
-        .for_each(|p| println!("-- {}", p));
-    // Fetch Open Orders
-    println!("Open Orders:");
-    let orders = platform.open_orders().await?;
-    for order in &orders {
-        println!("-- {}", order);
+    if let Some(orders) = &status.orders {
+        println!("Open Orders:");
+        for order in orders {
+            println!("-- {}", order);
+        }
     }
     Ok(())
 }
