@@ -18,7 +18,6 @@ use crate::tactic::state::TacticState;
 use itertools::Itertools;
 use log::{info, warn};
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::Arc;
 
 mod action;
@@ -62,14 +61,14 @@ impl TacticRunner {
         let open_orders = self.fetch_open_orders().await?;
 
         let (bar_analysis, quotes): (
-            Rc<HashMap<AssetSymbol, BarsResult>>,
+            Arc<HashMap<AssetSymbol, BarsResult>>,
             HashMap<AssetSymbol, Quote>,
         ) = if self.config.should_fetch_quotes() {
             let bar_analysis = self.asset_analyzer.analyze_bars(&symbols).await?;
             let quotes: HashMap<AssetSymbol, Quote> = self.fetch_quotes(&symbols).await?;
             (bar_analysis, quotes)
         } else {
-            (Rc::new(HashMap::new()), HashMap::new())
+            (Arc::new(HashMap::new()), HashMap::new())
         };
 
         let state = TacticState::new(

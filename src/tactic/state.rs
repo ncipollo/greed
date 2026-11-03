@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::analysis::result::BarsResult;
 use crate::asset::AssetSymbol;
@@ -12,7 +12,7 @@ use crate::platform::quote::Quote;
 #[derive(Default, PartialEq)]
 pub struct TacticState {
     pub account: Account,
-    pub bar_analysis: Rc<HashMap<AssetSymbol, BarsResult>>,
+    pub bar_analysis: Arc<HashMap<AssetSymbol, BarsResult>>,
     pub open_orders: HashMap<AssetSymbol, Vec<Order>>,
     pub positions: HashMap<AssetSymbol, Position>,
     pub quotes: HashMap<AssetSymbol, Quote>,
@@ -23,7 +23,7 @@ pub struct TacticState {
 impl TacticState {
     pub fn new(
         account: Account,
-        bar_analysis: Rc<HashMap<AssetSymbol, BarsResult>>,
+        bar_analysis: Arc<HashMap<AssetSymbol, BarsResult>>,
         open_orders: HashMap<AssetSymbol, Vec<Order>>,
         positions: HashMap<AssetSymbol, Position>,
         quotes: HashMap<AssetSymbol, Quote>,
@@ -80,7 +80,7 @@ impl TacticState {
         let all_assets = vec![spy, vti];
         Self {
             account: Account::fixture(),
-            bar_analysis: Rc::new(bar_analysis),
+            bar_analysis: Arc::new(bar_analysis),
             open_orders,
             positions,
             quotes,

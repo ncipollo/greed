@@ -2,11 +2,11 @@ use crate::analysis::result::BarsResult;
 use crate::asset::AssetSymbol;
 use chrono::{DateTime, Local};
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Default, PartialEq)]
 pub struct AnalysisState {
-    pub bars_by_symbol: Rc<HashMap<AssetSymbol, BarsResult>>,
+    pub bars_by_symbol: Arc<HashMap<AssetSymbol, BarsResult>>,
     last_fetch_time: DateTime<Local>,
 }
 
@@ -16,7 +16,7 @@ impl AnalysisState {
         last_fetch_time: DateTime<Local>,
     ) -> Self {
         Self {
-            bars_by_symbol: Rc::new(bars_by_symbol),
+            bars_by_symbol: Arc::new(bars_by_symbol),
             last_fetch_time,
         }
     }
