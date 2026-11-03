@@ -137,6 +137,31 @@ mod test {
     }
 
     #[tokio::test]
+    async fn quote_endpoint_returns_quotes_for_symbols() {
+        let addr = start(test_state(PlatformType::Alpaca, false))
+            .await
+            .unwrap();
+        let response = reqwest::get(format!("http://{addr}/quote?symbols=VTI,MSFT"))
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
+        // NoOpPlatform returns no quotes regardless of the symbols requested.
+        assert_eq!(body["quotes"], serde_json::json!([]));
+    }
+
+    #[tokio::test]
+    async fn quote_endpoint_returns_bad_request_when_symbols_missing() {
+        let addr = start(test_state(PlatformType::Alpaca, false))
+            .await
+            .unwrap();
+        let response = reqwest::get(format!("http://{addr}/quote")).await.unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::BAD_REQUEST);
+        let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
+        assert!(body["message"].is_string());
+    }
+
+    #[tokio::test]
     async fn unknown_route_returns_json_error_body() {
         let addr = start(test_state(PlatformType::Alpaca, false))
             .await
