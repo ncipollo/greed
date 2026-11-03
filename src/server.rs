@@ -42,8 +42,12 @@ pub async fn serve(state: Arc<AppState>, port: u16) -> Result<(), GreedError> {
 
 #[cfg(test)]
 mod test {
+    use crate::asset::AssetSymbol;
     use crate::config::platform::PlatformType;
     use crate::platform::noop::NoOpPlatform;
+    use crate::platform::order::Order;
+    use crate::platform::FinancialPlatform;
+    use crate::platform::MockPlatform;
     use crate::server::{start, AppState};
     use serde_json::Value;
     use std::path::PathBuf;
@@ -54,6 +58,15 @@ mod test {
             platform_type,
             is_simulated,
             NoOpPlatform::arc(),
+            PathBuf::from("unused.duckdb"),
+        ))
+    }
+
+    fn test_state_with_platform(platform: Arc<dyn FinancialPlatform>) -> Arc<AppState> {
+        Arc::new(AppState::new(
+            PlatformType::Alpaca,
+            false,
+            platform,
             PathBuf::from("unused.duckdb"),
         ))
     }
@@ -107,6 +120,20 @@ mod test {
         let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
         assert_eq!(body["positions"], serde_json::json!([]));
         assert_eq!(body["orders"], serde_json::json!([]));
+    }
+
+    #[tokio::test]
+    async fn orders_endpoint_returns_recent_orders() {
+        let order = Order::fixture(AssetSymbol::new("vti"));
+        let platform = MockPlatform::new().with_recent_orders(vec![order.clone()]);
+        let addr = start(test_state_with_platform(platform.arc()))
+            .await
+            .unwrap();
+        let response = reqwest::get(format!("http://{addr}/orders")).await.unwrap();
+        assert!(response.status().is_success());
+        let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
+        let expected = serde_json::to_value(vec![order]).unwrap();
+        assert_eq!(body, expected);
     }
 
     #[tokio::test]
