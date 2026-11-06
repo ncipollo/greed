@@ -1,5 +1,6 @@
 mod analyze;
 mod history;
+mod init;
 mod orders;
 mod ping;
 mod quote;
@@ -8,6 +9,7 @@ mod status;
 
 pub use analyze::analyze_handler;
 pub use history::{quotes_history_handler, status_history_handler};
+pub use init::init_handler;
 pub use orders::orders_handler;
 pub use ping::ping_handler;
 pub use quote::quote_handler;
