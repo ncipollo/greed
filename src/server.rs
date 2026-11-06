@@ -162,6 +162,31 @@ mod test {
     }
 
     #[tokio::test]
+    async fn analyze_endpoint_returns_a_result_per_symbol() {
+        let addr = start(test_state(PlatformType::Alpaca, true)).await.unwrap();
+        let response = reqwest::get(format!("http://{addr}/analyze?symbols=AAPL,MSFT"))
+            .await
+            .unwrap();
+        assert!(response.status().is_success());
+        let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
+        let results = body.as_array().unwrap();
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0]["symbol"], "AAPL");
+        assert_eq!(results[1]["symbol"], "MSFT");
+    }
+
+    #[tokio::test]
+    async fn analyze_endpoint_missing_symbols_returns_bad_request() {
+        let addr = start(test_state(PlatformType::Alpaca, true)).await.unwrap();
+        let response = reqwest::get(format!("http://{addr}/analyze"))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::BAD_REQUEST);
+        let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
+        assert!(body["message"].is_string());
+    }
+
+    #[tokio::test]
     async fn unknown_route_returns_json_error_body() {
         let addr = start(test_state(PlatformType::Alpaca, false))
             .await

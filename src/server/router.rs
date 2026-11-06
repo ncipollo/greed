@@ -1,6 +1,7 @@
 use crate::server::error::ApiError;
 use crate::server::handlers::{
-    orders_handler, ping_handler, quote_handler, server_info_handler, status_handler,
+    analyze_handler, orders_handler, ping_handler, quote_handler, server_info_handler,
+    status_handler,
 };
 use crate::server::state::AppState;
 use axum::http::StatusCode;
@@ -15,6 +16,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/status", get(status_handler))
         .route("/orders", get(orders_handler))
         .route("/quote", get(quote_handler))
+        .route("/analyze", get(analyze_handler))
         .fallback(not_found_handler)
         .with_state(state)
 }

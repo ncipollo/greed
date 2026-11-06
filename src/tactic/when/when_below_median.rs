@@ -113,12 +113,12 @@ mod tests {
     use crate::asset::AssetSymbol;
     use crate::platform::quote::Quote;
     use std::collections::HashMap;
-    use std::rc::Rc;
+    use std::sync::Arc;
 
     #[test]
     fn evaluate_no_analysis() {
         let state = TacticState {
-            bar_analysis: Rc::new(HashMap::new()),
+            bar_analysis: Arc::new(HashMap::new()),
             ..TacticState::fixture()
         };
         let rule = WhenBelowMedianRule::boxed(10.0, MedianPeriod::Day);
@@ -184,7 +184,7 @@ mod tests {
             ..Default::default()
         };
         let state = TacticState {
-            bar_analysis: Rc::new(HashMap::from([(spy.clone(), bar_result)])),
+            bar_analysis: Arc::new(HashMap::from([(spy.clone(), bar_result)])),
             ..TacticState::fixture()
         };
         let rule = WhenBelowMedianRule::boxed(10.0, MedianPeriod::Day);
@@ -208,7 +208,7 @@ mod tests {
             ..Default::default()
         };
         let state = TacticState {
-            bar_analysis: Rc::new(HashMap::from([(spy.clone(), bar_result)])),
+            bar_analysis: Arc::new(HashMap::from([(spy.clone(), bar_result)])),
             ..TacticState::fixture()
         };
         let rule = WhenBelowMedianRule::boxed(10.0, MedianPeriod::Day);

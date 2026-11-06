@@ -4,9 +4,10 @@ pub mod time_frame;
 #[cfg(test)]
 use crate::date::DateTimeFixture;
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct Bar {
     pub timestamp: DateTime<Utc>,
     /// The open price.
