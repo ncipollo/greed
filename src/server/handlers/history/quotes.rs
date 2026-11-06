@@ -65,7 +65,10 @@ mod test {
     use uuid::Uuid;
 
     fn temp_db_path() -> PathBuf {
-        std::env::temp_dir().join(format!("greed_quotes_history_test_{}.duckdb", Uuid::new_v4()))
+        std::env::temp_dir().join(format!(
+            "greed_quotes_history_test_{}.duckdb",
+            Uuid::new_v4()
+        ))
     }
 
     fn state_for(db_path: PathBuf) -> Arc<AppState> {

@@ -66,13 +66,15 @@ impl HistoryQueryParams {
 
     /// Splits `symbols` on `,`, trimming whitespace and dropping empty
     /// entries. An absent/empty param means "no filter" (all symbols).
+    /// Case-insensitive: each entry is upper-cased to match the canonical
+    /// form `AssetSymbol` stores ticker data in (see its `Display` impl).
     pub fn symbols(&self) -> Vec<AssetSymbol> {
         match &self.symbols {
             Some(symbols) => symbols
                 .split(',')
                 .map(str::trim)
                 .filter(|symbol| !symbol.is_empty())
-                .map(AssetSymbol::from)
+                .map(|symbol| AssetSymbol::from(symbol.to_uppercase()))
                 .collect(),
             None => Vec::new(),
         }
