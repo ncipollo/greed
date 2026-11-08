@@ -1,25 +1,16 @@
 use crate::server::error::ApiError;
-use crate::server::handlers::{
-    analyze_handler, init_handler, orders_handler, ping_handler, quote_handler,
-    quotes_history_handler, server_info_handler, status_handler, status_history_handler,
-};
+use crate::server::routes::ServerRoute;
 use crate::server::state::AppState;
 use axum::http::StatusCode;
-use axum::routing::{get, post};
 use axum::Router;
 use std::sync::Arc;
 
 pub fn build_router(state: Arc<AppState>) -> Router {
-    Router::new()
-        .route("/ping", get(ping_handler))
-        .route("/server/info", get(server_info_handler))
-        .route("/status", get(status_handler))
-        .route("/orders", get(orders_handler))
-        .route("/quote", get(quote_handler))
-        .route("/analyze", get(analyze_handler))
-        .route("/history/status", get(status_history_handler))
-        .route("/history/quotes", get(quotes_history_handler))
-        .route("/init", post(init_handler))
+    ServerRoute::all()
+        .iter()
+        .fold(Router::new(), |router, route| {
+            router.route(route.path(), route.method_router())
+        })
         .fallback(not_found_handler)
         .with_state(state)
 }
