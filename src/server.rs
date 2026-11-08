@@ -1,6 +1,7 @@
 mod error;
 mod handlers;
 mod router;
+mod routes;
 mod state;
 
 use crate::error::GreedError;
@@ -22,6 +23,7 @@ pub async fn start(state: Arc<AppState>) -> Result<SocketAddr, GreedError> {
     let router = router::build_router(state);
     let listener = TcpListener::bind("0.0.0.0:0").await?;
     let addr = listener.local_addr()?;
+    log_startup(addr);
 
     tokio::spawn(async move {
         axum::serve(listener, router).await.ok();
@@ -36,8 +38,19 @@ pub async fn start(state: Arc<AppState>) -> Result<SocketAddr, GreedError> {
 pub async fn serve(state: Arc<AppState>, port: u16) -> Result<(), GreedError> {
     let router = router::build_router(state);
     let listener = TcpListener::bind(format!("127.0.0.1:{port}")).await?;
+    log_startup(listener.local_addr()?);
     axum::serve(listener, router).await?;
     Ok(())
+}
+
+/// Logs the bound URL and every served route so the API surface is visible
+/// as soon as the server starts.
+fn log_startup(addr: SocketAddr) {
+    log::info!("greed server listening on http://{addr}");
+    log::info!("Routes:");
+    for line in routes::route_listing().lines() {
+        log::info!("  {line}");
+    }
 }
 
 #[cfg(test)]
@@ -215,6 +228,28 @@ mod test {
         assert_eq!(response.status(), reqwest::StatusCode::BAD_REQUEST);
         let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
         assert_eq!(body["message"], "unknown config type: bogus");
+    }
+
+    #[tokio::test]
+    async fn routes_endpoint_lists_every_route() {
+        let addr = start(test_state(PlatformType::Alpaca, false))
+            .await
+            .unwrap();
+        let response = reqwest::get(format!("http://{addr}/routes")).await.unwrap();
+        assert!(response.status().is_success());
+        let body: Value = serde_json::from_str(&response.text().await.unwrap()).unwrap();
+        let routes = body["routes"].as_array().unwrap();
+        let has = |method: &str, path: &str| {
+            routes
+                .iter()
+                .any(|route| route["method"] == method && route["path"] == path)
+        };
+        assert!(has("GET", "/ping"));
+        assert!(has("GET", "/routes"));
+        assert!(has("POST", "/init"));
+        assert!(routes
+            .iter()
+            .all(|route| route["description"].as_str().is_some_and(|d| !d.is_empty())));
     }
 
     #[tokio::test]
