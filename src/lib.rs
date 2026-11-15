@@ -26,6 +26,7 @@ pub mod error;
 mod fixture;
 mod float;
 pub mod history_range;
+pub mod info;
 pub mod interval;
 mod num;
 pub mod output_format;
