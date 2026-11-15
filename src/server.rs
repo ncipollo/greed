@@ -1,7 +1,7 @@
 mod error;
 mod handlers;
 mod router;
-mod routes;
+pub(crate) mod routes;
 mod state;
 
 use crate::error::GreedError;

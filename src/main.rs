@@ -61,6 +61,9 @@ async fn async_main(log_config: Config) {
                 .expect("quote history fetch failed");
             }
         },
+        Command::Info(args) => {
+            print!("{}", cli::info::render(args.topic));
+        }
         Command::Init(args) => {
             generate_config_template(args)
                 .await

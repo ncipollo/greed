@@ -1,5 +1,6 @@
 pub mod analyze;
 pub mod history;
+pub mod info;
 pub mod init;
 mod orders;
 pub mod quote;
@@ -9,6 +10,7 @@ mod status;
 
 use crate::cli::analyze::AnalyzeArgs;
 use crate::cli::history::HistoryArgs;
+use crate::cli::info::InfoArgs;
 use crate::cli::init::InitArgs;
 use crate::cli::orders::OrdersArgs;
 use crate::cli::quote::QuoteArgs;
@@ -29,6 +31,8 @@ pub enum Command {
     Analyze(AnalyzeArgs),
     #[command(about = "Fetch historic data")]
     History(HistoryArgs),
+    #[command(about = "Show agent-oriented docs for greed topics")]
+    Info(InfoArgs),
     #[command(about = "Generate a starter config file")]
     Init(InitArgs),
     #[command(about = "Fetch recent orders")]
