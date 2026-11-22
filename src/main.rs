@@ -102,8 +102,8 @@ async fn async_main(log_config: Config) {
         }
         Command::Server(args) => {
             setup_logging(log_config);
-            let port = args.port;
-            let result = greed_server_loop(args.into(), port).await;
+            let addr = std::net::SocketAddr::new(args.host, args.port);
+            let result = greed_server_loop(args.into(), addr).await;
             if let Err(e) = result {
                 panic!("{}", e);
             }
