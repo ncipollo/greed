@@ -42,8 +42,12 @@ pub mod template;
 mod trading_days;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
-    let db_path = db::path_for_run(&args.config_path, args.db_path.as_deref());
-    db::bootstrap_at_with_retry(&db_path).await?;
+    let db_path = db::prepare_for_run(
+        &args.config_path,
+        args.db_path.as_deref(),
+        args.record_history,
+    )
+    .await?;
     let runner = GreedRunner::from_args(args, db_path).await?;
     runner.run_loop().await;
     Ok(())
@@ -53,8 +57,12 @@ pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
 /// observe/interact with this instance instead of starting a second,
 /// lock-contending CLI invocation.
 pub async fn greed_server_loop(args: GreedRunnerArgs, port: u16) -> Result<(), GreedError> {
-    let db_path = db::path_for_run(&args.config_path, args.db_path.as_deref());
-    db::bootstrap_at_with_retry(&db_path).await?;
+    let db_path = db::prepare_for_run(
+        &args.config_path,
+        args.db_path.as_deref(),
+        args.record_history,
+    )
+    .await?;
     let is_simulated = args.is_simulated;
 
     let (runner, platform_type, platform) =
