@@ -23,6 +23,20 @@ pub async fn bootstrap_at_with_retry(path: &Path) -> Result<Connection, GreedErr
     retry::with_backoff(|| bootstrap_at(path)).await
 }
 
+/// Resolves the run's DB path and bootstraps the schema only when history
+/// recording is enabled, so runs without `--record-history` leave no file.
+pub async fn prepare_for_run(
+    config_path: &Path,
+    override_path: Option<&Path>,
+    record_history: bool,
+) -> Result<PathBuf, GreedError> {
+    let path = path_for_run(config_path, override_path);
+    if record_history {
+        bootstrap_at_with_retry(&path).await?;
+    }
+    Ok(path)
+}
+
 /// Opens a connection for writing without re-checking the schema. Callers must
 /// have already ensured the schema exists via `bootstrap_at`, since a brief
 /// per-tick write window shouldn't pay for a migration check on every open.
@@ -70,7 +84,7 @@ pub fn path_for_override(override_path: Option<&Path>) -> PathBuf {
 mod test {
     use crate::db::{
         bootstrap_at, default_path, open_for_write, open_for_write_with_retry,
-        open_read_only_with_retry, path_for_override, path_for_run,
+        open_read_only_with_retry, path_for_override, path_for_run, prepare_for_run,
     };
     use std::path::{Path, PathBuf};
     use std::time::Duration;
@@ -118,6 +132,44 @@ mod test {
         let path = temp_db_path();
 
         bootstrap_at(&path).expect("bootstrap should succeed");
+
+        assert!(path.exists());
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn prepare_for_run_without_record_history_creates_no_file() {
+        let path = temp_db_path();
+
+        let resolved = prepare_for_run(Path::new("/configs/c.toml"), Some(&path), false)
+            .await
+            .expect("prepare should succeed");
+
+        assert_eq!(resolved, path);
+        assert!(!path.exists());
+    }
+
+    #[tokio::test]
+    async fn prepare_for_run_with_record_history_creates_file() {
+        let path = temp_db_path();
+
+        let resolved = prepare_for_run(Path::new("/configs/c.toml"), Some(&path), true)
+            .await
+            .expect("prepare should succeed");
+
+        assert_eq!(resolved, path);
+        assert!(path.exists());
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn prepare_for_run_preserves_existing_db_without_record_history() {
+        let path = temp_db_path();
+        bootstrap_at(&path).expect("bootstrap should succeed");
+
+        prepare_for_run(Path::new("/configs/c.toml"), Some(&path), false)
+            .await
+            .expect("prepare should succeed");
 
         assert!(path.exists());
         std::fs::remove_file(&path).ok();

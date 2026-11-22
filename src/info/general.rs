@@ -26,7 +26,8 @@ RUN VS SERVER
   `run` only executes the trading loop. `server` runs the same loop and also
   serves an HTTP API (see `greed info server`). With --record-history, greed
   persists portfolio status and quotes to a DuckDB file (default greed.duckdb
-  next to the config, override with --db-path). DuckDB allows a single writer,
+  next to the config, override with --db-path). The file is created only when
+  --record-history is set; without it no database file is written. DuckDB allows a single writer,
   so while `run`/`server` holds the write lock, a second CLI invocation would
   contend with it. The HTTP server lets other processes observe a live run
   instead.

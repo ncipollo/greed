@@ -7,7 +7,7 @@ pub struct CommonRunArgs {
     /// Path to the greed configuration toml file
     #[arg(value_name = "PATH")]
     pub config_path: PathBuf,
-    /// Override the path to the DuckDB database file. Defaults to "greed.duckdb" next to the config file.
+    /// Override the path to the DuckDB database file. Defaults to "greed.duckdb" next to the config file. The file is only created when --record-history is set.
     #[arg(long, value_name = "PATH")]
     pub db_path: Option<PathBuf>,
     /// Use a simulated financial platform instead of a live account.
