@@ -10,6 +10,7 @@ use crate::platform::FinancialPlatform;
 use crate::run::{GreedRunner, GreedRunnerArgs};
 use chrono::{DateTime, Utc};
 use comfy_table::Table;
+use std::net::SocketAddr;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -56,7 +57,7 @@ pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {
 /// Runs the greed loop and the HTTP API concurrently, so other processes can
 /// observe/interact with this instance instead of starting a second,
 /// lock-contending CLI invocation.
-pub async fn greed_server_loop(args: GreedRunnerArgs, port: u16) -> Result<(), GreedError> {
+pub async fn greed_server_loop(args: GreedRunnerArgs, addr: SocketAddr) -> Result<(), GreedError> {
     let db_path = db::prepare_for_run(
         &args.config_path,
         args.db_path.as_deref(),
@@ -81,7 +82,7 @@ pub async fn greed_server_loop(args: GreedRunnerArgs, port: u16) -> Result<(), G
             runner.run_loop().await;
             Ok::<(), GreedError>(())
         },
-        server::serve(state, port),
+        server::serve(state, addr),
     )?;
     Ok(())
 }

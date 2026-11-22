@@ -5,7 +5,7 @@ pub(crate) mod routes;
 mod state;
 
 use crate::error::GreedError;
-use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
@@ -15,6 +15,10 @@ pub use state::AppState;
 /// Default port the `greed server` command binds the HTTP API to when
 /// `--port` is omitted. Also shown as the default in `greed server --help`.
 pub const DEFAULT_PORT: u16 = 7777;
+
+/// Default address the `greed server` command binds to when `--host` is
+/// omitted. Loopback keeps the unauthenticated API private to this machine.
+pub const DEFAULT_HOST: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
 /// Starts the HTTP server in the background and returns the address it
 /// bound to. Binds to an OS-assigned port so concurrent callers (e.g.
@@ -32,15 +36,29 @@ pub async fn start(state: Arc<AppState>) -> Result<SocketAddr, GreedError> {
     Ok(addr)
 }
 
-/// Runs the HTTP server on `127.0.0.1:<port>` until the listener errors.
+/// Runs the HTTP server on `addr` until the listener errors.
 /// Intended to run concurrently with the greed loop via `tokio::try_join!`
 /// in `greed_server_loop`; does not return under normal operation.
-pub async fn serve(state: Arc<AppState>, port: u16) -> Result<(), GreedError> {
+pub async fn serve(state: Arc<AppState>, addr: SocketAddr) -> Result<(), GreedError> {
     let router = router::build_router(state);
-    let listener = TcpListener::bind(format!("127.0.0.1:{port}")).await?;
-    log_startup(listener.local_addr()?);
+    let listener = TcpListener::bind(addr).await?;
+    let bound = listener.local_addr()?;
+    log_startup(bound);
+    if is_exposed(&bound) {
+        log::warn!(
+            "greed server is bound to non-loopback address {bound} and has no authentication; \
+             anyone who can reach it can read account, position and order data. \
+             Prefer binding a specific trusted interface (e.g. a VPN IP) over 0.0.0.0."
+        );
+    }
     axum::serve(listener, router).await?;
     Ok(())
+}
+
+/// True when the server can be reached from other machines, i.e. the bound
+/// address is not loopback.
+fn is_exposed(addr: &SocketAddr) -> bool {
+    !addr.ip().is_loopback()
 }
 
 /// Logs the bound URL and every served route so the API surface is visible
@@ -61,10 +79,23 @@ mod test {
     use crate::platform::order::Order;
     use crate::platform::FinancialPlatform;
     use crate::platform::MockPlatform;
-    use crate::server::{start, AppState};
+    use crate::server::{is_exposed, start, AppState};
     use serde_json::Value;
     use std::path::PathBuf;
     use std::sync::Arc;
+
+    #[test]
+    fn only_non_loopback_addresses_are_exposed() {
+        for (addr, exposed) in [
+            ("127.0.0.1:7777", false),
+            ("[::1]:7777", false),
+            ("0.0.0.0:7777", true),
+            ("192.168.1.20:7777", true),
+            ("[::]:7777", true),
+        ] {
+            assert_eq!(is_exposed(&addr.parse().unwrap()), exposed, "{addr}");
+        }
+    }
 
     fn test_state(platform_type: PlatformType, is_simulated: bool) -> Arc<AppState> {
         Arc::new(AppState::new(

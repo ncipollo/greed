@@ -5,9 +5,14 @@ pub fn render() -> String {
     let mut out = format!(
         r#"GREED: HTTP SERVER
 
-`greed server <CONFIG> [--port PORT]` runs the trading loop and serves a JSON
+`greed server <CONFIG> [--host ADDR] [--port PORT]` runs the trading loop and serves a JSON
 HTTP API (default port {DEFAULT_PORT}). It lets other processes observe a live run
 without contending for the DuckDB write lock. All endpoints return JSON.
+
+By default the server binds loopback (127.0.0.1), reachable only from this
+machine. `--host 0.0.0.0` (or a specific interface IP) exposes it on the
+network. The API has NO authentication: anyone who can reach it can read
+account, position and order data. Prefer a specific trusted interface.
 
 ENDPOINTS
 "#
