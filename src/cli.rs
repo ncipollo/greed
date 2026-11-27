@@ -7,6 +7,7 @@ pub mod quote;
 pub mod run;
 pub mod server;
 mod status;
+mod time_range;
 
 use crate::cli::analyze::AnalyzeArgs;
 use crate::cli::history::HistoryArgs;

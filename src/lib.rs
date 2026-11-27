@@ -40,6 +40,7 @@ mod statistics;
 mod strategy;
 mod tactic;
 pub mod template;
+pub mod time_range;
 mod trading_days;
 
 pub async fn greed_loop(args: GreedRunnerArgs) -> Result<(), GreedError> {

@@ -1,6 +1,6 @@
-use crate::date::NaiveDateTimeConvert;
+use crate::date::parse_moment;
 use crate::error::GreedError;
-use chrono::{DateTime, Duration, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use std::ops::Range;
 
 #[derive(Debug, Default, PartialEq)]
@@ -36,16 +36,7 @@ impl HistoryRange {
 }
 
 fn parse_date_time(value: &str) -> Result<DateTime<Utc>, GreedError> {
-    if let Ok(naive) = NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M") {
-        return Ok(naive.to_utc());
-    }
-    if let Ok(date) = NaiveDate::parse_from_str(value, "%Y-%m-%d") {
-        let naive = date.and_hms_opt(0, 0, 0).expect("midnight is always valid");
-        return Ok(naive.to_utc());
-    }
-    Err(GreedError::new(&format!(
-        "unable to parse '{value}' as a date/time; expected format '%Y-%m-%d %H:%M' or '%Y-%m-%d'"
-    )))
+    parse_moment(value).map(|moment| moment.at)
 }
 
 #[cfg(test)]
