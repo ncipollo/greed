@@ -15,6 +15,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+mod activity;
 mod analysis;
 mod assert;
 pub mod asset;

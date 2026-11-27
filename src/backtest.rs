@@ -17,9 +17,11 @@ mod market_data;
 mod platform;
 mod portfolio;
 mod preflight;
+mod trace;
 
 pub use engine::simulate;
 pub use platform::BacktestPlatform;
+pub use trace::{BacktestTrace, TraceFormat};
 
 use crate::asset::AssetSymbol;
 use crate::backfill::target_from_config;
@@ -50,6 +52,8 @@ pub struct BacktestOptions {
     pub starting_cash: f64,
     /// Overrides the DuckDB path; defaults next to the config like `run` and `backfill`.
     pub db_path: Option<PathBuf>,
+    /// Where to write a trace of every simulated trade (`.json` or `.toml`).
+    pub trace: Option<PathBuf>,
 }
 
 /// A backtest that is ready to simulate: config validated, data backfilled and loaded into
@@ -63,6 +67,8 @@ pub struct PreparedBacktest {
     pub clock: Arc<SimulatedClock>,
     pub starting_cash: f64,
     pub bars_loaded: usize,
+    /// Where to write the trace, and what collects it, when one was asked for.
+    pub trace: Option<(PathBuf, trace::TraceRecorder)>,
 }
 
 /// How a simulated run ended.
@@ -140,6 +146,9 @@ where
             "the config's interval must be at least 1 second",
         ));
     }
+    if let Some(path) = &options.trace {
+        TraceFormat::from_path(path)?;
+    }
     let range = options.time_range.resolve(now)?;
     let target = target_from_config(&options.config_path).await?;
     if target.symbols.is_empty() {
@@ -158,11 +167,14 @@ where
     };
     let bars_loaded = market.bar_count();
     let clock = Arc::new(SimulatedClock::new(range.start));
-    let platform = Arc::new(BacktestPlatform::new(
-        clock.clone(),
-        market,
-        options.starting_cash,
-    ));
+    let trace = options
+        .trace
+        .map(|path| (path, trace::TraceRecorder::new()));
+    let mut platform = BacktestPlatform::new(clock.clone(), market, options.starting_cash);
+    if let Some((_, recorder)) = &trace {
+        platform = platform.with_trace(recorder.clone());
+    }
+    let platform = Arc::new(platform);
     Ok(PreparedBacktest {
         config,
         config_path: options.config_path,
@@ -172,6 +184,7 @@ where
         clock,
         starting_cash: options.starting_cash,
         bars_loaded,
+        trace,
     })
 }
 
@@ -222,6 +235,7 @@ mod test {
             },
             starting_cash: DEFAULT_STARTING_CASH,
             db_path,
+            trace: None,
         }
     }
 
@@ -400,6 +414,7 @@ do = { sell_all = true }
             },
             starting_cash: DEFAULT_STARTING_CASH,
             db_path: Some(db_path),
+            trace: None,
         }
     }
 
@@ -542,6 +557,7 @@ do = { sell_all = true }
                 },
                 starting_cash: DEFAULT_STARTING_CASH,
                 db_path: Some(db_path.clone()),
+                trace: None,
             },
             now(),
             move |_| Ok(for_factory as Arc<dyn FinancialPlatform>),
@@ -554,6 +570,49 @@ do = { sell_all = true }
         assert_eq!(result.trade_count, 0);
         assert_eq!(result.final_value, DEFAULT_STARTING_CASH);
         std::fs::remove_file(&db_path).ok();
+    }
+
+    #[tokio::test]
+    async fn a_trace_records_trades_with_their_tactic_and_daily_equity() {
+        let db_path = temp_db();
+        let config_path = always_buy_config();
+        let trace_path = std::env::temp_dir().join(format!("greed_trace_{}.json", Uuid::new_v4()));
+        let start = Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 1, 5, 15, 30, 0).unwrap();
+        seed_bars(&db_path, start, end);
+        let mut opts = simulation_options(config_path.clone(), db_path.clone());
+        opts.trace = Some(trace_path.clone());
+
+        let prepared = prepare(opts, now(), no_platform).await.unwrap();
+        let result = simulate(prepared).await.unwrap();
+
+        let trace: BacktestTrace =
+            serde_json::from_str(&std::fs::read_to_string(&trace_path).unwrap()).unwrap();
+        assert_eq!(trace.summary.trade_count, result.trade_count);
+        assert_eq!(trace.summary.final_value, result.final_value);
+        assert_eq!(trace.summary.starting_cash, DEFAULT_STARTING_CASH);
+        assert_eq!(trace.events.len(), 2);
+        let first = &trace.events[0];
+        assert_eq!(first.symbol, "VTI");
+        assert_eq!(first.tactic.as_deref(), Some("always"));
+        assert_eq!(first.price, Some(100.0));
+        assert_eq!(first.quantity, Some(100.0));
+        assert_eq!(first.cash_after, 90_000.0);
+        assert_eq!(first.equity_after, 100_000.0);
+        // One snapshot for the single simulated day, plus the end.
+        assert_eq!(trace.equity.len(), 2);
+        assert_eq!(trace.equity.last().unwrap().time, end);
+        std::fs::remove_file(&db_path).ok();
+        std::fs::remove_file(&config_path).ok();
+        std::fs::remove_file(&trace_path).ok();
+    }
+
+    #[tokio::test]
+    async fn an_unknown_trace_extension_fails_before_any_data_work() {
+        let mut opts = options("config_single_tactic.toml", None);
+        opts.trace = Some(PathBuf::from("out.txt"));
+
+        assert!(prepare(opts, now(), no_platform).await.is_err());
     }
 
     #[tokio::test]

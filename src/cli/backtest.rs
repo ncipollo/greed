@@ -1,6 +1,6 @@
 use crate::cli::time_range::TimeRangeArgs;
 use clap::Args;
-use greed::backtest::{BacktestOptions, DEFAULT_STARTING_CASH};
+use greed::backtest::{BacktestOptions, TraceFormat, DEFAULT_STARTING_CASH};
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
@@ -17,6 +17,17 @@ pub struct BacktestArgs {
     /// "greed.duckdb" next to the config file, like `run` and `backfill`.
     #[arg(long, value_name = "PATH")]
     pub db_path: Option<PathBuf>,
+    /// Write a trace of every simulated trade to this file. The format comes from the extension:
+    /// `.json` or `.toml`.
+    #[arg(long, value_name = "PATH", value_parser = parse_trace_path)]
+    pub trace: Option<PathBuf>,
+}
+
+/// Rejects a trace path with an unknown extension while arguments are parsed, before any work.
+fn parse_trace_path(value: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(value);
+    TraceFormat::from_path(&path).map_err(|e| e.to_string())?;
+    Ok(path)
 }
 
 impl From<BacktestArgs> for BacktestOptions {
@@ -26,6 +37,7 @@ impl From<BacktestArgs> for BacktestOptions {
             time_range: (&value.time_range).into(),
             starting_cash: value.starting_cash,
             db_path: value.db_path,
+            trace: value.trace,
         }
     }
 }
@@ -54,6 +66,22 @@ mod test {
         assert_eq!(options.time_range, TimeRangeSpec::default());
         assert_eq!(options.starting_cash, 100_000.0);
         assert_eq!(options.db_path, None);
+    }
+
+    #[test]
+    fn parses_a_trace_path() {
+        let options: BacktestOptions = parse(&["greed.toml", "--trace", "out.JSON"])
+            .expect("parse")
+            .into();
+
+        assert_eq!(options.trace, Some(PathBuf::from("out.JSON")));
+        assert_eq!(parse(&["greed.toml"]).expect("parse").trace, None);
+    }
+
+    #[test]
+    fn rejects_a_trace_with_an_unknown_extension_before_running() {
+        assert!(parse(&["greed.toml", "--trace", "out.txt"]).is_err());
+        assert!(parse(&["greed.toml", "--trace", "out"]).is_err());
     }
 
     #[test]

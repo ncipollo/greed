@@ -1,3 +1,4 @@
+use crate::activity::{with_tactic, TacticContext};
 use crate::analysis::result::BarsResult;
 use crate::analysis::AssetAnalyzer;
 use crate::asset::AssetSymbol;
@@ -56,6 +57,14 @@ impl TacticRunner {
         }
     }
     pub async fn run(&self, config_assets: &[AssetSymbol]) -> Result<(), GreedError> {
+        let context = TacticContext {
+            strategy: self.strategy_properties.name.clone(),
+            tactic: self.config.name.clone(),
+        };
+        with_tactic(context, self.run_tactic(config_assets)).await
+    }
+
+    async fn run_tactic(&self, config_assets: &[AssetSymbol]) -> Result<(), GreedError> {
         info!("🧠 running tactic: {}", self.config.name);
         let account = self.fetch_account().await?;
         let symbols = self.config.assets();
