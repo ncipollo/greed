@@ -75,7 +75,6 @@ pub async fn simulate(
             continue;
         }
         runner.evaluate_strategies(Duration::ZERO).await;
-        runner.discard_pending_quotes();
         ticks += 1;
         if progress.is_verbose() {
             progress.tick(TickProgress {

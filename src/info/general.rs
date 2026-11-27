@@ -13,7 +13,7 @@ COMMANDS
   greed orders                               recent orders
   greed quote <SYMBOLS...>                   latest quotes
   greed analyze <SYMBOLS...>                 bar analysis for symbols
-  greed history status|quotes                query recorded history (DuckDB)
+  greed history status|prices                query recorded history (DuckDB)
   greed backfill <SYMBOLS...|--config PATH>  fetch historical minute bars into DuckDB
                                              [--from D --to D | --days N --months N --years N]
                                              [--dry-run] [-v]
@@ -31,9 +31,14 @@ CONFIG FILES
 RUN VS SERVER
   `run` only executes the trading loop. `server` runs the same loop and also
   serves an HTTP API (see `greed info server`). With --record-history, greed
-  persists portfolio status and quotes to a DuckDB file (default greed.duckdb
-  next to the config, override with --db-path). The file is created only when
-  --record-history is set; without it no database file is written. DuckDB allows a single writer,
+  persists portfolio status and minute-by-minute price bars (about once a
+  minute, for the symbols named in the config) to a DuckDB file (default
+  greed.duckdb next to the config, override with --db-path). The bars land in
+  the same table as `greed backfill`, so a backtest finds them and only older
+  periods need a backfill. Per-tick quote snapshots from earlier versions are
+  no longer recorded, and their table is dropped when an old database is
+  opened. The file is created only when --record-history is set; without it
+  no database file is written. DuckDB allows a single writer,
   so while `run`/`server` holds the write lock, a second CLI invocation would
   contend with it. The HTTP server lets other processes observe a live run
   instead.

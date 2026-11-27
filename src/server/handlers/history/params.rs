@@ -7,7 +7,7 @@ use serde::Deserialize;
 use std::ops::Range;
 use std::str::FromStr;
 
-/// Query parameters shared by `/history/status` and `/history/quotes`.
+/// Query parameters shared by `/history/status` and `/history/prices`.
 ///
 /// Axum's `Query<T>` extractor goes through `serde_urlencoded`, which has no
 /// support for deserializing a comma-separated or repeated-key list into a
@@ -33,7 +33,7 @@ pub struct HistoryQueryParams {
     /// Roll results up into averages per interval (e.g. "30s", "5m", "1h", "1d"); omit for raw rows.
     pub interval: Option<String>,
     /// Comma-separated asset symbols (e.g. `?symbols=VTI,AAPL`), used only by
-    /// `/history/quotes`. Chosen over repeated `?symbols=VTI&symbols=AAPL`
+    /// `/history/prices`. Chosen over repeated `?symbols=VTI&symbols=AAPL`
     /// keys since `serde_urlencoded` doesn't collect repeated keys into a
     /// `Vec` by default.
     pub symbols: Option<String>,

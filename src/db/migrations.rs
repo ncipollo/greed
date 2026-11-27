@@ -2,6 +2,7 @@ use crate::error::GreedError;
 use duckdb::Connection;
 
 mod backfill_coverage;
+mod drop_stock_quotes;
 mod portfolio_status;
 mod stock_bars;
 mod stock_quotes;
@@ -16,6 +17,7 @@ const MIGRATIONS: &[Migration] = &[
     stock_quotes::MIGRATION,
     stock_bars::MIGRATION,
     backfill_coverage::MIGRATION,
+    drop_stock_quotes::MIGRATION,
 ];
 
 pub fn apply(connection: &Connection) -> Result<(), GreedError> {

@@ -37,8 +37,10 @@ PARAMETERS (query string)
   /history/status   range: from=2026-10-15 | from=2026-10-15 14:00 [&to=...],
                     or last_hour=true, hours=N, days=N (to defaults to now)
                     interval=30s|5m|1h|1d (optional: average per interval, else raw rows)
-  /history/quotes   same as /history/status, plus symbols=VTI,SPY (optional;
-                    omitted = all recorded symbols; case-insensitive)
+  /history/prices   recorded minute bars (open/high/low/close/volume); same range
+                    params as /history/status, plus symbols=VTI,SPY (optional;
+                    omitted = all recorded symbols; case-insensitive). With
+                    interval=, bars roll up to one OHLCV bar per symbol per interval
   /init             config_type=greed|strategy|agent (required; no request body)
 
 RESPONSES

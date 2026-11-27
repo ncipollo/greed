@@ -6,13 +6,13 @@ use greed::interval::RollupInterval;
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
-pub struct QuotesArgs {
+pub struct PricesArgs {
     /// Asset symbols to filter to; omit to include all symbols.
     #[arg(value_name = "SYMBOLS")]
     pub symbols: Vec<AssetSymbol>,
     #[command(flatten)]
     pub history_range: HistoryRangeArgs,
-    /// Roll results up into averages per interval (e.g. "30s", "5m", "1h", "1d"); omit for raw rows.
+    /// Roll results up into OHLCV bars per interval (e.g. "30s", "5m", "1h", "1d"); omit for raw rows.
     #[arg(long)]
     pub interval: Option<RollupInterval>,
     #[command(flatten)]
@@ -31,14 +31,14 @@ mod test {
 
     #[test]
     fn parses_with_no_symbols_defaults_to_empty_filter() {
-        let cli = Cli::try_parse_from(["greed", "history", "quotes"])
+        let cli = Cli::try_parse_from(["greed", "history", "prices"])
             .expect("should parse with no symbols");
 
         let crate::cli::Command::History(history_args) = cli.command else {
             panic!("expected History command");
         };
-        let crate::cli::history::HistoryCommand::Quotes(args) = history_args.command else {
-            panic!("expected Quotes subcommand");
+        let crate::cli::history::HistoryCommand::Prices(args) = history_args.command else {
+            panic!("expected Prices subcommand");
         };
 
         assert_eq!(args.symbols, Vec::<AssetSymbol>::new());
@@ -47,14 +47,14 @@ mod test {
 
     #[test]
     fn parses_multiple_positional_symbols_before_range_flags() {
-        let cli = Cli::try_parse_from(["greed", "history", "quotes", "VTI", "AAPL", "--days", "3"])
+        let cli = Cli::try_parse_from(["greed", "history", "prices", "VTI", "AAPL", "--days", "3"])
             .expect("should parse with symbols and a range flag");
 
         let crate::cli::Command::History(history_args) = cli.command else {
             panic!("expected History command");
         };
-        let crate::cli::history::HistoryCommand::Quotes(args) = history_args.command else {
-            panic!("expected Quotes subcommand");
+        let crate::cli::history::HistoryCommand::Prices(args) = history_args.command else {
+            panic!("expected Prices subcommand");
         };
 
         assert_eq!(
@@ -67,21 +67,21 @@ mod test {
     #[test]
     fn rejects_combining_days_and_last_hour() {
         let result =
-            Cli::try_parse_from(["greed", "history", "quotes", "--days", "3", "--last-hour"]);
+            Cli::try_parse_from(["greed", "history", "prices", "--days", "3", "--last-hour"]);
 
         assert!(result.is_err());
     }
 
     #[test]
     fn defaults_to_text_when_format_omitted() {
-        let cli = Cli::try_parse_from(["greed", "history", "quotes"])
+        let cli = Cli::try_parse_from(["greed", "history", "prices"])
             .expect("should parse with no format flag");
 
         let crate::cli::Command::History(history_args) = cli.command else {
             panic!("expected History command");
         };
-        let crate::cli::history::HistoryCommand::Quotes(args) = history_args.command else {
-            panic!("expected Quotes subcommand");
+        let crate::cli::history::HistoryCommand::Prices(args) = history_args.command else {
+            panic!("expected Prices subcommand");
         };
 
         assert_eq!(args.output_format.format, OutputFormat::Text);
@@ -89,14 +89,14 @@ mod test {
 
     #[test]
     fn parses_explicit_json_format() {
-        let cli = Cli::try_parse_from(["greed", "history", "quotes", "--format", "json"])
+        let cli = Cli::try_parse_from(["greed", "history", "prices", "--format", "json"])
             .expect("should parse with an explicit json format");
 
         let crate::cli::Command::History(history_args) = cli.command else {
             panic!("expected History command");
         };
-        let crate::cli::history::HistoryCommand::Quotes(args) = history_args.command else {
-            panic!("expected Quotes subcommand");
+        let crate::cli::history::HistoryCommand::Prices(args) = history_args.command else {
+            panic!("expected Prices subcommand");
         };
 
         assert_eq!(args.output_format.format, OutputFormat::Json);
@@ -104,21 +104,21 @@ mod test {
 
     #[test]
     fn rejects_invalid_format_value() {
-        let result = Cli::try_parse_from(["greed", "history", "quotes", "--format", "bogus"]);
+        let result = Cli::try_parse_from(["greed", "history", "prices", "--format", "bogus"]);
 
         assert!(result.is_err());
     }
 
     #[test]
     fn parses_explicit_db_path() {
-        let cli = Cli::try_parse_from(["greed", "history", "quotes", "--db-path", "custom.duckdb"])
+        let cli = Cli::try_parse_from(["greed", "history", "prices", "--db-path", "custom.duckdb"])
             .expect("should parse with an explicit db path");
 
         let crate::cli::Command::History(history_args) = cli.command else {
             panic!("expected History command");
         };
-        let crate::cli::history::HistoryCommand::Quotes(args) = history_args.command else {
-            panic!("expected Quotes subcommand");
+        let crate::cli::history::HistoryCommand::Prices(args) = history_args.command else {
+            panic!("expected Prices subcommand");
         };
 
         assert_eq!(
@@ -129,14 +129,14 @@ mod test {
 
     #[test]
     fn parses_explicit_interval() {
-        let cli = Cli::try_parse_from(["greed", "history", "quotes", "--interval", "5m"])
+        let cli = Cli::try_parse_from(["greed", "history", "prices", "--interval", "5m"])
             .expect("should parse with an explicit interval");
 
         let crate::cli::Command::History(history_args) = cli.command else {
             panic!("expected History command");
         };
-        let crate::cli::history::HistoryCommand::Quotes(args) = history_args.command else {
-            panic!("expected Quotes subcommand");
+        let crate::cli::history::HistoryCommand::Prices(args) = history_args.command else {
+            panic!("expected Prices subcommand");
         };
 
         assert!(args.interval.is_some());
@@ -144,14 +144,14 @@ mod test {
 
     #[test]
     fn defaults_interval_to_none_when_omitted() {
-        let cli = Cli::try_parse_from(["greed", "history", "quotes"])
+        let cli = Cli::try_parse_from(["greed", "history", "prices"])
             .expect("should parse with no interval flag");
 
         let crate::cli::Command::History(history_args) = cli.command else {
             panic!("expected History command");
         };
-        let crate::cli::history::HistoryCommand::Quotes(args) = history_args.command else {
-            panic!("expected Quotes subcommand");
+        let crate::cli::history::HistoryCommand::Prices(args) = history_args.command else {
+            panic!("expected Prices subcommand");
         };
 
         assert!(args.interval.is_none());
@@ -159,21 +159,21 @@ mod test {
 
     #[test]
     fn rejects_invalid_interval_value() {
-        let result = Cli::try_parse_from(["greed", "history", "quotes", "--interval", "bogus"]);
+        let result = Cli::try_parse_from(["greed", "history", "prices", "--interval", "bogus"]);
 
         assert!(result.is_err());
     }
 
     #[test]
     fn defaults_db_path_to_none_when_omitted() {
-        let cli = Cli::try_parse_from(["greed", "history", "quotes"])
+        let cli = Cli::try_parse_from(["greed", "history", "prices"])
             .expect("should parse with no db path flag");
 
         let crate::cli::Command::History(history_args) = cli.command else {
             panic!("expected History command");
         };
-        let crate::cli::history::HistoryCommand::Quotes(args) = history_args.command else {
-            panic!("expected Quotes subcommand");
+        let crate::cli::history::HistoryCommand::Prices(args) = history_args.command else {
+            panic!("expected Prices subcommand");
         };
 
         assert_eq!(args.db_path, None);
