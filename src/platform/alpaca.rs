@@ -22,8 +22,10 @@ use crate::platform::bars::Bars;
 use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
+use crate::platform::rate_limit::RateLimit;
 use crate::platform::request::OrderRequest;
 use crate::platform::FinancialPlatform;
+use crate::rate_limiter::RateLimiter;
 
 mod convert_account;
 mod convert_asset_class;
@@ -35,15 +37,25 @@ mod convert_request;
 mod convert_side;
 mod convert_symbol;
 mod factory;
+mod retry;
+
+/// Alpaca's Basic (free) market data plan allows 200 requests per minute. Accounts on a
+/// higher plan (e.g. Algo Trader Plus, 10,000/min) can raise it with `PlatformArgs::requests_per_minute`.
+const FREE_TIER_REQUESTS_PER_MINUTE: u32 = 200;
 
 pub struct AlpacaPlatform {
     client: Client,
+    rate_limit: RateLimit,
+    limiter: RateLimiter,
 }
 
 impl AlpacaPlatform {
     pub fn new(runner_args: &PlatformArgs) -> Result<Self, GreedError> {
+        let rate_limit = rate_limit_for(runner_args)?;
         Ok(Self {
             client: create_alpaca_client(runner_args.is_simulated)?,
+            rate_limit,
+            limiter: RateLimiter::new(rate_limit),
         })
     }
 
@@ -85,6 +97,7 @@ impl AlpacaPlatform {
 #[async_trait]
 impl FinancialPlatform for AlpacaPlatform {
     async fn account(&self) -> Result<Account, GreedError> {
+        self.limiter.acquire().await;
         let alpaca_account = self.client.issue::<account::Get>(&()).await?;
         Ok(alpaca_account.into())
     }
@@ -96,7 +109,11 @@ impl FinancialPlatform for AlpacaPlatform {
             let mut page_request = alpaca_request.clone();
             page_request.page_token = page;
 
-            let response = self.client.issue::<bars::List>(&page_request).await?;
+            let response = retry::on_rate_limit(is_rate_limited, || async {
+                self.limiter.acquire().await;
+                self.client.issue::<bars::List>(&page_request).await
+            })
+            .await?;
             Ok((response.bars, response.next_page_token))
         })
         .await?;
@@ -117,6 +134,7 @@ impl FinancialPlatform for AlpacaPlatform {
         }
         .init(symbol_strings);
 
+        self.limiter.acquire().await;
         let result = self.client.issue::<last_quotes::Get>(&latest_req).await?;
         let quotes: Vec<Quote> = result.into_iter().map(|q| q.into()).collect();
         let valid_quotes = self.replace_invalid_quotes(quotes).await;
@@ -124,18 +142,21 @@ impl FinancialPlatform for AlpacaPlatform {
     }
 
     async fn place_order(&self, order_request: OrderRequest) -> Result<Order, GreedError> {
+        self.limiter.acquire().await;
         let order_req: CreateReq = order_request.into();
         let order = self.client.issue::<order::Create>(&order_req).await?;
         Ok(order.into())
     }
 
     async fn positions(&self) -> Result<Vec<Position>, GreedError> {
+        self.limiter.acquire().await;
         let alpaca_positions = self.client.issue::<positions::List>(&()).await?;
         let positions: Vec<Position> = alpaca_positions.into_iter().map_into().collect();
         Ok(positions)
     }
 
     async fn open_orders(&self) -> Result<Vec<Order>, GreedError> {
+        self.limiter.acquire().await;
         let orders_req = orders::ListReq {
             status: Status::Open,
             ..ListReq::default()
@@ -146,6 +167,7 @@ impl FinancialPlatform for AlpacaPlatform {
     }
 
     async fn recent_orders(&self) -> Result<Vec<Order>, GreedError> {
+        self.limiter.acquire().await;
         let orders_req = orders::ListReq {
             status: Status::All,
             ..ListReq::default()
@@ -153,5 +175,64 @@ impl FinancialPlatform for AlpacaPlatform {
         let alpaca_orders = self.client.issue::<orders::List>(&orders_req).await?;
         let orders: Vec<Order> = alpaca_orders.into_iter().map_into().collect();
         Ok(orders)
+    }
+
+    fn rate_limit(&self) -> Option<RateLimit> {
+        Some(self.rate_limit)
+    }
+}
+
+fn rate_limit_for(args: &PlatformArgs) -> Result<RateLimit, GreedError> {
+    RateLimit::per_minute(
+        args.requests_per_minute
+            .unwrap_or(FREE_TIER_REQUESTS_PER_MINUTE),
+    )
+}
+
+fn is_rate_limited(error: &apca::RequestError<bars::ListError>) -> bool {
+    matches!(
+        error,
+        apca::RequestError::Endpoint(bars::ListError::RateLimitExceeded(_))
+    )
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn rate_limit_defaults_to_the_free_tier() {
+        let limit = rate_limit_for(&PlatformArgs::default()).expect("valid limit");
+        assert_eq!(limit, RateLimit::per_minute(200).unwrap());
+    }
+
+    #[test]
+    fn rate_limit_override_replaces_the_default() {
+        let args = PlatformArgs {
+            requests_per_minute: Some(10_000),
+            ..Default::default()
+        };
+        let limit = rate_limit_for(&args).expect("valid limit");
+        assert_eq!(limit, RateLimit::per_minute(10_000).unwrap());
+    }
+
+    #[test]
+    fn rate_limit_override_of_zero_is_rejected() {
+        let args = PlatformArgs {
+            requests_per_minute: Some(0),
+            ..Default::default()
+        };
+        assert!(rate_limit_for(&args).is_err());
+    }
+
+    #[test]
+    fn only_rate_limit_errors_are_retried() {
+        let rate_limited =
+            apca::RequestError::Endpoint(bars::ListError::RateLimitExceeded(Ok(apca::ApiError {
+                message: String::new(),
+            })));
+        let other = apca::RequestError::Endpoint(bars::ListError::InvalidInput(Err(Vec::new())));
+        assert!(is_rate_limited(&rate_limited));
+        assert!(!is_rate_limited(&other));
     }
 }

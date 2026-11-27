@@ -13,6 +13,7 @@ pub use mock::MockPlatform;
 pub mod order;
 pub mod position;
 pub mod quote;
+pub mod rate_limit;
 pub mod request;
 pub mod side;
 pub mod status;
@@ -28,6 +29,7 @@ use crate::platform::bars::Bars;
 use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
+use crate::platform::rate_limit::RateLimit;
 use crate::platform::request::OrderRequest;
 use async_trait::async_trait;
 use log::info;
@@ -42,6 +44,12 @@ pub trait FinancialPlatform: Send + Sync {
     async fn positions(&self) -> Result<Vec<Position>, GreedError>;
     async fn open_orders(&self) -> Result<Vec<Order>, GreedError>;
     async fn recent_orders(&self) -> Result<Vec<Order>, GreedError>;
+
+    /// The request limit this platform paces itself to, or `None` when it
+    /// makes no network requests (e.g. test and no-op platforms).
+    fn rate_limit(&self) -> Option<RateLimit> {
+        None
+    }
 }
 
 pub fn for_type(

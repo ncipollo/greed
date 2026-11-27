@@ -19,6 +19,7 @@ impl From<&AnalyzeArgs> for PlatformArgs {
     fn from(value: &AnalyzeArgs) -> Self {
         PlatformArgs {
             is_simulated: value.is_simulated,
+            ..Default::default()
         }
     }
 }
@@ -35,7 +36,10 @@ mod tests {
             platform_type: Default::default(),
         };
         let platform_args: PlatformArgs = PlatformArgs::from(&analyze_args);
-        let expected = PlatformArgs { is_simulated: true };
+        let expected = PlatformArgs {
+            is_simulated: true,
+            ..Default::default()
+        };
         assert_eq!(platform_args, expected)
     }
 }
