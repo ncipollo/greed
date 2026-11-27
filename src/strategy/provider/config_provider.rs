@@ -1,4 +1,5 @@
 use crate::asset::AssetSymbol;
+use crate::clock::Timing;
 use crate::config::strategy::StrategyConfig;
 use crate::config::tactic::TacticConfig;
 use crate::error::GreedError;
@@ -19,9 +20,16 @@ pub struct ConfigStrategyProvider {
     quote_accumulator: QuoteAccumulator,
     strategy_config: StrategyConfig,
     tactic_configs: Vec<TacticConfig>,
+    timing: Timing,
 }
 
 impl ConfigStrategyProvider {
+    /// Wires the runners it provides to `timing` instead of the live clock and pacer.
+    pub fn with_timing(mut self, timing: Timing) -> Self {
+        self.timing = timing;
+        self
+    }
+
     pub async fn new(
         config_path: PathBuf,
         loop_interval: Duration,
@@ -36,6 +44,7 @@ impl ConfigStrategyProvider {
             quote_accumulator,
             strategy_config,
             tactic_configs,
+            timing: Timing::default(),
         })
     }
 }
@@ -47,18 +56,20 @@ impl StrategyRunnerProvider for ConfigStrategyProvider {
             .tactic_configs
             .iter()
             .map(|tactic_config| {
-                TacticRunner::new(
+                TacticRunner::with_clock(
                     tactic_config.clone(),
                     self.platform.clone(),
                     self.strategy_config.properties(),
                     self.quote_accumulator.clone(),
+                    self.timing.clock.clone(),
                 )
             })
             .collect();
-        let strategy_runner = TacticStrategyRunner::new(
+        let strategy_runner = TacticStrategyRunner::with_pacer(
             self.loop_interval,
             self.strategy_config.properties().clone(),
             tactic_runners,
+            self.timing.pacer.clone(),
         );
         Ok(Box::new(strategy_runner))
     }

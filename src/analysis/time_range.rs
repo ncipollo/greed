@@ -1,3 +1,4 @@
+use crate::clock::Clock;
 use crate::date::NaiveDateTimeConvert;
 use crate::trading_days::TradingDaysOffset;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
@@ -8,8 +9,8 @@ pub struct FetcherTimeRanges {
 }
 
 impl FetcherTimeRanges {
-    pub fn new() -> Self {
-        Self { now: Utc::now() }
+    pub fn new(clock: &dyn Clock) -> Self {
+        Self { now: clock.now() }
     }
 
     /// Yesterday from 00:00:00 to 23:59:00

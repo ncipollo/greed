@@ -1,6 +1,7 @@
 use crate::analysis::result::BarsResult;
 use crate::analysis::time_range::FetcherTimeRanges;
 use crate::asset::AssetSymbol;
+use crate::clock::{Clock, SystemClock};
 use crate::error::GreedError;
 use crate::platform::bar::bar_request::BarRequest;
 use crate::platform::bar::time_frame::TimeFrame;
@@ -15,9 +16,14 @@ pub struct BarsFetcher {
 
 impl BarsFetcher {
     pub fn new(platform: Arc<dyn FinancialPlatform>) -> Self {
+        Self::with_clock(platform, &SystemClock)
+    }
+
+    /// Time windows are measured back from the clock's current time.
+    pub fn with_clock(platform: Arc<dyn FinancialPlatform>, clock: &dyn Clock) -> Self {
         BarsFetcher {
             platform,
-            time_ranges: FetcherTimeRanges::new(),
+            time_ranges: FetcherTimeRanges::new(clock),
         }
     }
 

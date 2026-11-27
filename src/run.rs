@@ -1,4 +1,5 @@
 use crate::asset::AssetSymbol;
+use crate::clock::Timing;
 use crate::config::platform::PlatformType;
 use crate::config::simple::SimpleConfig;
 use crate::config::Config;
@@ -15,7 +16,6 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::time::sleep;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct GreedRunnerArgs {
@@ -34,6 +34,7 @@ pub struct GreedRunner {
     quote_accumulator: QuoteAccumulator,
     db_path: PathBuf,
     record_history: bool,
+    timing: Timing,
 }
 
 impl GreedRunner {
@@ -44,14 +45,37 @@ impl GreedRunner {
         db_path: PathBuf,
         record_history: bool,
     ) -> Result<Self, GreedError> {
+        Self::with_timing(
+            config,
+            config_path,
+            platform,
+            db_path,
+            record_history,
+            Timing::default(),
+        )
+        .await
+    }
+
+    /// Like `new`, but reads time from `timing` and paces with it. A backtest passes a
+    /// simulated clock and no pacing, then drives ticks with `evaluate_strategies`.
+    pub async fn with_timing(
+        config: Config,
+        config_path: PathBuf,
+        platform: Arc<dyn FinancialPlatform>,
+        db_path: PathBuf,
+        record_history: bool,
+        timing: Timing,
+    ) -> Result<Self, GreedError> {
         let quote_accumulator = QuoteAccumulator::new();
-        let config_strategy = Box::new(TacticStrategyRunner::from_config(
+        let config_strategy = Box::new(TacticStrategyRunner::from_config_with_timing(
             &config,
             &platform,
             &quote_accumulator,
+            &timing,
         ));
         let factory =
-            StrategyProviderFactory::new(&config, config_path, &platform, &quote_accumulator);
+            StrategyProviderFactory::new(&config, config_path, &platform, &quote_accumulator)
+                .with_timing(timing.clone());
         let strategy_providers = factory.create_providers().await?;
 
         // Accumulate assets from all providers
@@ -71,6 +95,7 @@ impl GreedRunner {
             quote_accumulator,
             db_path,
             record_history,
+            timing,
         })
     }
 
@@ -119,11 +144,19 @@ impl GreedRunner {
         let loop_interval = Duration::from_secs(self.run_interval);
         loop {
             self.run_tick(loop_interval).await;
-            sleep(loop_interval).await;
+            self.timing.pacer.pause(loop_interval).await;
         }
     }
 
     async fn run_tick(&self, loop_interval: Duration) {
+        self.evaluate_strategies(loop_interval).await;
+        // Capture portfolio status and quote history for this cycle.
+        self.record_history().await;
+    }
+
+    /// Runs every strategy once against the platform, without recording history. This is the
+    /// single step an external loop (such as a backtest) drives.
+    pub async fn evaluate_strategies(&self, loop_interval: Duration) {
         // Create strategy runners from providers
         let strategy_runners = match self.provide_strategy_runners().await {
             Ok(runners) => runners,
@@ -136,12 +169,10 @@ impl GreedRunner {
         // Run each strategy runner
         for runner in strategy_runners {
             let _ = runner.run(&self.config_assets).await;
-            sleep(loop_interval).await;
+            self.timing.pacer.pause(loop_interval).await;
         }
         // Run the general strategy from the top level config
         self.config_strategy.run(&self.config_assets).await;
-        // Capture portfolio status and quote history for this cycle.
-        self.record_history().await;
     }
 
     async fn provide_strategy_runners(&self) -> Result<Vec<Box<dyn StrategyRunner>>, GreedError> {
@@ -313,6 +344,41 @@ mod test {
             runner.run_tick(Duration::from_secs(0)).await;
         }
 
+        assert_eq!(table_row_count(&db_path, "portfolio_status"), 0);
+        assert_eq!(table_row_count(&db_path, "stock_quotes"), 0);
+        std::fs::remove_file(&db_path).ok();
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn evaluate_strategies_skips_history_and_pacing_when_simulated() {
+        use crate::clock::{SimulatedClock, Timing};
+        use chrono::{TimeZone, Utc};
+        let db_path = temp_db_path();
+        bootstrap_at(&db_path).expect("bootstrap should succeed");
+        let mut config = fixture::config("config_single_tactic.toml").await;
+        config.interval = 3600;
+        let platform = MockPlatform::new()
+            .with_account(Account::fixture())
+            .with_quotes(vec![Quote::fixture(AssetSymbol::new("VTI"))])
+            .arc();
+        let clock = std::sync::Arc::new(SimulatedClock::new(
+            Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap(),
+        ));
+        let runner = GreedRunner::with_timing(
+            config,
+            PathBuf::from("unused.toml"),
+            platform,
+            db_path.clone(),
+            true,
+            Timing::simulated(clock),
+        )
+        .await
+        .expect("runner should build");
+        let start = tokio::time::Instant::now();
+
+        runner.evaluate_strategies(Duration::from_secs(3600)).await;
+
+        assert_eq!(start.elapsed(), Duration::ZERO);
         assert_eq!(table_row_count(&db_path, "portfolio_status"), 0);
         assert_eq!(table_row_count(&db_path, "stock_quotes"), 0);
         std::fs::remove_file(&db_path).ok();

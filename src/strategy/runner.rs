@@ -1,4 +1,5 @@
 use crate::asset::AssetSymbol;
+use crate::clock::{Pacer, Timing};
 use crate::config::strategy::StrategyProperties;
 use crate::config::Config;
 use crate::platform::FinancialPlatform;
@@ -10,7 +11,6 @@ use log::{info, warn};
 use std::any::Any;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::time::sleep;
 
 #[async_trait(?Send)]
 pub trait StrategyRunner {
@@ -23,25 +23,38 @@ pub struct TacticStrategyRunner {
     loop_interval: Duration,
     strategy_properties: StrategyProperties,
     tactic_runners: Vec<TacticRunner>,
+    pacer: Arc<dyn Pacer>,
 }
 
 impl TacticStrategyRunner {
-    pub fn new(
+    pub fn with_pacer(
         loop_interval: Duration,
         strategy_properties: StrategyProperties,
         tactic_runners: Vec<TacticRunner>,
+        pacer: Arc<dyn Pacer>,
     ) -> Self {
         Self {
             loop_interval,
             strategy_properties,
             tactic_runners,
+            pacer,
         }
     }
 
+    #[cfg(test)]
     pub fn from_config(
         config: &Config,
         platform: &Arc<dyn FinancialPlatform>,
         quote_accumulator: &QuoteAccumulator,
+    ) -> Self {
+        Self::from_config_with_timing(config, platform, quote_accumulator, &Timing::default())
+    }
+
+    pub fn from_config_with_timing(
+        config: &Config,
+        platform: &Arc<dyn FinancialPlatform>,
+        quote_accumulator: &QuoteAccumulator,
+        timing: &Timing,
     ) -> Self {
         let loop_interval = Duration::from_secs(config.interval);
 
@@ -50,15 +63,21 @@ impl TacticStrategyRunner {
             .clone()
             .into_iter()
             .map(|tactic_config| {
-                TacticRunner::new(
+                TacticRunner::with_clock(
                     tactic_config.clone(),
                     platform.clone(),
                     Default::default(),
                     quote_accumulator.clone(),
+                    timing.clock.clone(),
                 )
             })
             .collect();
-        Self::new(loop_interval, Default::default(), tactic_runners)
+        Self::with_pacer(
+            loop_interval,
+            Default::default(),
+            tactic_runners,
+            timing.pacer.clone(),
+        )
     }
 
     #[cfg(test)]
@@ -79,7 +98,7 @@ impl StrategyRunner for TacticStrategyRunner {
                 .run(config_assets)
                 .await
                 .inspect_err(|e| warn!("{e}"));
-            sleep(self.loop_interval).await;
+            self.pacer.pause(self.loop_interval).await;
         }
     }
 
