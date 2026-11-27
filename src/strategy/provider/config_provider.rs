@@ -4,7 +4,6 @@ use crate::config::strategy::StrategyConfig;
 use crate::config::tactic::TacticConfig;
 use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
-use crate::quote_accumulator::QuoteAccumulator;
 use crate::strategy::provider::StrategyRunnerProvider;
 use crate::strategy::reader::read_tactics_from_config;
 use crate::strategy::runner::{StrategyRunner, TacticStrategyRunner};
@@ -17,7 +16,6 @@ use std::time::Duration;
 pub struct ConfigStrategyProvider {
     loop_interval: Duration,
     platform: Arc<dyn FinancialPlatform>,
-    quote_accumulator: QuoteAccumulator,
     strategy_config: StrategyConfig,
     tactic_configs: Vec<TacticConfig>,
     timing: Timing,
@@ -35,13 +33,11 @@ impl ConfigStrategyProvider {
         loop_interval: Duration,
         platform: Arc<dyn FinancialPlatform>,
         strategy_config: StrategyConfig,
-        quote_accumulator: QuoteAccumulator,
     ) -> Result<Self, GreedError> {
         let tactic_configs = read_tactics_from_config(&config_path, &strategy_config).await?;
         Ok(Self {
             loop_interval,
             platform,
-            quote_accumulator,
             strategy_config,
             tactic_configs,
             timing: Timing::default(),
@@ -60,7 +56,6 @@ impl StrategyRunnerProvider for ConfigStrategyProvider {
                     tactic_config.clone(),
                     self.platform.clone(),
                     self.strategy_config.properties(),
-                    self.quote_accumulator.clone(),
                     self.timing.clock.clone(),
                 )
             })
@@ -135,7 +130,6 @@ mod tests {
             Duration::from_secs(1),
             NoOpPlatform::arc(),
             strategy_config,
-            QuoteAccumulator::new(),
         )
         .await
         .expect("should create provider")

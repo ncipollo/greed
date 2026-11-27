@@ -1,6 +1,6 @@
 mod params;
-mod quotes;
+mod prices;
 mod status;
 
-pub use quotes::quotes_history_handler;
+pub use prices::prices_history_handler;
 pub use status::status_history_handler;

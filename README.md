@@ -40,13 +40,13 @@ To run Greed in a live environment, you can use the following command:
 greed run <path_to_config>
 ```
 
-To record portfolio status and stock quote history to the local DuckDB database (so the `history status` / `history quotes` commands have data to show), add `--record-history`:
+To record portfolio status and minute-by-minute price bars to the local DuckDB database (so the `history status` / `history prices` commands have data to show), add `--record-history`:
 
 ```bash
 greed run --record-history <path_to_config>
 ```
 
-The DuckDB database file is created only when `--record-history` is passed; without it, `greed run` and `greed server` leave no database file on disk. When recording, the file (`greed.duckdb`) is created next to the config file you pass in by default. Use `--db-path` to override this, and to point `history status` / `history quotes` (which have no config file to colocate with, so they default to the current directory) at that same location:
+The DuckDB database file is created only when `--record-history` is passed; without it, `greed run` and `greed server` leave no database file on disk. When recording, the file (`greed.duckdb`) is created next to the config file you pass in by default. Use `--db-path` to override this, and to point `history status` / `history prices` (which have no config file to colocate with, so they default to the current directory) at that same location:
 
 ```bash
 greed run --record-history --db-path /data/greed.duckdb <path_to_config>

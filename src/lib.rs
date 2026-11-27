@@ -39,7 +39,6 @@ pub mod output_format;
 mod pager;
 pub mod platform;
 pub mod progress;
-mod quote_accumulator;
 mod rate_limiter;
 pub mod run;
 pub mod server;
@@ -203,7 +202,9 @@ pub async fn fetch_portfolio_status_history(
     Ok(())
 }
 
-pub async fn fetch_stock_quote_history(
+/// Prints recorded price history (the minute bars in `stock_bars`), either raw or rolled up into
+/// OHLCV bars per `interval`.
+pub async fn fetch_price_history(
     symbols: &[AssetSymbol],
     range: Range<DateTime<Utc>>,
     interval: Option<RollupInterval>,
@@ -215,7 +216,7 @@ pub async fn fetch_stock_quote_history(
         Some(interval) => {
             let rollups = match db::open_read_only_with_retry(&path).await? {
                 Some(connection) => {
-                    db::stock_quotes::select_rollup_in_range(&connection, range, &interval)?
+                    db::stock_bars::select_rollup_in_range(&connection, range, &interval)?
                         .into_iter()
                         .filter(|r| matches_symbol_filter(symbols, &r.symbol))
                         .collect()
@@ -225,13 +226,17 @@ pub async fn fetch_stock_quote_history(
             match format {
                 OutputFormat::Text => {
                     let mut table = Table::new();
-                    table.set_header(["Bucket", "Symbol", "Avg Ask", "Avg Bid"]);
+                    table
+                        .set_header(["Bucket", "Symbol", "Open", "High", "Low", "Close", "Volume"]);
                     for rollup in rollups {
                         table.add_row([
                             rollup.bucket.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
                             rollup.symbol.to_string(),
-                            format!("{:.2}", rollup.avg_ask_price),
-                            format!("{:.2}", rollup.avg_bid_price),
+                            format!("{:.2}", rollup.open),
+                            format!("{:.2}", rollup.high),
+                            format!("{:.2}", rollup.low),
+                            format!("{:.2}", rollup.close),
+                            rollup.volume.to_string(),
                         ]);
                     }
                     println!("{table}");
@@ -242,31 +247,35 @@ pub async fn fetch_stock_quote_history(
             }
         }
         None => {
-            let quotes: Vec<Quote> = match db::open_read_only_with_retry(&path).await? {
-                Some(connection) => db::stock_quotes::select_in_range(&connection, range)?
+            let bars = match db::open_read_only_with_retry(&path).await? {
+                Some(connection) => db::stock_bars::select_in_range(&connection, range)?
                     .into_iter()
-                    .filter(|q| matches_symbol_filter(symbols, &q.symbol))
+                    .filter(|b| matches_symbol_filter(symbols, &b.symbol))
                     .collect(),
                 None => Vec::new(),
             };
             match format {
                 OutputFormat::Text => {
                     let mut table = Table::new();
-                    table.set_header(["Time", "Symbol", "Ask", "Bid", "Spread", "Spread %"]);
-                    for quote in quotes {
+                    table.set_header(["Time", "Symbol", "Open", "High", "Low", "Close", "Volume"]);
+                    for bar in bars {
                         table.add_row([
-                            quote.fmt_time(&chrono::Local),
-                            quote.symbol.to_string(),
-                            format!("{:.2}", quote.ask_price),
-                            format!("{:.2}", quote.bid_price),
-                            format!("{:.2}", quote.spread()),
-                            format!("{:.2}%", quote.spread_percent()),
+                            bar.time
+                                .with_timezone(&chrono::Local)
+                                .format("%Y-%m-%d %H:%M")
+                                .to_string(),
+                            bar.symbol.to_string(),
+                            format!("{:.2}", bar.open),
+                            format!("{:.2}", bar.high),
+                            format!("{:.2}", bar.low),
+                            format!("{:.2}", bar.close),
+                            bar.volume.to_string(),
                         ]);
                     }
                     println!("{table}");
                 }
                 OutputFormat::Json => {
-                    println!("{}", serde_json::to_string_pretty(&quotes)?);
+                    println!("{}", serde_json::to_string_pretty(&bars)?);
                 }
             }
         }

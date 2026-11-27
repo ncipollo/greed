@@ -12,8 +12,8 @@ use greed::platform::args::PlatformArgs;
 use greed::progress::Progress;
 use greed::template;
 use greed::{
-    analyze_stocks, fetch_portfolio_status_history, fetch_quote, fetch_recent_orders, fetch_status,
-    fetch_stock_quote_history, greed_loop, greed_server_loop,
+    analyze_stocks, fetch_portfolio_status_history, fetch_price_history, fetch_quote,
+    fetch_recent_orders, fetch_status, greed_loop, greed_server_loop,
 };
 
 use crate::cli::history::HistoryCommand;
@@ -50,17 +50,17 @@ async fn async_main(log_config: Config) {
                 .await
                 .expect("status history fetch failed");
             }
-            HistoryCommand::Quotes(quotes_args) => {
-                let history_range = HistoryRange::from(&quotes_args.history_range);
+            HistoryCommand::Prices(prices_args) => {
+                let history_range = HistoryRange::from(&prices_args.history_range);
                 let range = history_range
                     .resolve(Utc::now())
                     .expect("failed to resolve history range");
-                fetch_stock_quote_history(
-                    &quotes_args.symbols,
+                fetch_price_history(
+                    &prices_args.symbols,
                     range,
-                    quotes_args.interval,
-                    quotes_args.output_format.format,
-                    quotes_args.db_path,
+                    prices_args.interval,
+                    prices_args.output_format.format,
+                    prices_args.db_path,
                 )
                 .await
                 .expect("quote history fetch failed");

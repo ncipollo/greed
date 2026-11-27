@@ -8,15 +8,18 @@ use crate::db;
 use crate::error::GreedError;
 use crate::platform;
 use crate::platform::FinancialPlatform;
-use crate::quote_accumulator::QuoteAccumulator;
+use crate::run::bar_recorder::BarRecorder;
 use crate::strategy::factory::StrategyProviderFactory;
 use crate::strategy::provider::StrategyRunnerProvider;
 use crate::strategy::runner::{StrategyRunner, TacticStrategyRunner};
+use itertools::Itertools;
 use log::warn;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+
+mod bar_recorder;
 
 #[derive(Debug, Default, PartialEq)]
 pub struct GreedRunnerArgs {
@@ -32,7 +35,7 @@ pub struct GreedRunner {
     strategy_providers: Vec<Box<dyn StrategyRunnerProvider>>,
     config_assets: Vec<AssetSymbol>,
     platform: Arc<dyn FinancialPlatform>,
-    quote_accumulator: QuoteAccumulator,
+    bar_recorder: Option<BarRecorder>,
     db_path: PathBuf,
     record_history: bool,
     timing: Timing,
@@ -67,16 +70,11 @@ impl GreedRunner {
         record_history: bool,
         timing: Timing,
     ) -> Result<Self, GreedError> {
-        let quote_accumulator = QuoteAccumulator::new();
         let config_strategy = Box::new(TacticStrategyRunner::from_config_with_timing(
-            &config,
-            &platform,
-            &quote_accumulator,
-            &timing,
+            &config, &platform, &timing,
         ));
-        let factory =
-            StrategyProviderFactory::new(&config, config_path, &platform, &quote_accumulator)
-                .with_timing(timing.clone());
+        let factory = StrategyProviderFactory::new(&config, config_path, &platform)
+            .with_timing(timing.clone());
         let strategy_providers = factory.create_providers().await?;
 
         // Accumulate assets from all providers
@@ -87,13 +85,23 @@ impl GreedRunner {
         // Add assets from config strategy
         config_assets.extend(config.tactics.iter().flat_map(|t| t.assets()));
 
+        // Only runs that record history watch prices. Agent strategies pick their own assets at
+        // runtime, so only the symbols named in configs are recorded.
+        let bar_recorder = record_history.then(|| {
+            BarRecorder::new(
+                platform.clone(),
+                db_path.clone(),
+                config_assets.iter().cloned().unique().collect(),
+            )
+        });
+
         Ok(Self {
             run_interval: config.interval,
             config_strategy,
             strategy_providers,
             config_assets,
             platform,
-            quote_accumulator,
+            bar_recorder,
             db_path,
             record_history,
             timing,
@@ -109,12 +117,6 @@ impl GreedRunner {
         timing: Timing,
     ) -> Result<Self, GreedError> {
         Self::with_timing(config, config_path, platform, PathBuf::new(), false, timing).await
-    }
-
-    /// Throws away the quotes gathered this tick. A live run drains them into the database each
-    /// tick; a simulation has nowhere to put them and must not let them pile up.
-    pub fn discard_pending_quotes(&self) {
-        self.quote_accumulator.drain();
     }
 
     pub async fn from_args(
@@ -204,14 +206,20 @@ impl GreedRunner {
 
     // A DB hiccup must not stop trading automation, so failures are logged and swallowed here.
     // Everything that needs the network happens before the DB is opened, so the write lock is
-    // held only for the brief inserts. The accumulator is drained unconditionally so it never
-    // grows unbounded across ticks, even when `record_history` is disabled.
+    // held only for the brief inserts: the portfolio status first, then (about once a minute)
+    // the bar recorder, which fetches before it writes and takes its own short-lived locks.
     // The inserts are synchronous for now; switch to tokio::task::spawn_blocking if they prove slow.
     async fn record_history(&self) {
-        let quotes = self.quote_accumulator.drain();
         if !self.record_history {
             return;
         }
+        self.record_portfolio_status().await;
+        if let Some(recorder) = &self.bar_recorder {
+            recorder.record(self.timing.clock.now()).await;
+        }
+    }
+
+    async fn record_portfolio_status(&self) {
         let account = match self.platform.account().await {
             Ok(account) => account,
             Err(e) => {
@@ -219,7 +227,7 @@ impl GreedRunner {
                 return;
             }
         };
-        let mut connection = match db::open_for_write_with_retry(&self.db_path).await {
+        let connection = match db::open_for_write_with_retry(&self.db_path).await {
             Ok(connection) => connection,
             Err(e) => {
                 warn!("failed to open db for this tick's writes: {}", e);
@@ -228,11 +236,6 @@ impl GreedRunner {
         };
         if let Err(e) = db::portfolio_status::insert(&connection, &account) {
             warn!("failed to write portfolio status: {}", e);
-        }
-        if !quotes.is_empty() {
-            if let Err(e) = db::stock_quotes::insert_many(&mut connection, &quotes) {
-                warn!("failed to write stock quotes: {}", e);
-            }
         }
     }
 }
@@ -280,21 +283,41 @@ mod test {
     }
 
     #[tokio::test]
-    async fn run_tick_writes_stock_quote_row_per_tick() {
+    async fn run_tick_records_minute_bars_once_per_minute() {
+        use crate::clock::{SimulatedClock, Timing};
+        use crate::platform::bar::Bar;
+        use crate::platform::bars::Bars;
+        use chrono::{Duration as ChronoDuration, TimeZone, Utc};
         let db_path = temp_db_path();
         bootstrap_at(&db_path).expect("bootstrap should succeed");
         let mut config = fixture::config("config_single_tactic.toml").await;
         config.interval = 0;
+        let bar_time = Utc.with_ymd_and_hms(2026, 1, 5, 14, 25, 0).unwrap();
         let platform = MockPlatform::new()
             .with_account(Account::fixture())
             .with_quotes(vec![Quote::fixture(AssetSymbol::new("VTI"))])
+            .with_bars(Bars {
+                symbol: AssetSymbol::new("VTI"),
+                bars: vec![Bar {
+                    timestamp: bar_time,
+                    open: 1.0,
+                    high: 2.0,
+                    low: 0.5,
+                    close: 1.5,
+                    volume: 10,
+                }],
+            })
             .arc();
-        let runner = GreedRunner::new(
+        let clock = std::sync::Arc::new(SimulatedClock::new(
+            Utc.with_ymd_and_hms(2026, 1, 5, 14, 45, 5).unwrap(),
+        ));
+        let runner = GreedRunner::with_timing(
             config,
             PathBuf::from("unused.toml"),
             platform,
             db_path.clone(),
             true,
+            Timing::new(clock.clone(), std::sync::Arc::new(crate::clock::NoPacer)),
         )
         .await
         .expect("runner should build");
@@ -304,37 +327,13 @@ mod test {
         }
 
         assert_eq!(table_row_count(&db_path, "portfolio_status"), 10);
-        assert_eq!(table_row_count(&db_path, "stock_quotes"), 10);
-        std::fs::remove_file(&db_path).ok();
-    }
+        assert_eq!(table_row_count(&db_path, "stock_bars"), 1);
+        assert_eq!(table_row_count(&db_path, "backfill_coverage"), 1);
 
-    #[tokio::test]
-    async fn run_tick_dedupes_quotes_from_multiple_tactics_watching_same_symbol() {
-        let db_path = temp_db_path();
-        bootstrap_at(&db_path).expect("bootstrap should succeed");
-        let mut config = fixture::config("config_multi_tactic.toml").await;
-        config.interval = 0;
-        // MockPlatform::latest_quotes ignores the requested symbols, so both of
-        // this config's tactics fetch (and would, pre-fix, each write) this same quote.
-        let platform = MockPlatform::new()
-            .with_account(Account::fixture())
-            .with_quotes(vec![Quote::fixture(AssetSymbol::new("VTI"))])
-            .arc();
-        let runner = GreedRunner::new(
-            config,
-            PathBuf::from("unused.toml"),
-            platform,
-            db_path.clone(),
-            true,
-        )
-        .await
-        .expect("runner should build");
-
-        for _ in 0..10 {
-            runner.run_tick(Duration::from_secs(0)).await;
-        }
-
-        assert_eq!(table_row_count(&db_path, "stock_quotes"), 10);
+        // A minute later the recorder covers just the newly completed minute.
+        clock.advance(ChronoDuration::minutes(1));
+        runner.run_tick(Duration::from_secs(0)).await;
+        assert_eq!(table_row_count(&db_path, "backfill_coverage"), 2);
         std::fs::remove_file(&db_path).ok();
     }
 
@@ -363,7 +362,8 @@ mod test {
         }
 
         assert_eq!(table_row_count(&db_path, "portfolio_status"), 0);
-        assert_eq!(table_row_count(&db_path, "stock_quotes"), 0);
+        assert_eq!(table_row_count(&db_path, "stock_bars"), 0);
+        assert_eq!(table_row_count(&db_path, "backfill_coverage"), 0);
         std::fs::remove_file(&db_path).ok();
     }
 
@@ -398,40 +398,9 @@ mod test {
 
         assert_eq!(start.elapsed(), Duration::ZERO);
         assert_eq!(table_row_count(&db_path, "portfolio_status"), 0);
-        assert_eq!(table_row_count(&db_path, "stock_quotes"), 0);
+        assert_eq!(table_row_count(&db_path, "stock_bars"), 0);
+        assert_eq!(table_row_count(&db_path, "backfill_coverage"), 0);
         std::fs::remove_file(&db_path).ok();
-    }
-
-    #[tokio::test]
-    async fn discard_pending_quotes_empties_the_accumulator() {
-        use crate::clock::{SimulatedClock, Timing};
-        use chrono::{TimeZone, Utc};
-        let mut config = fixture::config("config_single_tactic.toml").await;
-        config.interval = 60;
-        let platform = MockPlatform::new()
-            .with_account(Account::fixture())
-            .with_quotes(vec![Quote::fixture(AssetSymbol::new("VTI"))])
-            .arc();
-        let clock = std::sync::Arc::new(SimulatedClock::new(
-            Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap(),
-        ));
-        let runner = GreedRunner::with_timing(
-            config,
-            PathBuf::from("unused.toml"),
-            platform,
-            PathBuf::new(),
-            false,
-            Timing::simulated(clock),
-        )
-        .await
-        .expect("runner should build");
-
-        runner.evaluate_strategies(Duration::ZERO).await;
-        assert!(!runner.quote_accumulator.drain().is_empty());
-        runner.evaluate_strategies(Duration::ZERO).await;
-        runner.discard_pending_quotes();
-
-        assert!(runner.quote_accumulator.drain().is_empty());
     }
 
     fn table_row_count(db_path: &PathBuf, table: &str) -> i64 {

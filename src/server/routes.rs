@@ -1,7 +1,6 @@
 use crate::server::handlers::{
-    analyze_handler, init_handler, orders_handler, ping_handler, quote_handler,
-    quotes_history_handler, routes_handler, server_info_handler, status_handler,
-    status_history_handler,
+    analyze_handler, init_handler, orders_handler, ping_handler, prices_history_handler,
+    quote_handler, routes_handler, server_info_handler, status_handler, status_history_handler,
 };
 use crate::server::state::AppState;
 use axum::routing::{get, post, MethodRouter};
@@ -29,7 +28,7 @@ pub enum ServerRoute {
     Quote,
     Analyze,
     StatusHistory,
-    QuotesHistory,
+    PricesHistory,
     Init,
     Routes,
 }
@@ -44,7 +43,7 @@ impl ServerRoute {
             ServerRoute::Quote,
             ServerRoute::Analyze,
             ServerRoute::StatusHistory,
-            ServerRoute::QuotesHistory,
+            ServerRoute::PricesHistory,
             ServerRoute::Init,
             ServerRoute::Routes,
         ]
@@ -59,7 +58,7 @@ impl ServerRoute {
             ServerRoute::Quote => "/quote",
             ServerRoute::Analyze => "/analyze",
             ServerRoute::StatusHistory => "/history/status",
-            ServerRoute::QuotesHistory => "/history/quotes",
+            ServerRoute::PricesHistory => "/history/prices",
             ServerRoute::Init => "/init",
             ServerRoute::Routes => "/routes",
         }
@@ -85,8 +84,8 @@ impl ServerRoute {
             ServerRoute::StatusHistory => {
                 "Portfolio status history; supports from/to/last_hour/hours/days/interval."
             }
-            ServerRoute::QuotesHistory => {
-                "Stock quote history; supports the same range params plus optional symbols."
+            ServerRoute::PricesHistory => {
+                "Stock price history (minute bars, OHLCV); supports the same range params plus optional symbols."
             }
             ServerRoute::Init => {
                 "Config template generation; returns { filename, content } and never writes to disk."
@@ -104,7 +103,7 @@ impl ServerRoute {
             ServerRoute::Quote => get(quote_handler),
             ServerRoute::Analyze => get(analyze_handler),
             ServerRoute::StatusHistory => get(status_history_handler),
-            ServerRoute::QuotesHistory => get(quotes_history_handler),
+            ServerRoute::PricesHistory => get(prices_history_handler),
             ServerRoute::Init => post(init_handler),
             ServerRoute::Routes => get(routes_handler),
         }
@@ -165,7 +164,7 @@ mod test {
                 ("GET", "/quote"),
                 ("GET", "/analyze"),
                 ("GET", "/history/status"),
-                ("GET", "/history/quotes"),
+                ("GET", "/history/prices"),
                 ("POST", "/init"),
                 ("GET", "/routes"),
             ]

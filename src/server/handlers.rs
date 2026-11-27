@@ -9,7 +9,7 @@ mod server_info;
 mod status;
 
 pub use analyze::analyze_handler;
-pub use history::{quotes_history_handler, status_history_handler};
+pub use history::{prices_history_handler, status_history_handler};
 pub use init::init_handler;
 pub use orders::orders_handler;
 pub use ping::ping_handler;

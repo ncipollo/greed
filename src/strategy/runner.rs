@@ -3,7 +3,6 @@ use crate::clock::{Pacer, Timing};
 use crate::config::strategy::StrategyProperties;
 use crate::config::Config;
 use crate::platform::FinancialPlatform;
-use crate::quote_accumulator::QuoteAccumulator;
 use crate::tactic::TacticRunner;
 use async_trait::async_trait;
 use log::{info, warn};
@@ -42,18 +41,13 @@ impl TacticStrategyRunner {
     }
 
     #[cfg(test)]
-    pub fn from_config(
-        config: &Config,
-        platform: &Arc<dyn FinancialPlatform>,
-        quote_accumulator: &QuoteAccumulator,
-    ) -> Self {
-        Self::from_config_with_timing(config, platform, quote_accumulator, &Timing::default())
+    pub fn from_config(config: &Config, platform: &Arc<dyn FinancialPlatform>) -> Self {
+        Self::from_config_with_timing(config, platform, &Timing::default())
     }
 
     pub fn from_config_with_timing(
         config: &Config,
         platform: &Arc<dyn FinancialPlatform>,
-        quote_accumulator: &QuoteAccumulator,
         timing: &Timing,
     ) -> Self {
         let loop_interval = Duration::from_secs(config.interval);
@@ -67,7 +61,6 @@ impl TacticStrategyRunner {
                     tactic_config.clone(),
                     platform.clone(),
                     Default::default(),
-                    quote_accumulator.clone(),
                     timing.clock.clone(),
                 )
             })
@@ -118,8 +111,7 @@ mod tests {
     async fn from_config_empty_tactics() {
         let config = fixture::config("config_minimal.toml").await;
         let platform = NoOpPlatform::arc();
-        let quote_accumulator = QuoteAccumulator::new();
-        let runner = TacticStrategyRunner::from_config(&config, &platform, &quote_accumulator);
+        let runner = TacticStrategyRunner::from_config(&config, &platform);
         assert_eq!(runner.loop_interval, Duration::from_secs(60));
         assert_eq!(runner.tactic_runner_count(), 0);
     }
@@ -128,8 +120,7 @@ mod tests {
     async fn from_config_with_tactics() {
         let config = fixture::config("config_single_tactic.toml").await;
         let platform = NoOpPlatform::arc();
-        let quote_accumulator = QuoteAccumulator::new();
-        let runner = TacticStrategyRunner::from_config(&config, &platform, &quote_accumulator);
+        let runner = TacticStrategyRunner::from_config(&config, &platform);
         assert_eq!(runner.loop_interval, Duration::from_secs(300));
         assert_eq!(runner.tactic_runner_count(), 1);
     }

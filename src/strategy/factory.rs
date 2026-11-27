@@ -3,7 +3,6 @@ use crate::config::strategy::StrategyConfig;
 use crate::config::Config;
 use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
-use crate::quote_accumulator::QuoteAccumulator;
 use crate::strategy::provider::agent_provider::AgentStrategyProvider;
 use crate::strategy::provider::config_provider::ConfigStrategyProvider;
 use crate::strategy::provider::StrategyRunnerProvider;
@@ -15,7 +14,6 @@ pub struct StrategyProviderFactory<'a> {
     config: &'a Config,
     config_path: PathBuf,
     platform: &'a Arc<dyn FinancialPlatform>,
-    quote_accumulator: &'a QuoteAccumulator,
     timing: Timing,
 }
 
@@ -24,13 +22,11 @@ impl<'a> StrategyProviderFactory<'a> {
         config: &'a Config,
         config_path: PathBuf,
         platform: &'a Arc<dyn FinancialPlatform>,
-        quote_accumulator: &'a QuoteAccumulator,
     ) -> StrategyProviderFactory<'a> {
         Self {
             config,
             config_path,
             platform,
-            quote_accumulator,
             timing: Timing::default(),
         }
     }
@@ -74,7 +70,6 @@ impl<'a> StrategyProviderFactory<'a> {
                     Duration::from_secs(self.config.interval),
                     self.platform.clone(),
                     strategy_config,
-                    self.quote_accumulator.clone(),
                 )
                 .await?
                 .with_timing(self.timing.clone());

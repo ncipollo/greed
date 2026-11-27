@@ -32,7 +32,7 @@ use std::sync::Arc;
 /// free plan withholds the last 15 minutes of some feeds), and a half-formed
 /// minute shouldn't be recorded as fully covered. The tail is picked up by a
 /// later backfill.
-const RECENT_DATA_BUFFER_MINUTES: i64 = 15;
+pub(crate) const RECENT_DATA_BUFFER_MINUTES: i64 = 15;
 
 /// Gaps separated by less than this many days are fetched as one request:
 /// refetching a little covered data is cheaper than many tiny requests.

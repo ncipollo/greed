@@ -12,7 +12,6 @@ use crate::platform::order::Order;
 use crate::platform::position::Position;
 use crate::platform::quote::Quote;
 use crate::platform::FinancialPlatform;
-use crate::quote_accumulator::QuoteAccumulator;
 use crate::tactic::r#do::DoResult;
 use crate::tactic::rule::RuleType::{Buy, Sell};
 use crate::tactic::rule::{RuleType, TacticRuleset};
@@ -36,7 +35,6 @@ pub struct TacticRunner {
     asset_analyzer: AssetAnalyzer,
     config: TacticConfig,
     platform: Arc<dyn FinancialPlatform>,
-    quote_accumulator: QuoteAccumulator,
     strategy_properties: StrategyProperties,
 }
 
@@ -45,14 +43,12 @@ impl TacticRunner {
         config: TacticConfig,
         platform: Arc<dyn FinancialPlatform>,
         strategy_properties: StrategyProperties,
-        quote_accumulator: QuoteAccumulator,
         clock: Arc<dyn Clock>,
     ) -> Self {
         Self {
             asset_analyzer: AssetAnalyzer::with_clock(platform.clone(), clock),
             config,
             platform,
-            quote_accumulator,
             strategy_properties,
         }
     }
@@ -111,7 +107,6 @@ impl TacticRunner {
         for quote in &quotes {
             info!("-- {}", quote);
         }
-        self.quote_accumulator.extend(&quotes);
         let by_symbol = quotes
             .into_iter()
             .map(|q| (q.symbol.clone(), q))

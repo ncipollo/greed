@@ -8,7 +8,7 @@
 //!    [`BacktestPlatform`], so a live platform can't be passed in. Agent strategies, which need an
 //!    LLM and the web, are rejected up front.
 //! 2. **Nothing is recorded.** Simulation uses `GreedRunner::for_simulation`, which has no database
-//!    path and no history recording, and discards the quotes each tick gathers. Bars are loaded
+//!    path, no history recording and no bar recorder. Bars are loaded
 //!    through a read-only connection that is closed before the first tick. Only the preflight
 //!    backfill writes (`stock_bars`, `backfill_coverage`).
 
@@ -508,12 +508,7 @@ do = { sell_all = true }
         let start = Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap();
         let end = Utc.with_ymd_and_hms(2026, 1, 5, 15, 30, 0).unwrap();
         seed_bars(&db_path, start, end);
-        let tables = [
-            "portfolio_status",
-            "stock_quotes",
-            "stock_bars",
-            "backfill_coverage",
-        ];
+        let tables = ["portfolio_status", "stock_bars", "backfill_coverage"];
         let before: Vec<i64> = tables.iter().map(|t| row_count(&db_path, t)).collect();
 
         let prepared = prepare(
@@ -529,7 +524,7 @@ do = { sell_all = true }
         let after: Vec<i64> = tables.iter().map(|t| row_count(&db_path, t)).collect();
         assert_eq!(before, after);
         assert_eq!(row_count(&db_path, "portfolio_status"), 0);
-        assert_eq!(row_count(&db_path, "stock_quotes"), 0);
+
         std::fs::remove_file(&db_path).ok();
         std::fs::remove_file(&config_path).ok();
     }

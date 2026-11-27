@@ -1,9 +1,7 @@
 use crate::db::migrations::Migration;
 
-/// Historical bars fetched by `greed backfill`. Kept apart from `stock_quotes`,
-/// which holds live snapshots recorded by `run --record-history`, so backfilled
-/// history is never mistaken for real recorded activity. The primary key makes
-/// re-inserting an overlapping window a no-op.
+/// Historical minute bars, saved by `greed backfill` and by the run loop when recording history.
+/// The primary key makes re-inserting an overlapping window a no-op.
 pub(super) const MIGRATION: Migration = Migration {
     version: 3,
     sql: "CREATE TABLE stock_bars (
