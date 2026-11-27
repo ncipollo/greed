@@ -402,6 +402,38 @@ mod test {
         std::fs::remove_file(&db_path).ok();
     }
 
+    #[tokio::test]
+    async fn discard_pending_quotes_empties_the_accumulator() {
+        use crate::clock::{SimulatedClock, Timing};
+        use chrono::{TimeZone, Utc};
+        let mut config = fixture::config("config_single_tactic.toml").await;
+        config.interval = 60;
+        let platform = MockPlatform::new()
+            .with_account(Account::fixture())
+            .with_quotes(vec![Quote::fixture(AssetSymbol::new("VTI"))])
+            .arc();
+        let clock = std::sync::Arc::new(SimulatedClock::new(
+            Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap(),
+        ));
+        let runner = GreedRunner::with_timing(
+            config,
+            PathBuf::from("unused.toml"),
+            platform,
+            PathBuf::new(),
+            false,
+            Timing::simulated(clock),
+        )
+        .await
+        .expect("runner should build");
+
+        runner.evaluate_strategies(Duration::ZERO).await;
+        assert!(!runner.quote_accumulator.drain().is_empty());
+        runner.evaluate_strategies(Duration::ZERO).await;
+        runner.discard_pending_quotes();
+
+        assert!(runner.quote_accumulator.drain().is_empty());
+    }
+
     fn table_row_count(db_path: &PathBuf, table: &str) -> i64 {
         let connection = Connection::open(db_path).expect("db should be queryable");
         connection
