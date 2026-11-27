@@ -16,7 +16,7 @@ pub async fn read_tactics_from_config(
     Ok(config.tactics)
 }
 
-async fn read_config_from_path(path: &Path) -> Result<Config, GreedError> {
+pub(crate) async fn read_config_from_path(path: &Path) -> Result<Config, GreedError> {
     let ext = path.extension();
     if Some(OsStr::new("csv")) == ext {
         let simple_config = SimpleConfig::from_path(&path).await?;

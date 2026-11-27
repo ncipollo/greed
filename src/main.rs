@@ -3,6 +3,7 @@ use clap::{CommandFactory, Parser};
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode};
 
+use greed::backfill::backfill;
 use greed::error::GreedError;
 use greed::history_range::HistoryRange;
 use greed::platform::args::PlatformArgs;
@@ -61,6 +62,11 @@ async fn async_main(log_config: Config) {
                 .expect("quote history fetch failed");
             }
         },
+        Command::Backfill(args) => {
+            setup_logging(log_config);
+            let report = backfill(args.into()).await.expect("backfill failed");
+            println!("{report}");
+        }
         Command::Info(args) => {
             print!("{}", cli::info::render(args.topic));
         }

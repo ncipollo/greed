@@ -2,5 +2,5 @@ pub mod agent;
 pub mod factory;
 mod path;
 pub mod provider;
-mod reader;
+pub(crate) mod reader;
 pub mod runner;

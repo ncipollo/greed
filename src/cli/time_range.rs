@@ -3,8 +3,6 @@ use greed::time_range::TimeRangeSpec;
 
 /// Optional time window shared by `backfill` and `backtest`. All times are UTC.
 /// With no options, the window is the last year.
-// Not consumed by a command until `greed backfill` lands (#131).
-#[allow(dead_code)]
 #[derive(Args, Debug)]
 pub struct TimeRangeArgs {
     /// Start of an explicit range, e.g. "2026-10-15" or "2026-10-15 14:00".
