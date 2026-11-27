@@ -2,12 +2,14 @@ use chrono::Utc;
 use clap::{CommandFactory, Parser};
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode};
+use std::sync::Arc;
 
 use greed::backfill::backfill;
 use greed::backtest;
 use greed::error::GreedError;
 use greed::history_range::HistoryRange;
 use greed::platform::args::PlatformArgs;
+use greed::progress::Progress;
 use greed::template;
 use greed::{
     analyze_stocks, fetch_portfolio_status_history, fetch_quote, fetch_recent_orders, fetch_status,
@@ -15,6 +17,7 @@ use greed::{
 };
 
 use crate::cli::history::HistoryCommand;
+use crate::cli::progress::StderrReporter;
 use crate::cli::{Cli, Command};
 
 mod cli;
@@ -64,13 +67,26 @@ async fn async_main(log_config: Config) {
             }
         },
         Command::Backfill(args) => {
-            setup_logging(log_config);
-            let report = backfill(args.into()).await.expect("backfill failed");
+            setup_logging(log_config, LevelFilter::Info);
+            let progress = Progress::new(Arc::new(StderrReporter), args.verbose);
+            let report = backfill(args.into(), &progress)
+                .await
+                .expect("backfill failed");
             println!("{report}");
         }
         Command::Backtest(args) => {
-            setup_logging(log_config);
-            let result = backtest::run(args.into()).await.expect("backtest failed");
+            // Without --verbose, hide the per-tick strategy logging: a year of simulation would
+            // print hundreds of thousands of lines. Warnings and errors still show.
+            let level = if args.verbose {
+                LevelFilter::Info
+            } else {
+                LevelFilter::Warn
+            };
+            setup_logging(log_config, level);
+            let progress = Progress::new(Arc::new(StderrReporter), args.verbose);
+            let result = backtest::run(args.into(), &progress)
+                .await
+                .expect("backtest failed");
             println!("{result}");
         }
         Command::Info(args) => {
@@ -106,14 +122,14 @@ async fn async_main(log_config: Config) {
             .expect("quote fetch failed");
         }
         Command::Run(args) => {
-            setup_logging(log_config);
+            setup_logging(log_config, LevelFilter::Info);
             let result = greed_loop(args.into()).await;
             if let Err(e) = result {
                 panic!("{}", e);
             }
         }
         Command::Server(args) => {
-            setup_logging(log_config);
+            setup_logging(log_config, LevelFilter::Info);
             let addr = std::net::SocketAddr::new(args.host, args.port);
             let result = greed_server_loop(args.into(), addr).await;
             if let Err(e) = result {
@@ -159,9 +175,9 @@ fn create_log_config() -> Config {
         .build()
 }
 
-fn setup_logging(config: Config) {
+fn setup_logging(config: Config, level: LevelFilter) {
     CombinedLogger::init(vec![TermLogger::new(
-        LevelFilter::Info,
+        level,
         config,
         TerminalMode::Mixed,
         ColorChoice::Auto,

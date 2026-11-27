@@ -2,6 +2,7 @@ use crate::asset::AssetSymbol;
 use chrono::{DateTime, Utc};
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
+use std::time::Duration;
 
 /// What a backfill fetched and saved for one symbol.
 #[derive(Clone, Debug, PartialEq)]
@@ -36,11 +37,18 @@ impl SymbolReport {
 pub struct BackfillReport {
     pub range: Range<DateTime<Utc>>,
     pub symbols: Vec<SymbolReport>,
+    /// How long the fetching took.
+    pub elapsed: Duration,
 }
 
 impl BackfillReport {
     pub fn total_inserted(&self) -> usize {
         self.symbols.iter().map(|s| s.bars_inserted).sum()
+    }
+
+    /// One request is made per fetched window.
+    pub fn requests_made(&self) -> usize {
+        self.symbols.iter().map(|s| s.windows).sum()
     }
 }
 
@@ -64,7 +72,13 @@ impl Display for BackfillReport {
                 symbol.symbol.symbol, symbol.bars_fetched, symbol.bars_inserted, symbol.windows
             )?;
         }
-        write!(f, "Saved {} new bars", self.total_inserted())
+        write!(
+            f,
+            "Saved {} new bars from {} requests in {:.1}s",
+            self.total_inserted(),
+            self.requests_made(),
+            self.elapsed.as_secs_f64()
+        )
     }
 }
 
@@ -93,6 +107,7 @@ mod test {
             range: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap()
                 ..Utc.with_ymd_and_hms(2026, 2, 1, 0, 0, 0).unwrap(),
             symbols: vec![vti],
+            elapsed: Duration::ZERO,
         };
 
         assert!(report
@@ -110,6 +125,7 @@ mod test {
             range: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap()
                 ..Utc.with_ymd_and_hms(2026, 2, 1, 0, 0, 0).unwrap(),
             symbols: vec![vti, spy],
+            elapsed: Duration::from_millis(2500),
         };
 
         let text = report.to_string();
@@ -119,7 +135,7 @@ mod test {
             "Backfilled 2026-01-01 00:00 UTC to 2026-02-01 00:00 UTC\n\
              \x20 VTI: 10 bars fetched, 4 new, 1 windows\n\
              \x20 SPY: 3 bars fetched, 3 new, 1 windows\n\
-             Saved 7 new bars"
+             Saved 7 new bars from 2 requests in 2.5s"
         );
     }
 }

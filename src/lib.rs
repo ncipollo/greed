@@ -38,6 +38,7 @@ mod num;
 pub mod output_format;
 mod pager;
 pub mod platform;
+pub mod progress;
 mod quote_accumulator;
 mod rate_limiter;
 pub mod run;

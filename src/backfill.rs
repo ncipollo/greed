@@ -20,10 +20,10 @@ use crate::platform::args::PlatformArgs;
 use crate::platform::bar::bar_request::BarRequest;
 use crate::platform::bar::time_frame::TimeFrame;
 use crate::platform::FinancialPlatform;
+use crate::progress::{ChunkProgress, MonthDetail, MonthProgress, Phase, Progress, SymbolPlan};
 use crate::time_range::TimeRangeSpec;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use itertools::Itertools;
-use log::info;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -71,7 +71,10 @@ impl std::fmt::Display for BackfillOutcome {
 
 /// Fetches minute bars for the target over the requested range and saves them
 /// to the local DuckDB database.
-pub async fn backfill(request: BackfillRequest) -> Result<BackfillOutcome, GreedError> {
+pub async fn backfill(
+    request: BackfillRequest,
+    progress: &Progress,
+) -> Result<BackfillOutcome, GreedError> {
     let range = available_range(request.time_range.resolve(Utc::now())?, Utc::now())?;
     let (symbols, platform_type, db_path) = match request.target {
         BackfillTarget::Symbols(symbols) => (
@@ -88,6 +91,7 @@ pub async fn backfill(request: BackfillRequest) -> Result<BackfillOutcome, Greed
     if symbols.is_empty() {
         return Err(GreedError::new("no symbols to backfill"));
     }
+    progress.phase(Phase::CheckingCoverage);
     if request.dry_run {
         let plan = CoverageChecker::plan(&db_path, &symbols, &TimeFrame::OneMinute, range).await?;
         return Ok(BackfillOutcome::Planned(plan));
@@ -97,6 +101,7 @@ pub async fn backfill(request: BackfillRequest) -> Result<BackfillOutcome, Greed
     // so the write lock is only ever held for each chunk's brief insert.
     db::bootstrap_at_with_retry(&db_path).await?;
     let report = Backfiller::new(platform, db_path)
+        .with_progress(progress.clone())
         .backfill(&symbols, range)
         .await?;
     Ok(BackfillOutcome::Fetched(report))
@@ -107,11 +112,22 @@ pub async fn backfill(request: BackfillRequest) -> Result<BackfillOutcome, Greed
 pub struct Backfiller {
     platform: Arc<dyn FinancialPlatform>,
     db_path: PathBuf,
+    progress: Progress,
 }
 
 impl Backfiller {
     pub fn new(platform: Arc<dyn FinancialPlatform>, db_path: PathBuf) -> Self {
-        Self { platform, db_path }
+        Self {
+            platform,
+            db_path,
+            progress: Progress::quiet(),
+        }
+    }
+
+    /// Reports what it does to `progress` instead of staying silent.
+    pub fn with_progress(mut self, progress: Progress) -> Self {
+        self.progress = progress;
+        self
     }
 
     /// The schema must already exist (see `db::bootstrap_at`). Request pacing
@@ -121,24 +137,49 @@ impl Backfiller {
         symbols: &[AssetSymbol],
         range: Range<DateTime<Utc>>,
     ) -> Result<BackfillReport, GreedError> {
-        let mut reports = Vec::new();
-        for symbol in symbols.iter().unique() {
-            let mut report = SymbolReport::new(symbol.clone());
+        let started = std::time::Instant::now();
+        let symbols: Vec<&AssetSymbol> = symbols.iter().unique().collect();
+        // Work out everything that's missing before fetching anything, so the first thing a
+        // user sees is how much there is to do.
+        let mut work = Vec::new();
+        for symbol in &symbols {
             let gaps = self.gaps_for(symbol, &range).await?;
-            if gaps.is_empty() {
-                info!("⏭️  {} already complete, skipping", symbol.symbol);
-                report.already_complete = true;
-            }
-            let windows = gaps.iter().flat_map(month_chunks).collect_vec();
+            work.push(gaps.iter().flat_map(month_chunks).collect_vec());
+        }
+        self.progress.phase(Phase::Backfilling {
+            symbols: work.iter().filter(|windows| !windows.is_empty()).count(),
+        });
+        let mut reports = Vec::new();
+        for (symbol, windows) in symbols.into_iter().zip(work) {
+            let mut report = SymbolReport::new(symbol.clone());
+            report.already_complete = windows.is_empty();
+            self.progress.symbol_plan(SymbolPlan {
+                symbol: symbol.clone(),
+                first_month: windows.first().map(month_of).unwrap_or_default(),
+                last_month: windows.last().map(month_of).unwrap_or_default(),
+                windows: windows.len(),
+            });
             for window in &windows {
                 let (fetched, inserted) = self.backfill_window(symbol, window).await?;
                 report.record_window(fetched, inserted);
+                self.progress.chunk(ChunkProgress {
+                    symbol: symbol.clone(),
+                    window: window.clone(),
+                    fetched,
+                    inserted,
+                });
+                self.progress.month_done(MonthProgress {
+                    symbol: Some(symbol.clone()),
+                    month: month_of(window),
+                    detail: MonthDetail::Bars(fetched),
+                });
             }
             reports.push(report);
         }
         Ok(BackfillReport {
             range,
             symbols: reports,
+            elapsed: started.elapsed(),
         })
     }
 
@@ -185,16 +226,14 @@ impl Backfiller {
         let inserted =
             stock_bars::insert_chunk(&mut connection, symbol, &timeframe, window, &bars.bars)
                 .map_err(|e| window_error(symbol, window, &e))?;
-        info!(
-            "📥 {} {} to {}: {} bars fetched, {} new",
-            symbol.symbol,
-            window.start.format("%Y-%m-%d"),
-            window.end.format("%Y-%m-%d"),
-            bars.bars.len(),
-            inserted
-        );
         Ok((bars.bars.len(), inserted))
     }
+}
+
+/// The first day of the month a window starts in. Windows never cross a month boundary.
+fn month_of(window: &Range<DateTime<Utc>>) -> NaiveDate {
+    let date = window.start.date_naive();
+    NaiveDate::from_ymd_opt(date.year(), date.month(), 1).expect("the first of a month is valid")
 }
 
 fn window_error(
@@ -455,6 +494,93 @@ mod test {
             .expect("second");
 
         assert_eq!(count(&path, "stock_bars"), 2);
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn progress_reports_a_plan_then_one_event_per_month_chunk() {
+        use crate::progress::{Event, MonthDetail, Phase};
+        let path = temp_db();
+        let platform = Arc::new(MockPlatform::new().with_bars(bars_at(&[at(2026, 1, 20, 14)])));
+        let (progress, recorder) = Progress::recording(false);
+        let backfiller = Backfiller::new(platform, path.clone()).with_progress(progress);
+
+        backfiller
+            .backfill(&vti(), at(2026, 1, 15, 0)..at(2026, 3, 10, 0))
+            .await
+            .expect("backfill should succeed");
+
+        let events = recorder.events();
+        assert_eq!(events[0], Event::Phase(Phase::Backfilling { symbols: 1 }));
+        let Event::SymbolPlan(plan) = &events[1] else {
+            panic!("expected a plan, got {events:?}")
+        };
+        assert_eq!(plan.windows, 3);
+        assert_eq!(plan.first_month.to_string(), "2026-01-01");
+        assert_eq!(plan.last_month.to_string(), "2026-03-01");
+        let months: Vec<_> = events
+            .iter()
+            .filter_map(|e| match e {
+                Event::Month(m) => Some((m.month.to_string(), m.detail.clone())),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            months,
+            vec![
+                ("2026-01-01".to_string(), MonthDetail::Bars(1)),
+                ("2026-02-01".to_string(), MonthDetail::Bars(1)),
+                ("2026-03-01".to_string(), MonthDetail::Bars(1)),
+            ]
+        );
+        assert!(!events.iter().any(|e| matches!(e, Event::Chunk(_))));
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn verbose_progress_adds_a_line_per_chunk() {
+        use crate::progress::Event;
+        let path = temp_db();
+        let (progress, recorder) = Progress::recording(true);
+        let backfiller =
+            Backfiller::new(Arc::new(MockPlatform::new()), path.clone()).with_progress(progress);
+
+        backfiller
+            .backfill(&vti(), at(2026, 1, 15, 0)..at(2026, 3, 10, 0))
+            .await
+            .expect("backfill should succeed");
+
+        let chunks = recorder
+            .events()
+            .into_iter()
+            .filter(|e| matches!(e, Event::Chunk(_)))
+            .count();
+        assert_eq!(chunks, 3);
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn a_complete_symbol_is_reported_as_having_no_windows() {
+        use crate::progress::Event;
+        let path = temp_db();
+        let range = at(2026, 1, 15, 0)..at(2026, 1, 25, 0);
+        Backfiller::new(Arc::new(MockPlatform::new()), path.clone())
+            .backfill(&vti(), range.clone())
+            .await
+            .unwrap();
+        let (progress, recorder) = Progress::recording(false);
+
+        Backfiller::new(Arc::new(MockPlatform::new()), path.clone())
+            .with_progress(progress)
+            .backfill(&vti(), range)
+            .await
+            .unwrap();
+
+        let events = recorder.events();
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, Event::SymbolPlan(p) if p.windows == 0)));
+        assert!(!events.iter().any(|e| matches!(e, Event::Month(_))));
         std::fs::remove_file(&path).ok();
     }
 

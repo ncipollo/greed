@@ -34,6 +34,9 @@ pub struct BackfillArgs {
     /// Show which windows are missing from the database without fetching or writing anything.
     #[arg(long)]
     pub dry_run: bool,
+    /// Also show each fetched chunk. Progress is printed to stderr.
+    #[arg(short = 'v', long)]
+    pub verbose: bool,
 }
 
 impl From<BackfillArgs> for BackfillRequest {
@@ -137,6 +140,13 @@ mod test {
 
         assert!(request.platform_args.is_simulated);
         assert_eq!(request.platform_args.requests_per_minute, Some(10_000));
+    }
+
+    #[test]
+    fn parses_verbose() {
+        assert!(parse(&["VTI", "-v"]).expect("parse").verbose);
+        assert!(parse(&["VTI", "--verbose"]).expect("parse").verbose);
+        assert!(!parse(&["VTI"]).expect("parse").verbose);
     }
 
     #[test]

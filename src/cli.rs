@@ -5,6 +5,7 @@ pub mod history;
 pub mod info;
 pub mod init;
 mod orders;
+pub mod progress;
 pub mod quote;
 pub mod run;
 pub mod server;

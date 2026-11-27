@@ -21,6 +21,10 @@ pub struct BacktestArgs {
     /// `.json`, `.toml` or `.html` (a self-contained page you can open offline).
     #[arg(long, value_name = "PATH", value_parser = parse_trace_path)]
     pub trace: Option<PathBuf>,
+    /// Also show every simulated interval and the strategies' own logging. Progress is printed to
+    /// stderr; the final result goes to stdout.
+    #[arg(short = 'v', long)]
+    pub verbose: bool,
 }
 
 /// Rejects a trace path with an unknown extension while arguments are parsed, before any work.
@@ -82,6 +86,12 @@ mod test {
     fn rejects_a_trace_with_an_unknown_extension_before_running() {
         assert!(parse(&["greed.toml", "--trace", "out.txt"]).is_err());
         assert!(parse(&["greed.toml", "--trace", "out"]).is_err());
+    }
+
+    #[test]
+    fn parses_verbose() {
+        assert!(parse(&["greed.toml", "-v"]).expect("parse").verbose);
+        assert!(!parse(&["greed.toml"]).expect("parse").verbose);
     }
 
     #[test]

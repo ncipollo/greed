@@ -3,9 +3,10 @@ use crate::backtest::{BacktestResult, PreparedBacktest};
 use crate::clock::{Clock, Timing};
 use crate::error::GreedError;
 use crate::platform::FinancialPlatform;
+use crate::progress::{MonthDetail, MonthProgress, Phase, Progress, TickProgress};
 use crate::run::GreedRunner;
-use chrono::Duration as ChronoDuration;
-use log::{info, warn};
+use chrono::{DateTime, Datelike, Duration as ChronoDuration, NaiveDate, Utc};
+use log::warn;
 use std::time::Duration;
 
 /// A simulation tick finding no trades for this long means the market is closed (overnight,
@@ -22,7 +23,10 @@ const MARKET_CLOSED_AFTER: ChronoDuration = ChronoDuration::minutes(15);
 ///
 /// Simulation takes the concrete `BacktestPlatform` and no database path: it can neither reach a
 /// live platform nor write anything down.
-pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, GreedError> {
+pub async fn simulate(
+    prepared: PreparedBacktest,
+    progress: &Progress,
+) -> Result<BacktestResult, GreedError> {
     let PreparedBacktest {
         config,
         config_path,
@@ -53,10 +57,16 @@ pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, Gree
     )
     .await?;
 
+    progress.phase(Phase::Simulating);
     clock.set(range.start);
     let mut ticks = 0u64;
     let mut last_snapshot_day = None;
+    let mut month = MonthTracker::default();
     while clock.now() < range.end {
+        if let Some(done) = month.enter(clock.now(), platform.order_count()) {
+            let equity = platform.account().await?.equity;
+            progress.month_done(done.into_progress(equity));
+        }
         if !platform.market_active_within(MARKET_CLOSED_AFTER) {
             let Some(next) = platform.next_bar_time() else {
                 break;
@@ -67,6 +77,13 @@ pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, Gree
         runner.evaluate_strategies(Duration::ZERO).await;
         runner.discard_pending_quotes();
         ticks += 1;
+        if progress.is_verbose() {
+            progress.tick(TickProgress {
+                time: clock.now(),
+                equity: platform.account().await?.equity,
+                trades: platform.order_count(),
+            });
+        }
         if trace.is_some() && last_snapshot_day != Some(clock.now().date_naive()) {
             platform.snapshot_equity();
             last_snapshot_day = Some(clock.now().date_naive());
@@ -77,9 +94,13 @@ pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, Gree
     clock.set(range.end);
     let final_value = platform.account().await?.equity;
     let trade_count = platform.order_count();
-    info!("🧪 simulated {ticks} ticks");
+    if let Some(done) = month.finish(trade_count) {
+        progress.month_done(done.into_progress(final_value));
+    }
+    log::debug!("simulated {ticks} ticks");
     let result = BacktestResult::new(range, starting_cash, final_value, trade_count);
     if let Some((path, recorder)) = trace {
+        progress.phase(Phase::WritingTrace(path.clone()));
         platform.snapshot_equity();
         let summary = TraceSummary {
             config: config_path.display().to_string(),
@@ -91,9 +112,67 @@ pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, Gree
             trade_count,
         };
         trace::write(&path, &recorder.build_trace(summary))?;
-        info!("📝 wrote trace to {}", path.display());
     }
     Ok(result)
+}
+
+/// A simulated month that just ended, waiting for its closing equity.
+struct FinishedMonth {
+    month: NaiveDate,
+    trades: usize,
+}
+
+impl FinishedMonth {
+    fn into_progress(self, equity: f64) -> MonthProgress {
+        MonthProgress {
+            symbol: None,
+            month: self.month,
+            detail: MonthDetail::Simulated {
+                equity,
+                trades: self.trades,
+            },
+        }
+    }
+}
+
+/// Notices when the simulated clock moves into a new month so each month is reported once.
+#[derive(Default)]
+struct MonthTracker {
+    current: Option<NaiveDate>,
+    trades_at_start: usize,
+}
+
+impl MonthTracker {
+    /// Call before each tick; returns the month that just ended when `now` is in a later one.
+    fn enter(&mut self, now: DateTime<Utc>, trades_so_far: usize) -> Option<FinishedMonth> {
+        let month = NaiveDate::from_ymd_opt(now.year(), now.month(), 1)?;
+        match self.current {
+            Some(current) if current == month => None,
+            Some(current) => {
+                let finished = FinishedMonth {
+                    month: current,
+                    trades: trades_so_far - self.trades_at_start,
+                };
+                self.current = Some(month);
+                self.trades_at_start = trades_so_far;
+                Some(finished)
+            }
+            None => {
+                self.current = Some(month);
+                self.trades_at_start = trades_so_far;
+                None
+            }
+        }
+    }
+
+    /// The month in progress when the simulation ends.
+    fn finish(&mut self, trades_so_far: usize) -> Option<FinishedMonth> {
+        let month = self.current.take()?;
+        Some(FinishedMonth {
+            month,
+            trades: trades_so_far - self.trades_at_start,
+        })
+    }
 }
 
 /// Ticks happen at `start + k * step`; this is the first one at or after `time`.
