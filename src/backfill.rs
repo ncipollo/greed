@@ -1,7 +1,9 @@
 mod chunks;
+mod coverage;
 mod report;
 mod target;
 
+pub use coverage::{BackfillPlan, CoverageChecker};
 pub use report::{BackfillReport, SymbolReport};
 pub use target::BackfillTarget;
 
@@ -42,11 +44,29 @@ pub struct BackfillRequest {
     /// Used for explicit symbols; a config names its own platform.
     pub platform_type: PlatformType,
     pub platform_args: PlatformArgs,
+    /// Report what would be fetched without any network calls or database writes.
+    pub dry_run: bool,
+}
+
+/// What `greed backfill` did: fetched data, or (dry run) only planned.
+#[derive(Debug)]
+pub enum BackfillOutcome {
+    Fetched(BackfillReport),
+    Planned(BackfillPlan),
+}
+
+impl std::fmt::Display for BackfillOutcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Fetched(report) => report.fmt(f),
+            Self::Planned(plan) => plan.fmt(f),
+        }
+    }
 }
 
 /// Fetches minute bars for the target over the requested range and saves them
 /// to the local DuckDB database.
-pub async fn backfill(request: BackfillRequest) -> Result<BackfillReport, GreedError> {
+pub async fn backfill(request: BackfillRequest) -> Result<BackfillOutcome, GreedError> {
     let range = available_range(request.time_range.resolve(Utc::now())?, Utc::now())?;
     let (symbols, platform_type, db_path) = match request.target {
         BackfillTarget::Symbols(symbols) => (
@@ -63,13 +83,18 @@ pub async fn backfill(request: BackfillRequest) -> Result<BackfillReport, GreedE
     if symbols.is_empty() {
         return Err(GreedError::new("no symbols to backfill"));
     }
+    if request.dry_run {
+        let plan = CoverageChecker::plan(&db_path, &symbols, &TimeFrame::OneMinute, range).await?;
+        return Ok(BackfillOutcome::Planned(plan));
+    }
     let platform = platform::for_type(&platform_type, request.platform_args)?;
     // Create the file and schema up front; the connection is dropped right away
     // so the write lock is only ever held for each chunk's brief insert.
     db::bootstrap_at_with_retry(&db_path).await?;
-    Backfiller::new(platform, db_path)
+    let report = Backfiller::new(platform, db_path)
         .backfill(&symbols, range)
-        .await
+        .await?;
+    Ok(BackfillOutcome::Fetched(report))
 }
 
 /// Pulls bars for symbols a window at a time, saving each window as soon as it

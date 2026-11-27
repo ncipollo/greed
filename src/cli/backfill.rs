@@ -31,6 +31,9 @@ pub struct BackfillArgs {
     /// your data plan allows more.
     #[arg(long, value_name = "N", value_parser = clap::value_parser!(u32).range(1..))]
     pub requests_per_minute: Option<u32>,
+    /// Show which windows are missing from the database without fetching or writing anything.
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 impl From<BackfillArgs> for BackfillRequest {
@@ -48,6 +51,7 @@ impl From<BackfillArgs> for BackfillRequest {
                 is_simulated: value.is_simulated,
                 requests_per_minute: value.requests_per_minute,
             },
+            dry_run: value.dry_run,
         }
     }
 }
@@ -133,6 +137,14 @@ mod test {
 
         assert!(request.platform_args.is_simulated);
         assert_eq!(request.platform_args.requests_per_minute, Some(10_000));
+    }
+
+    #[test]
+    fn parses_dry_run() {
+        let request: BackfillRequest = parse(&["VTI", "--dry-run"]).expect("parse").into();
+        assert!(request.dry_run);
+        let request: BackfillRequest = parse(&["VTI"]).expect("parse").into();
+        assert!(!request.dry_run);
     }
 
     #[test]

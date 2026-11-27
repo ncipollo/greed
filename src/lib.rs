@@ -30,6 +30,7 @@ mod float;
 pub mod history_range;
 pub mod info;
 pub mod interval;
+mod interval_set;
 mod num;
 pub mod output_format;
 mod pager;
