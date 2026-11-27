@@ -70,8 +70,8 @@ async fn async_main(log_config: Config) {
         }
         Command::Backtest(args) => {
             setup_logging(log_config);
-            let prepared = backtest::run(args.into()).await.expect("backtest failed");
-            println!("{prepared}");
+            let result = backtest::run(args.into()).await.expect("backtest failed");
+            println!("{result}");
         }
         Command::Info(args) => {
             print!("{}", cli::info::render(args.topic));

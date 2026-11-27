@@ -211,7 +211,7 @@ fn window_error(
 /// Trims the end of `range` back from `now` by the recent-data buffer. Errors
 /// when nothing is left, e.g. `--days 0`-sized windows or a range that starts
 /// inside the buffer.
-fn available_range(
+pub(crate) fn available_range(
     range: Range<DateTime<Utc>>,
     now: DateTime<Utc>,
 ) -> Result<Range<DateTime<Utc>>, GreedError> {

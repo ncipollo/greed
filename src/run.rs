@@ -1,4 +1,5 @@
 use crate::asset::AssetSymbol;
+use crate::backtest::BacktestPlatform;
 use crate::clock::Timing;
 use crate::config::platform::PlatformType;
 use crate::config::simple::SimpleConfig;
@@ -97,6 +98,23 @@ impl GreedRunner {
             record_history,
             timing,
         })
+    }
+
+    /// A runner for simulations: it can only talk to the given backtest platform, and it has no
+    /// database or history recording at all, so a simulation can't write anything down.
+    pub async fn for_simulation(
+        config: Config,
+        config_path: PathBuf,
+        platform: Arc<BacktestPlatform>,
+        timing: Timing,
+    ) -> Result<Self, GreedError> {
+        Self::with_timing(config, config_path, platform, PathBuf::new(), false, timing).await
+    }
+
+    /// Throws away the quotes gathered this tick. A live run drains them into the database each
+    /// tick; a simulation has nowhere to put them and must not let them pile up.
+    pub fn discard_pending_quotes(&self) {
+        self.quote_accumulator.drain();
     }
 
     pub async fn from_args(

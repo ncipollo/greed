@@ -1,0 +1,125 @@
+use crate::backtest::{BacktestResult, PreparedBacktest};
+use crate::clock::{Clock, Timing};
+use crate::error::GreedError;
+use crate::platform::FinancialPlatform;
+use crate::run::GreedRunner;
+use chrono::Duration as ChronoDuration;
+use log::{info, warn};
+use std::time::Duration;
+
+/// A simulation tick finding no trades for this long means the market is closed (overnight,
+/// weekend, holiday). Illiquid symbols can miss many minutes within a session, so this is
+/// generous: only a real closure is skipped.
+const MARKET_CLOSED_AFTER: ChronoDuration = ChronoDuration::minutes(15);
+
+/// Replays the prepared range: steps the simulated clock from start to end at the config's
+/// interval, running every strategy once per step against the prices of that moment.
+///
+/// Closed-market stretches are skipped by jumping the clock straight to the first tick at or
+/// after the next bar. Live greed would keep ticking through them, but with no new prices every
+/// rule would see the same data and trade nothing more, so the result is the same.
+///
+/// Simulation takes the concrete `BacktestPlatform` and no database path: it can neither reach a
+/// live platform nor write anything down.
+pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, GreedError> {
+    let PreparedBacktest {
+        config,
+        config_path,
+        range,
+        platform,
+        clock,
+        starting_cash,
+        ..
+    } = prepared;
+    if config.interval == 0 {
+        return Err(GreedError::new(
+            "the config's interval must be at least 1 second",
+        ));
+    }
+    if config.interval < 60 {
+        warn!(
+            "interval is {}s but prices are minute bars; ticks inside a minute see the same price",
+            config.interval
+        );
+    }
+    let step = ChronoDuration::seconds(config.interval as i64);
+    let runner = GreedRunner::for_simulation(
+        config,
+        config_path,
+        platform.clone(),
+        Timing::simulated(clock.clone()),
+    )
+    .await?;
+
+    clock.set(range.start);
+    let mut ticks = 0u64;
+    while clock.now() < range.end {
+        if !platform.market_active_within(MARKET_CLOSED_AFTER) {
+            let Some(next) = platform.next_bar_time() else {
+                break;
+            };
+            clock.set(first_tick_at_or_after(range.start, step, next));
+            continue;
+        }
+        runner.evaluate_strategies(Duration::ZERO).await;
+        runner.discard_pending_quotes();
+        ticks += 1;
+        clock.advance(step);
+    }
+
+    clock.set(range.end);
+    let final_value = platform.account().await?.equity;
+    let trade_count = platform.order_count();
+    info!("🧪 simulated {ticks} ticks");
+    Ok(BacktestResult::new(
+        range,
+        starting_cash,
+        final_value,
+        trade_count,
+    ))
+}
+
+/// Ticks happen at `start + k * step`; this is the first one at or after `time`.
+fn first_tick_at_or_after(
+    start: chrono::DateTime<chrono::Utc>,
+    step: ChronoDuration,
+    time: chrono::DateTime<chrono::Utc>,
+) -> chrono::DateTime<chrono::Utc> {
+    let step_ms = step.num_milliseconds().max(1);
+    let behind_ms = (time - start).num_milliseconds().max(0);
+    let ticks = (behind_ms + step_ms - 1) / step_ms;
+    start + ChronoDuration::milliseconds(ticks * step_ms)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use chrono::{TimeZone, Utc};
+
+    #[test]
+    fn first_tick_rounds_up_to_the_step_grid() {
+        let start = Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap();
+        let step = ChronoDuration::minutes(5);
+
+        let tick = first_tick_at_or_after(
+            start,
+            step,
+            Utc.with_ymd_and_hms(2026, 1, 5, 14, 41, 0).unwrap(),
+        );
+
+        assert_eq!(tick, Utc.with_ymd_and_hms(2026, 1, 5, 14, 45, 0).unwrap());
+    }
+
+    #[test]
+    fn first_tick_keeps_an_exact_hit() {
+        let start = Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap();
+
+        let tick = first_tick_at_or_after(
+            start,
+            ChronoDuration::minutes(1),
+            Utc.with_ymd_and_hms(2026, 1, 5, 14, 35, 0).unwrap(),
+        );
+
+        assert_eq!(tick, Utc.with_ymd_and_hms(2026, 1, 5, 14, 35, 0).unwrap());
+    }
+}

@@ -4,7 +4,7 @@ use crate::error::GreedError;
 use crate::platform::bar::time_frame::TimeFrame;
 use crate::platform::bar::Bar;
 use crate::trading_days::TradingDaysOffset;
-use chrono::{DateTime, DurationRound, Utc};
+use chrono::{DateTime, Duration, DurationRound, Utc};
 use duckdb::Connection;
 use std::collections::HashMap;
 use std::ops::Range;
@@ -36,6 +36,34 @@ impl MarketData {
 
     pub fn bar_count(&self) -> usize {
         self.minute_bars.values().map(Vec::len).sum()
+    }
+
+    /// True when any symbol has a bar in `(now - window, now]`. A longer silence means the market
+    /// is closed (overnight, weekend, holiday) rather than one quiet symbol.
+    pub fn has_bar_within(&self, now: DateTime<Utc>, window: Duration) -> bool {
+        self.minute_bars.values().any(|bars| {
+            let upto = bars.partition_point(|bar| bar.timestamp <= now);
+            upto.checked_sub(1)
+                .and_then(|i| bars.get(i))
+                .is_some_and(|bar| bar.timestamp > now - window)
+        })
+    }
+
+    /// The earliest bar time strictly after `now` across all symbols.
+    pub fn next_bar_after(&self, now: DateTime<Utc>) -> Option<DateTime<Utc>> {
+        self.minute_bars
+            .values()
+            .filter_map(|bars| bars.get(bars.partition_point(|bar| bar.timestamp <= now)))
+            .map(|bar| bar.timestamp)
+            .min()
+    }
+
+    /// The newest close at or before `now` however old, for valuing holdings (unlike
+    /// `latest_bar`, which refuses stale prices because they're not safe to trade on).
+    pub fn last_close(&self, symbol: &AssetSymbol, now: DateTime<Utc>) -> Option<f64> {
+        let bars = self.minute_bars.get(symbol)?;
+        let upto = bars.partition_point(|bar| bar.timestamp <= now);
+        bars.get(upto.checked_sub(1)?).map(|bar| bar.close)
     }
 
     /// The newest bar at or before `now`, unless it is too old to price from:

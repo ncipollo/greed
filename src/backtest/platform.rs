@@ -45,6 +45,26 @@ impl BacktestPlatform {
         }
     }
 
+    /// What a holding is worth per share: the last known close, however old.
+    fn mark_price(&self, symbol: &AssetSymbol) -> Option<f64> {
+        self.market.last_close(symbol, self.clock.now())
+    }
+
+    /// Whether any symbol traded within `window` of the simulated now.
+    pub(crate) fn market_active_within(&self, window: chrono::Duration) -> bool {
+        self.market.has_bar_within(self.clock.now(), window)
+    }
+
+    /// When the next bar after the simulated now arrives, if ever.
+    pub(crate) fn next_bar_time(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+        self.market.next_bar_after(self.clock.now())
+    }
+
+    /// How many orders have been filled so far.
+    pub fn order_count(&self) -> usize {
+        self.portfolio.lock().unwrap().orders().len()
+    }
+
     fn price_of(&self, symbol: &AssetSymbol) -> Option<f64> {
         self.market
             .latest_bar(symbol, self.clock.now())
@@ -72,7 +92,7 @@ impl FinancialPlatform for BacktestPlatform {
     async fn account(&self) -> Result<Account, GreedError> {
         let portfolio = self.portfolio.lock().unwrap();
         let cash = portfolio.cash();
-        let equity = portfolio.equity(|symbol| self.price_of(symbol));
+        let equity = portfolio.equity(|symbol| self.mark_price(symbol));
         let market_value_long = equity - cash;
         Ok(Account {
             id: Id::default(),
@@ -161,7 +181,7 @@ impl FinancialPlatform for BacktestPlatform {
             .holdings()
             .iter()
             .map(|(symbol, holding)| {
-                let price = self.price_of(symbol);
+                let price = self.mark_price(symbol);
                 Position {
                     average_entry_price: holding.average_cost,
                     cost_basis: Num::from_f64(holding.average_cost * holding.quantity),
@@ -400,6 +420,20 @@ mod test {
         assert!(platform.positions().await.unwrap().is_empty());
         assert_eq!(platform.recent_orders().await.unwrap().len(), 2);
         assert!(platform.open_orders().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn holdings_stay_marked_at_the_last_close_when_the_price_goes_stale() {
+        let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
+        platform
+            .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(2.0)))
+            .await
+            .unwrap();
+
+        clock.set(at(9, 14, 30));
+
+        assert!(platform.latest_quotes(&[vti()]).await.unwrap().is_empty());
+        assert_eq!(platform.account().await.unwrap().equity, 800.0 + 240.0);
     }
 
     #[tokio::test]

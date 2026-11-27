@@ -1,5 +1,5 @@
 use crate::analysis::result::BarsResult;
-use crate::analysis::time_range::FetcherTimeRanges;
+use crate::analysis::time_range::{FetcherTimeRanges, LONGEST_WINDOW_DAYS};
 use crate::asset::AssetSymbol;
 use crate::clock::{Clock, SystemClock};
 use crate::error::GreedError;
@@ -65,7 +65,7 @@ impl BarsFetcher {
     }
 
     async fn fetch_thirty_day(&self, symbol: AssetSymbol) -> Result<Bars, GreedError> {
-        let time_range = self.time_ranges.last_x_days(30);
+        let time_range = self.time_ranges.last_x_days(LONGEST_WINDOW_DAYS);
         self.platform
             .bars(BarRequest {
                 symbol,
@@ -78,7 +78,7 @@ impl BarsFetcher {
     }
 
     async fn fetch_thirty_day_hourly(&self, symbol: AssetSymbol) -> Result<Bars, GreedError> {
-        let time_range = self.time_ranges.last_x_days(30);
+        let time_range = self.time_ranges.last_x_days(LONGEST_WINDOW_DAYS);
         let bars = self
             .platform
             .bars(BarRequest {
