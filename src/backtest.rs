@@ -32,6 +32,7 @@ use crate::db;
 use crate::error::GreedError;
 use crate::platform::args::PlatformArgs;
 use crate::platform::FinancialPlatform;
+use crate::progress::{Phase, Progress};
 use crate::strategy::reader::read_config_from_path;
 use crate::time_range::TimeRangeSpec;
 use chrono::{DateTime, Utc};
@@ -117,9 +118,12 @@ impl Display for BacktestResult {
 
 /// Runs `greed backtest`: validates the config, makes sure the stored data covers the range
 /// (backfilling from the live platform if not), then simulates.
-pub async fn run(options: BacktestOptions) -> Result<BacktestResult, GreedError> {
-    let prepared = prepare(options, Utc::now(), live_platform).await?;
-    simulate(prepared).await
+pub async fn run(
+    options: BacktestOptions,
+    progress: &Progress,
+) -> Result<BacktestResult, GreedError> {
+    let prepared = prepare(options, Utc::now(), live_platform, progress).await?;
+    simulate(prepared, progress).await
 }
 
 fn live_platform(config: &Config) -> Result<Arc<dyn FinancialPlatform>, GreedError> {
@@ -132,6 +136,7 @@ pub(crate) async fn prepare<F>(
     options: BacktestOptions,
     now: DateTime<Utc>,
     make_platform: F,
+    progress: &Progress,
 ) -> Result<PreparedBacktest, GreedError>
 where
     F: FnOnce(&Config) -> Result<Arc<dyn FinancialPlatform>, GreedError>,
@@ -155,10 +160,16 @@ where
         return Err(GreedError::new("the config trades no symbols to backtest"));
     }
     let db_path = db::path_for_run(&options.config_path, options.db_path.as_deref());
-    let needed = preflight::ensure_data(&db_path, &target.symbols, &range, now, || {
-        make_platform(&config)
-    })
+    let needed = preflight::ensure_data(
+        &db_path,
+        &target.symbols,
+        &range,
+        now,
+        || make_platform(&config),
+        progress,
+    )
     .await?;
+    progress.phase(Phase::LoadingData);
     let market = {
         let connection = db::open_read_only_with_retry(&db_path)
             .await?
@@ -287,7 +298,9 @@ mod test {
         let mut opts = options("config_single_tactic.toml", None);
         opts.starting_cash = 0.0;
 
-        assert!(prepare(opts, now(), no_platform).await.is_err());
+        assert!(prepare(opts, now(), no_platform, &Progress::quiet())
+            .await
+            .is_err());
     }
 
     #[tokio::test]
@@ -300,6 +313,7 @@ mod test {
             options("config_single_tactic.toml", Some(path.clone())),
             now(),
             move |_| Ok(for_factory as Arc<dyn FinancialPlatform>),
+            &Progress::quiet(),
         )
         .await
         .unwrap();
@@ -338,6 +352,7 @@ mod test {
             options("config_single_tactic.toml", Some(path.clone())),
             now(),
             no_platform,
+            &Progress::quiet(),
         )
         .await
         .unwrap();
@@ -439,10 +454,11 @@ do = { sell_all = true }
             simulation_options(config_path.clone(), db_path.clone()),
             now(),
             no_platform,
+            &Progress::quiet(),
         )
         .await
         .unwrap();
-        let result = simulate(prepared).await.unwrap();
+        let result = simulate(prepared, &Progress::quiet()).await.unwrap();
 
         // Tick 1: 10% of $100,000 buys 100 shares at $100. When the price rises to $110, equity is
         // $101,000, so the 10% target is $10,100 against a $10,000 cost basis: one more $100 buy.
@@ -473,10 +489,11 @@ do = { sell_all = true }
                 simulation_options(config_path.clone(), db_path.clone()),
                 now(),
                 no_platform,
+                &Progress::quiet(),
             )
             .await
             .unwrap();
-            results.push(simulate(prepared).await.unwrap());
+            results.push(simulate(prepared, &Progress::quiet()).await.unwrap());
         }
 
         assert_eq!(results[0], results[1]);
@@ -503,10 +520,11 @@ do = { sell_all = true }
             simulation_options(config_path.clone(), db_path.clone()),
             now(),
             no_platform,
+            &Progress::quiet(),
         )
         .await
         .unwrap();
-        simulate(prepared).await.unwrap();
+        simulate(prepared, &Progress::quiet()).await.unwrap();
 
         let after: Vec<i64> = tables.iter().map(|t| row_count(&db_path, t)).collect();
         assert_eq!(before, after);
@@ -527,8 +545,10 @@ do = { sell_all = true }
         let mut opts = simulation_options(config_path.clone(), db_path.clone());
         opts.time_range.to = Some("2026-01-07 15:30".to_string());
 
-        let prepared = prepare(opts, now(), no_platform).await.unwrap();
-        let result = simulate(prepared).await.unwrap();
+        let prepared = prepare(opts, now(), no_platform, &Progress::quiet())
+            .await
+            .unwrap();
+        let result = simulate(prepared, &Progress::quiet()).await.unwrap();
 
         // The overnight and second day have no bars, so no extra trades happen and the position
         // is still valued at the last close.
@@ -561,10 +581,11 @@ do = { sell_all = true }
             },
             now(),
             move |_| Ok(for_factory as Arc<dyn FinancialPlatform>),
+            &Progress::quiet(),
         )
         .await
         .unwrap();
-        let result = simulate(prepared).await.unwrap();
+        let result = simulate(prepared, &Progress::quiet()).await.unwrap();
 
         // No stored bars means nothing ever trades, and the account is untouched.
         assert_eq!(result.trade_count, 0);
@@ -583,8 +604,10 @@ do = { sell_all = true }
         let mut opts = simulation_options(config_path.clone(), db_path.clone());
         opts.trace = Some(trace_path.clone());
 
-        let prepared = prepare(opts, now(), no_platform).await.unwrap();
-        let result = simulate(prepared).await.unwrap();
+        let prepared = prepare(opts, now(), no_platform, &Progress::quiet())
+            .await
+            .unwrap();
+        let result = simulate(prepared, &Progress::quiet()).await.unwrap();
 
         let trace: BacktestTrace =
             serde_json::from_str(&std::fs::read_to_string(&trace_path).unwrap()).unwrap();
@@ -612,7 +635,122 @@ do = { sell_all = true }
         let mut opts = options("config_single_tactic.toml", None);
         opts.trace = Some(PathBuf::from("out.txt"));
 
-        assert!(prepare(opts, now(), no_platform).await.is_err());
+        assert!(prepare(opts, now(), no_platform, &Progress::quiet())
+            .await
+            .is_err());
+    }
+
+    async fn three_month_run(verbose: bool) -> Vec<crate::progress::Event> {
+        let db_path = temp_db();
+        let config_path = always_buy_config();
+        let first = Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 3, 5, 14, 35, 0).unwrap();
+        let bars: Vec<Bar> = [(1, 5), (2, 5), (3, 5)]
+            .iter()
+            .flat_map(|&(month, day)| {
+                (0..2).map(move |minute| {
+                    let timestamp = Utc
+                        .with_ymd_and_hms(2026, month, day, 14, 30 + minute, 0)
+                        .unwrap();
+                    Bar {
+                        timestamp,
+                        open: 100.0,
+                        high: 100.0,
+                        low: 100.0,
+                        close: 100.0,
+                        volume: 1,
+                    }
+                })
+            })
+            .collect();
+        let mut connection = db::open_for_write(&db_path).unwrap();
+        stock_bars::insert_chunk(
+            &mut connection,
+            &AssetSymbol::new("VTI"),
+            &TimeFrame::OneMinute,
+            &((first - Duration::days(35))..end),
+            &bars,
+        )
+        .unwrap();
+        drop(connection);
+        let mut opts = simulation_options(config_path.clone(), db_path.clone());
+        opts.time_range = TimeRangeSpec {
+            from: Some("2026-01-05 14:30".to_string()),
+            to: Some("2026-03-05 14:35".to_string()),
+            ..Default::default()
+        };
+        let (progress, recorder) = Progress::recording(verbose);
+
+        let prepared = prepare(opts, now(), no_platform, &progress).await.unwrap();
+        simulate(prepared, &progress).await.unwrap();
+
+        std::fs::remove_file(&db_path).ok();
+        std::fs::remove_file(&config_path).ok();
+        recorder.events()
+    }
+
+    #[tokio::test]
+    async fn one_month_event_is_reported_per_simulated_month() {
+        use crate::progress::{Event, MonthDetail};
+
+        let events = three_month_run(false).await;
+
+        let months: Vec<_> = events
+            .iter()
+            .filter_map(|e| match e {
+                Event::Month(m) => Some(m),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(months.len(), 3, "{events:?}");
+        let labels: Vec<String> = months
+            .iter()
+            .map(|m| m.month.format("%Y-%m").to_string())
+            .collect();
+        assert_eq!(labels, vec!["2026-01", "2026-02", "2026-03"]);
+        assert!(months
+            .iter()
+            .all(|m| matches!(m.detail, MonthDetail::Simulated { .. })));
+        // The always-buy rule trades once, in January.
+        assert!(matches!(
+            months[0].detail,
+            MonthDetail::Simulated { trades: 1, .. }
+        ));
+    }
+
+    #[tokio::test]
+    async fn phases_are_announced_in_order() {
+        use crate::progress::{Event, Phase};
+
+        let events = three_month_run(false).await;
+
+        let phases: Vec<_> = events
+            .iter()
+            .filter_map(|e| match e {
+                Event::Phase(p) => Some(p.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            phases,
+            vec![
+                Phase::CheckingCoverage,
+                Phase::LoadingData,
+                Phase::Simulating
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn tick_events_appear_only_when_verbose() {
+        use crate::progress::Event;
+        let is_tick = |e: &Event| matches!(e, Event::Tick(_));
+
+        let quiet = three_month_run(false).await;
+        let loud = three_month_run(true).await;
+
+        assert!(!quiet.iter().any(is_tick));
+        assert!(loud.iter().filter(|e| is_tick(e)).count() >= 6);
     }
 
     #[tokio::test]
@@ -624,6 +762,7 @@ do = { sell_all = true }
             simulation_options(path.clone(), std::env::temp_dir().join("unused.duckdb")),
             now(),
             no_platform,
+            &Progress::quiet(),
         )
         .await;
 

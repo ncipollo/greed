@@ -5,8 +5,8 @@ use crate::db;
 use crate::error::GreedError;
 use crate::platform::bar::time_frame::TimeFrame;
 use crate::platform::FinancialPlatform;
+use crate::progress::{Phase, Progress};
 use chrono::{DateTime, Duration, Utc};
-use log::info;
 use std::ops::Range;
 use std::path::Path;
 use std::sync::Arc;
@@ -23,10 +23,12 @@ pub(crate) async fn ensure_data<F>(
     simulated: &Range<DateTime<Utc>>,
     now: DateTime<Utc>,
     make_platform: F,
+    progress: &Progress,
 ) -> Result<Range<DateTime<Utc>>, GreedError>
 where
     F: FnOnce() -> Result<Arc<dyn FinancialPlatform>, GreedError>,
 {
+    progress.phase(Phase::CheckingCoverage);
     let lookback = Duration::days(MAX_LOOKBACK_DAYS);
     let needed = available_range((simulated.start - lookback)..simulated.end, now)?;
     let plan =
@@ -34,11 +36,11 @@ where
     if plan.is_complete() {
         return Ok(needed);
     }
-    info!("📥 stored data is incomplete for this backtest, backfilling before simulating");
     // Create the file and schema up front; each chunk then holds the write lock only briefly.
     db::bootstrap_at_with_retry(db_path).await?;
     let platform = make_platform()?;
     Backfiller::new(platform, db_path.to_path_buf())
+        .with_progress(progress.clone())
         .backfill(symbols, needed.clone())
         .await?;
     Ok(needed)
@@ -92,9 +94,14 @@ mod test {
             &(at(10, 0) - Duration::days(MAX_LOOKBACK_DAYS)..at(12, 0)),
         );
 
-        let needed = ensure_data(&path, &vti(), &simulated, now(), || {
-            panic!("a live platform must not be built when the data is already stored")
-        })
+        let needed = ensure_data(
+            &path,
+            &vti(),
+            &simulated,
+            now(),
+            || panic!("a live platform must not be built when the data is already stored"),
+            &Progress::quiet(),
+        )
         .await
         .unwrap();
 
@@ -109,16 +116,26 @@ mod test {
         let simulated = at(10, 0)..at(12, 0);
 
         let for_factory = platform.clone();
-        ensure_data(&path, &vti(), &simulated, now(), move || {
-            Ok(for_factory as Arc<dyn FinancialPlatform>)
-        })
+        ensure_data(
+            &path,
+            &vti(),
+            &simulated,
+            now(),
+            move || Ok(for_factory as Arc<dyn FinancialPlatform>),
+            &Progress::quiet(),
+        )
         .await
         .unwrap();
 
         assert!(!platform.bar_requests().is_empty());
-        let again = ensure_data(&path, &vti(), &simulated, now(), || {
-            panic!("second run should find the data already stored")
-        })
+        let again = ensure_data(
+            &path,
+            &vti(),
+            &simulated,
+            now(),
+            || panic!("second run should find the data already stored"),
+            &Progress::quiet(),
+        )
         .await;
         assert!(again.is_ok());
         std::fs::remove_file(&path).ok();
@@ -129,9 +146,14 @@ mod test {
         let path = std::env::temp_dir().join(format!("greed_fresh_{}.duckdb", Uuid::new_v4()));
         let simulated = at(10, 0)..at(12, 0);
 
-        ensure_data(&path, &vti(), &simulated, now(), || {
-            Ok(Arc::new(MockPlatform::new()) as Arc<dyn FinancialPlatform>)
-        })
+        ensure_data(
+            &path,
+            &vti(),
+            &simulated,
+            now(),
+            || Ok(Arc::new(MockPlatform::new()) as Arc<dyn FinancialPlatform>),
+            &Progress::quiet(),
+        )
         .await
         .unwrap();
 
