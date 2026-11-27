@@ -18,7 +18,7 @@ pub struct BacktestArgs {
     #[arg(long, value_name = "PATH")]
     pub db_path: Option<PathBuf>,
     /// Write a trace of every simulated trade to this file. The format comes from the extension:
-    /// `.json` or `.toml`.
+    /// `.json`, `.toml` or `.html` (a self-contained page you can open offline).
     #[arg(long, value_name = "PATH", value_parser = parse_trace_path)]
     pub trace: Option<PathBuf>,
 }

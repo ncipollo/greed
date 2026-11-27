@@ -52,7 +52,7 @@ pub struct BacktestOptions {
     pub starting_cash: f64,
     /// Overrides the DuckDB path; defaults next to the config like `run` and `backfill`.
     pub db_path: Option<PathBuf>,
-    /// Where to write a trace of every simulated trade (`.json` or `.toml`).
+    /// Where to write a trace of every simulated trade (`.json`, `.toml` or `.html`).
     pub trace: Option<PathBuf>,
 }
 
