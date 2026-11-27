@@ -10,12 +10,15 @@ pub struct SymbolReport {
     pub windows: usize,
     pub bars_fetched: usize,
     pub bars_inserted: usize,
+    /// True when the database already covered the whole range.
+    pub already_complete: bool,
 }
 
 impl SymbolReport {
     pub fn new(symbol: AssetSymbol) -> Self {
         Self {
             symbol,
+            already_complete: false,
             windows: 0,
             bars_fetched: 0,
             bars_inserted: 0,
@@ -51,6 +54,10 @@ impl Display for BackfillReport {
             self.range.end.format(format)
         )?;
         for symbol in &self.symbols {
+            if symbol.already_complete {
+                writeln!(f, "  {}: already complete, skipped", symbol.symbol.symbol)?;
+                continue;
+            }
             writeln!(
                 f,
                 "  {}: {} bars fetched, {} new, {} windows",
@@ -76,6 +83,21 @@ mod test {
         assert_eq!(report.windows, 2);
         assert_eq!(report.bars_fetched, 15);
         assert_eq!(report.bars_inserted, 9);
+    }
+
+    #[test]
+    fn display_marks_complete_symbols_as_skipped() {
+        let mut vti = SymbolReport::new(AssetSymbol::new("VTI"));
+        vti.already_complete = true;
+        let report = BackfillReport {
+            range: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap()
+                ..Utc.with_ymd_and_hms(2026, 2, 1, 0, 0, 0).unwrap(),
+            symbols: vec![vti],
+        };
+
+        assert!(report
+            .to_string()
+            .contains("VTI: already complete, skipped"));
     }
 
     #[test]

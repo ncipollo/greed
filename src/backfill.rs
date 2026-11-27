@@ -14,6 +14,7 @@ use crate::config::platform::PlatformType;
 use crate::db;
 use crate::db::stock_bars;
 use crate::error::GreedError;
+use crate::interval_set;
 use crate::platform;
 use crate::platform::args::PlatformArgs;
 use crate::platform::bar::bar_request::BarRequest;
@@ -32,6 +33,10 @@ use std::sync::Arc;
 /// minute shouldn't be recorded as fully covered. The tail is picked up by a
 /// later backfill.
 const RECENT_DATA_BUFFER_MINUTES: i64 = 15;
+
+/// Gaps separated by less than this many days are fetched as one request:
+/// refetching a little covered data is cheaper than many tiny requests.
+const COALESCE_GAP_DAYS: i64 = 1;
 
 /// Everything `greed backfill` needs, as parsed from the command line.
 #[derive(Debug)]
@@ -116,10 +121,15 @@ impl Backfiller {
         symbols: &[AssetSymbol],
         range: Range<DateTime<Utc>>,
     ) -> Result<BackfillReport, GreedError> {
-        let windows = month_chunks(&range);
         let mut reports = Vec::new();
         for symbol in symbols.iter().unique() {
             let mut report = SymbolReport::new(symbol.clone());
+            let gaps = self.gaps_for(symbol, &range).await?;
+            if gaps.is_empty() {
+                info!("⏭️  {} already complete, skipping", symbol.symbol);
+                report.already_complete = true;
+            }
+            let windows = gaps.iter().flat_map(month_chunks).collect_vec();
             for window in &windows {
                 let (fetched, inserted) = self.backfill_window(symbol, window).await?;
                 report.record_window(fetched, inserted);
@@ -130,6 +140,27 @@ impl Backfiller {
             range,
             symbols: reports,
         })
+    }
+
+    /// What the ledger says is missing for `symbol`, with nearby gaps joined
+    /// into fewer, larger requests. The read connection is dropped before any
+    /// network call so it never holds a lock while fetching.
+    async fn gaps_for(
+        &self,
+        symbol: &AssetSymbol,
+        range: &Range<DateTime<Utc>>,
+    ) -> Result<Vec<Range<DateTime<Utc>>>, GreedError> {
+        let plan = CoverageChecker::plan(
+            &self.db_path,
+            std::slice::from_ref(symbol),
+            &TimeFrame::OneMinute,
+            range.clone(),
+        )
+        .await?;
+        Ok(interval_set::coalesce(
+            plan.gaps_for(symbol).to_vec(),
+            Duration::days(COALESCE_GAP_DAYS),
+        ))
     }
 
     async fn backfill_window(
@@ -327,6 +358,103 @@ mod test {
 
         assert_eq!(count(&path, "stock_bars"), 2);
         assert_eq!(second.total_inserted(), 0);
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn a_second_identical_backfill_makes_no_platform_calls() {
+        let path = temp_db();
+        let platform = Arc::new(MockPlatform::new());
+        let backfiller = Backfiller::new(platform.clone(), path.clone());
+        let range = at(2026, 1, 15, 0)..at(2026, 3, 10, 0);
+
+        backfiller
+            .backfill(&vti(), range.clone())
+            .await
+            .expect("first");
+        let calls_after_first = platform.bar_requests().len();
+        let second = backfiller.backfill(&vti(), range).await.expect("second");
+
+        assert_eq!(calls_after_first, 3);
+        assert_eq!(platform.bar_requests().len(), calls_after_first);
+        assert!(second.symbols[0].already_complete);
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn extending_the_range_fetches_only_the_new_tail() {
+        let path = temp_db();
+        let platform = Arc::new(MockPlatform::new());
+        let backfiller = Backfiller::new(platform.clone(), path.clone());
+        backfiller
+            .backfill(&vti(), at(2026, 1, 1, 0)..at(2026, 1, 10, 0))
+            .await
+            .expect("first");
+
+        backfiller
+            .backfill(&vti(), at(2026, 1, 1, 0)..at(2026, 1, 20, 0))
+            .await
+            .expect("second");
+
+        let windows: Vec<_> = platform
+            .bar_requests()
+            .iter()
+            .map(|r| r.start..r.end)
+            .collect();
+        assert_eq!(
+            windows,
+            vec![
+                at(2026, 1, 1, 0)..at(2026, 1, 10, 0),
+                at(2026, 1, 10, 0)..at(2026, 1, 20, 0),
+            ]
+        );
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn a_hole_in_the_middle_fetches_only_the_hole() {
+        let path = temp_db();
+        let platform = Arc::new(MockPlatform::new());
+        let backfiller = Backfiller::new(platform.clone(), path.clone());
+        backfiller
+            .backfill(&vti(), at(2026, 1, 1, 0)..at(2026, 1, 5, 0))
+            .await
+            .expect("head");
+        backfiller
+            .backfill(&vti(), at(2026, 1, 20, 0)..at(2026, 1, 25, 0))
+            .await
+            .expect("tail");
+        let calls = platform.bar_requests().len();
+
+        backfiller
+            .backfill(&vti(), at(2026, 1, 1, 0)..at(2026, 1, 25, 0))
+            .await
+            .expect("whole range");
+
+        let requests = platform.bar_requests();
+        assert_eq!(requests.len(), calls + 1);
+        let hole = requests.last().unwrap();
+        assert_eq!(hole.start..hole.end, at(2026, 1, 5, 0)..at(2026, 1, 20, 0));
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[tokio::test]
+    async fn overlapping_backfills_leave_one_row_per_bar() {
+        let path = temp_db();
+        let bars = bars_at(&[at(2026, 1, 8, 14), at(2026, 1, 12, 14)]);
+        let platform = Arc::new(MockPlatform::new().with_bars(bars));
+        let backfiller = Backfiller::new(platform, path.clone());
+
+        backfiller
+            .backfill(&vti(), at(2026, 1, 1, 0)..at(2026, 1, 10, 0))
+            .await
+            .expect("first");
+        backfiller
+            .backfill(&vti(), at(2026, 1, 5, 0)..at(2026, 1, 15, 0))
+            .await
+            .expect("second");
+
+        assert_eq!(count(&path, "stock_bars"), 2);
         std::fs::remove_file(&path).ok();
     }
 
