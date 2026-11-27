@@ -34,6 +34,7 @@ pub mod output_format;
 mod pager;
 pub mod platform;
 mod quote_accumulator;
+mod rate_limiter;
 pub mod run;
 pub mod server;
 mod statistics;
