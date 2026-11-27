@@ -1,3 +1,17 @@
+//! Backtesting: replay a greed config against stored historical bars.
+//!
+//! Two guarantees hold by construction, not convention:
+//!
+//! 1. **No network during simulation.** The only code that may build a live platform is the
+//!    preflight backfill ([`preflight::ensure_data`]), which does so through a closure and drops it
+//!    before returning. [`simulate`] takes a [`PreparedBacktest`] whose platform is the concrete
+//!    [`BacktestPlatform`], so a live platform can't be passed in. Agent strategies, which need an
+//!    LLM and the web, are rejected up front.
+//! 2. **Nothing is recorded.** Simulation uses `GreedRunner::for_simulation`, which has no database
+//!    path and no history recording, and discards the quotes each tick gathers. Bars are loaded
+//!    through a read-only connection that is closed before the first tick. Only the preflight
+//!    backfill writes (`stock_bars`, `backfill_coverage`).
+
 mod engine;
 mod market_data;
 mod platform;
@@ -511,6 +525,35 @@ do = { sell_all = true }
         );
         std::fs::remove_file(&db_path).ok();
         std::fs::remove_file(&config_path).ok();
+    }
+
+    #[tokio::test]
+    async fn strategy_file_configs_simulate_without_a_live_platform() {
+        let db_path = temp_db();
+        let for_factory = Arc::new(MockPlatform::new());
+
+        let prepared = prepare(
+            BacktestOptions {
+                config_path: fixture::path("config_strategic.toml"),
+                time_range: TimeRangeSpec {
+                    from: Some("2026-01-05".to_string()),
+                    to: Some("2026-01-06".to_string()),
+                    ..Default::default()
+                },
+                starting_cash: DEFAULT_STARTING_CASH,
+                db_path: Some(db_path.clone()),
+            },
+            now(),
+            move |_| Ok(for_factory as Arc<dyn FinancialPlatform>),
+        )
+        .await
+        .unwrap();
+        let result = simulate(prepared).await.unwrap();
+
+        // No stored bars means nothing ever trades, and the account is untouched.
+        assert_eq!(result.trade_count, 0);
+        assert_eq!(result.final_value, DEFAULT_STARTING_CASH);
+        std::fs::remove_file(&db_path).ok();
     }
 
     #[tokio::test]
