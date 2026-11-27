@@ -1,6 +1,8 @@
+pub mod backfill_coverage;
 pub mod migrations;
 pub mod portfolio_status;
 mod retry;
+pub mod stock_bars;
 pub mod stock_quotes;
 
 use crate::error::GreedError;

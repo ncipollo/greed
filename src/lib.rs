@@ -18,6 +18,7 @@ use std::sync::Arc;
 mod analysis;
 mod assert;
 pub mod asset;
+pub mod backfill;
 mod bool;
 pub mod config;
 mod date;

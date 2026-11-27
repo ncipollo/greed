@@ -14,6 +14,8 @@ COMMANDS
   greed quote <SYMBOLS...>                   latest quotes
   greed analyze <SYMBOLS...>                 bar analysis for symbols
   greed history status|quotes                query recorded history (DuckDB)
+  greed backfill <SYMBOLS...|--config PATH>  fetch historical minute bars into DuckDB
+                                             [--from D --to D | --days N --months N --years N]
   greed completions <shell>                  print shell completions
   greed info [TOPIC]                         this documentation
 

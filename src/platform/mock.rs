@@ -9,6 +9,7 @@ use crate::platform::quote::Quote;
 use crate::platform::request::OrderRequest;
 use crate::platform::FinancialPlatform;
 use async_trait::async_trait;
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 pub struct MockPlatform {
@@ -18,6 +19,8 @@ pub struct MockPlatform {
     recent_orders: Vec<Order>,
     quotes: Vec<Quote>,
     bars: Bars,
+    bars_results: Mutex<VecDeque<Result<Bars, String>>>,
+    bar_requests: Mutex<Vec<BarRequest>>,
     place_order_result: Order,
     placed_orders: Mutex<Vec<OrderRequest>>,
 }
@@ -37,6 +40,8 @@ impl MockPlatform {
             recent_orders: Vec::new(),
             quotes: Vec::new(),
             bars: Bars::default(),
+            bars_results: Mutex::new(VecDeque::new()),
+            bar_requests: Mutex::new(Vec::new()),
             place_order_result: Order::default(),
             placed_orders: Mutex::new(Vec::new()),
         }
@@ -72,9 +77,20 @@ impl MockPlatform {
         self
     }
 
+    /// Queues one result per `bars` call, consumed in order; once the queue is
+    /// empty, calls fall back to the bars set with `with_bars`.
+    pub fn with_bars_results(self, results: Vec<Result<Bars, String>>) -> Self {
+        *self.bars_results.lock().unwrap() = results.into();
+        self
+    }
+
     pub fn with_place_order_result(mut self, order: Order) -> Self {
         self.place_order_result = order;
         self
+    }
+
+    pub fn bar_requests(&self) -> Vec<BarRequest> {
+        self.bar_requests.lock().unwrap().clone()
     }
 
     pub fn placed_orders(&self) -> Vec<OrderRequest> {
@@ -92,8 +108,12 @@ impl FinancialPlatform for MockPlatform {
         Ok(self.account.clone())
     }
 
-    async fn bars(&self, _bars_request: BarRequest) -> Result<Bars, GreedError> {
-        Ok(self.bars.clone())
+    async fn bars(&self, bars_request: BarRequest) -> Result<Bars, GreedError> {
+        self.bar_requests.lock().unwrap().push(bars_request);
+        match self.bars_results.lock().unwrap().pop_front() {
+            Some(result) => result.map_err(|message| GreedError::new(&message)),
+            None => Ok(self.bars.clone()),
+        }
     }
 
     async fn latest_quotes(&self, _symbols: &[AssetSymbol]) -> Result<Vec<Quote>, GreedError> {

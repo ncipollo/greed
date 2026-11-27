@@ -1,7 +1,9 @@
 use crate::error::GreedError;
 use duckdb::Connection;
 
+mod backfill_coverage;
 mod portfolio_status;
+mod stock_bars;
 mod stock_quotes;
 
 struct Migration {
@@ -9,7 +11,12 @@ struct Migration {
     sql: &'static str,
 }
 
-const MIGRATIONS: &[Migration] = &[portfolio_status::MIGRATION, stock_quotes::MIGRATION];
+const MIGRATIONS: &[Migration] = &[
+    portfolio_status::MIGRATION,
+    stock_quotes::MIGRATION,
+    stock_bars::MIGRATION,
+    backfill_coverage::MIGRATION,
+];
 
 pub fn apply(connection: &Connection) -> Result<(), GreedError> {
     apply_with(connection, MIGRATIONS)
