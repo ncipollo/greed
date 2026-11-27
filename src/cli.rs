@@ -1,5 +1,6 @@
 pub mod analyze;
 pub mod backfill;
+pub mod backtest;
 pub mod history;
 pub mod info;
 pub mod init;
@@ -12,6 +13,7 @@ mod time_range;
 
 use crate::cli::analyze::AnalyzeArgs;
 use crate::cli::backfill::BackfillArgs;
+use crate::cli::backtest::BacktestArgs;
 use crate::cli::history::HistoryArgs;
 use crate::cli::info::InfoArgs;
 use crate::cli::init::InitArgs;
@@ -34,6 +36,8 @@ pub enum Command {
     Analyze(AnalyzeArgs),
     #[command(about = "Fetch historical minute bars into the local database")]
     Backfill(BackfillArgs),
+    #[command(about = "Simulate a config against historical data")]
+    Backtest(BacktestArgs),
     #[command(about = "Fetch historic data")]
     History(HistoryArgs),
     #[command(about = "Show agent-oriented docs for greed topics")]

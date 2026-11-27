@@ -5,11 +5,11 @@ mod target;
 
 pub use coverage::{BackfillPlan, CoverageChecker};
 pub use report::{BackfillReport, SymbolReport};
+pub(crate) use target::target_from_config;
 pub use target::BackfillTarget;
 
 use crate::asset::AssetSymbol;
 use crate::backfill::chunks::month_chunks;
-use crate::backfill::target::target_from_config;
 use crate::config::platform::PlatformType;
 use crate::db;
 use crate::db::stock_bars;
