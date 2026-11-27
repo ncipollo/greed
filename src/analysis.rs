@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 pub mod fetcher;
 pub mod result;
 mod state;
-mod time_range;
+pub(crate) mod time_range;
 
 pub struct AssetAnalyzer {
     mutable_state: Arc<Mutex<AnalysisState>>,

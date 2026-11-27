@@ -4,6 +4,13 @@ use crate::trading_days::TradingDaysOffset;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use std::ops::Range;
 
+/// The longest look-back any bar request makes, in days (`BarsFetcher`'s 30-day windows).
+pub const LONGEST_WINDOW_DAYS: i64 = 30;
+
+/// How far before a simulated start a backtest needs stored bars: the longest window plus slack
+/// for weekends and holidays.
+pub const MAX_LOOKBACK_DAYS: i64 = LONGEST_WINDOW_DAYS + 5;
+
 pub struct FetcherTimeRanges {
     now: DateTime<Utc>,
 }
