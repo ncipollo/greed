@@ -1,3 +1,4 @@
+use crate::clock::Timing;
 use crate::config::strategy::StrategyConfig;
 use crate::config::Config;
 use crate::error::GreedError;
@@ -15,6 +16,7 @@ pub struct StrategyProviderFactory<'a> {
     config_path: PathBuf,
     platform: &'a Arc<dyn FinancialPlatform>,
     quote_accumulator: &'a QuoteAccumulator,
+    timing: Timing,
 }
 
 impl<'a> StrategyProviderFactory<'a> {
@@ -29,7 +31,14 @@ impl<'a> StrategyProviderFactory<'a> {
             config_path,
             platform,
             quote_accumulator,
+            timing: Timing::default(),
         }
+    }
+
+    /// Wires the strategies it creates to `timing` instead of the live clock and pacer.
+    pub fn with_timing(mut self, timing: Timing) -> Self {
+        self.timing = timing;
+        self
     }
 
     pub async fn create_providers(
@@ -67,7 +76,8 @@ impl<'a> StrategyProviderFactory<'a> {
                     strategy_config,
                     self.quote_accumulator.clone(),
                 )
-                .await?;
+                .await?
+                .with_timing(self.timing.clone());
                 Ok(Box::new(provider))
             }
         }

@@ -1,6 +1,7 @@
 use crate::analysis::result::BarsResult;
 use crate::analysis::AssetAnalyzer;
 use crate::asset::AssetSymbol;
+use crate::clock::Clock;
 use crate::config::quote_fetcher_config::QuoteFetcherConfig;
 use crate::config::strategy::StrategyProperties;
 use crate::config::tactic::TacticConfig;
@@ -39,14 +40,15 @@ pub struct TacticRunner {
 }
 
 impl TacticRunner {
-    pub fn new(
+    pub fn with_clock(
         config: TacticConfig,
         platform: Arc<dyn FinancialPlatform>,
         strategy_properties: StrategyProperties,
         quote_accumulator: QuoteAccumulator,
+        clock: Arc<dyn Clock>,
     ) -> Self {
         Self {
-            asset_analyzer: AssetAnalyzer::new(platform.clone()),
+            asset_analyzer: AssetAnalyzer::with_clock(platform.clone(), clock),
             config,
             platform,
             quote_accumulator,
