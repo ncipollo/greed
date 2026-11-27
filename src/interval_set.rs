@@ -16,6 +16,20 @@ pub fn merge(mut intervals: Vec<Range<DateTime<Utc>>>) -> Vec<Range<DateTime<Utc
     merged
 }
 
+/// Joins sorted, disjoint gaps that are separated by less than `threshold`,
+/// so many tiny gaps become fewer, larger requests. The joined span includes
+/// the covered stretch between them; refetching it is harmless.
+pub fn coalesce(gaps: Vec<Range<DateTime<Utc>>>, threshold: Duration) -> Vec<Range<DateTime<Utc>>> {
+    let mut joined: Vec<Range<DateTime<Utc>>> = Vec::new();
+    for gap in merge(gaps) {
+        match joined.last_mut() {
+            Some(last) if gap.start - last.end < threshold => last.end = gap.end,
+            _ => joined.push(gap),
+        }
+    }
+    joined
+}
+
 /// The parts of `range` not covered by `covered`, in order. `covered` may be
 /// unsorted and overlapping. Gaps are rounded out to whole minutes.
 pub fn subtract(
@@ -72,6 +86,24 @@ mod test {
         ]);
 
         assert_eq!(merged, vec![at(1, 0)..at(4, 0)]);
+    }
+
+    #[test]
+    fn coalesce_joins_gaps_closer_than_the_threshold() {
+        let gaps = vec![at(1, 0)..at(1, 6), at(1, 12)..at(2, 0), at(5, 0)..at(6, 0)];
+
+        let joined = coalesce(gaps, Duration::days(1));
+
+        assert_eq!(joined, vec![at(1, 0)..at(2, 0), at(5, 0)..at(6, 0)]);
+    }
+
+    #[test]
+    fn coalesce_keeps_gaps_at_or_beyond_the_threshold() {
+        let gaps = vec![at(1, 0)..at(2, 0), at(3, 0)..at(4, 0)];
+
+        let joined = coalesce(gaps.clone(), Duration::days(1));
+
+        assert_eq!(joined, gaps);
     }
 
     #[test]
