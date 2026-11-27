@@ -1,6 +1,7 @@
 use crate::asset::AssetSymbol;
 use crate::backtest::market_data::MarketData;
 use crate::backtest::portfolio::Portfolio;
+use crate::backtest::trace::{EquityPoint, EventKind, TraceEvent, TraceRecorder, TraceSide};
 use crate::clock::{Clock, SimulatedClock};
 use crate::error::GreedError;
 use crate::num::NumFromFloat;
@@ -34,6 +35,16 @@ pub struct BacktestPlatform {
     clock: Arc<SimulatedClock>,
     market: MarketData,
     portfolio: Mutex<Portfolio>,
+    trace: Option<TraceRecorder>,
+}
+
+/// A filled order plus what the account looked like right after.
+struct Fill {
+    order: Order,
+    quantity: f64,
+    price: f64,
+    cash_after: f64,
+    equity_after: f64,
 }
 
 impl BacktestPlatform {
@@ -42,7 +53,25 @@ impl BacktestPlatform {
             clock,
             market,
             portfolio: Mutex::new(Portfolio::new(starting_cash)),
+            trace: None,
         }
+    }
+
+    /// Records every fill and rejection (and daily equity points) to `recorder`.
+    pub fn with_trace(mut self, recorder: TraceRecorder) -> Self {
+        self.trace = Some(recorder);
+        self
+    }
+
+    /// Adds an equity point at the simulated now to the trace, if tracing.
+    pub(crate) fn snapshot_equity(&self) {
+        let Some(trace) = &self.trace else { return };
+        let portfolio = self.portfolio.lock().unwrap();
+        trace.record_equity(EquityPoint {
+            time: self.clock.now(),
+            cash: portfolio.cash(),
+            equity: portfolio.equity(|symbol| self.mark_price(symbol)),
+        });
     }
 
     /// What a holding is worth per share: the last known close, however old.
@@ -69,6 +98,106 @@ impl BacktestPlatform {
         self.market
             .latest_bar(symbol, self.clock.now())
             .map(|bar| bar.close)
+    }
+
+    /// Fills a market order at the current price, or says why it can't.
+    fn fill(&self, request: &OrderRequest) -> Result<Fill, GreedError> {
+        Self::reject_unsupported(request)?;
+        let price = self.price_of(&request.symbol).ok_or_else(|| {
+            GreedError::new(&format!("no current price for {}", request.symbol.symbol))
+        })?;
+        let quantity = match request.amount {
+            Amount::Quantity(quantity) => quantity,
+            Amount::Notional(notional) => notional / price,
+        };
+        let mut portfolio = self.portfolio.lock().unwrap();
+        match request.side {
+            OrderSide::Buy => portfolio.buy(&request.symbol, quantity, price)?,
+            OrderSide::Sell => portfolio.sell(&request.symbol, quantity, price)?,
+        }
+        let now = self.clock.now();
+        let order = Order {
+            id: Id::Uuid(Uuid::new_v4()),
+            status: Status::Filled,
+            created_at: now,
+            submitted_at: Some(now),
+            filled_at: Some(now),
+            symbol: request.symbol.clone(),
+            amount: request.amount.clone(),
+            filled_quantity: Num::from_f64(quantity),
+            order_type: OrderType::Market,
+            side: request.side,
+            time_in_force: request.time_in_force,
+            average_fill_price: Some(Num::from_f64(price)),
+            ..Default::default()
+        };
+        portfolio.record_order(order.clone());
+        Ok(Fill {
+            order,
+            quantity,
+            price,
+            cash_after: portfolio.cash(),
+            equity_after: portfolio.equity(|symbol| self.mark_price(symbol)),
+        })
+    }
+
+    /// Adds the outcome of an order attempt to the trace.
+    fn record_outcome(
+        &self,
+        trace: &TraceRecorder,
+        request: &OrderRequest,
+        result: &Result<Fill, GreedError>,
+    ) {
+        let context = crate::activity::current_tactic();
+        let (strategy, tactic) = match context {
+            Some(c) => (
+                Some(c.strategy).filter(|s| !s.is_empty()),
+                Some(c.tactic).filter(|t| !t.is_empty()),
+            ),
+            None => (None, None),
+        };
+        let side = match request.side {
+            OrderSide::Buy => TraceSide::Buy,
+            OrderSide::Sell => TraceSide::Sell,
+        };
+        let (quantity, notional) = match request.amount {
+            Amount::Quantity(quantity) => (Some(quantity), None),
+            Amount::Notional(notional) => (None, Some(notional)),
+        };
+        let event = match result {
+            Ok(fill) => TraceEvent {
+                time: self.clock.now(),
+                kind: EventKind::Trade,
+                strategy,
+                tactic,
+                symbol: request.symbol.symbol.clone(),
+                side,
+                quantity: Some(fill.quantity),
+                price: Some(fill.price),
+                notional: Some(fill.quantity * fill.price),
+                cash_after: fill.cash_after,
+                equity_after: fill.equity_after,
+                reason: None,
+            },
+            Err(error) => {
+                let portfolio = self.portfolio.lock().unwrap();
+                TraceEvent {
+                    time: self.clock.now(),
+                    kind: EventKind::RejectedOrder,
+                    strategy,
+                    tactic,
+                    symbol: request.symbol.symbol.clone(),
+                    side,
+                    quantity,
+                    price: self.price_of(&request.symbol),
+                    notional,
+                    cash_after: portfolio.cash(),
+                    equity_after: portfolio.equity(|symbol| self.mark_price(symbol)),
+                    reason: Some(error.to_string()),
+                }
+            }
+        };
+        trace.record_event(event);
     }
 
     fn reject_unsupported(request: &OrderRequest) -> Result<(), GreedError> {
@@ -142,37 +271,11 @@ impl FinancialPlatform for BacktestPlatform {
     }
 
     async fn place_order(&self, request: OrderRequest) -> Result<Order, GreedError> {
-        Self::reject_unsupported(&request)?;
-        let price = self.price_of(&request.symbol).ok_or_else(|| {
-            GreedError::new(&format!("no current price for {}", request.symbol.symbol))
-        })?;
-        let quantity = match request.amount {
-            Amount::Quantity(quantity) => quantity,
-            Amount::Notional(notional) => notional / price,
-        };
-        let mut portfolio = self.portfolio.lock().unwrap();
-        match request.side {
-            OrderSide::Buy => portfolio.buy(&request.symbol, quantity, price)?,
-            OrderSide::Sell => portfolio.sell(&request.symbol, quantity, price)?,
+        let result = self.fill(&request);
+        if let Some(trace) = &self.trace {
+            self.record_outcome(trace, &request, &result);
         }
-        let now = self.clock.now();
-        let order = Order {
-            id: Id::Uuid(Uuid::new_v4()),
-            status: Status::Filled,
-            created_at: now,
-            submitted_at: Some(now),
-            filled_at: Some(now),
-            symbol: request.symbol,
-            amount: request.amount,
-            filled_quantity: Num::from_f64(quantity),
-            order_type: OrderType::Market,
-            side: request.side,
-            time_in_force: request.time_in_force,
-            average_fill_price: Some(Num::from_f64(price)),
-            ..Default::default()
-        };
-        portfolio.record_order(order.clone());
-        Ok(order)
+        result.map(|fill| fill.order)
     }
 
     async fn positions(&self) -> Result<Vec<Position>, GreedError> {
@@ -434,6 +537,83 @@ mod test {
 
         assert!(platform.latest_quotes(&[vti()]).await.unwrap().is_empty());
         assert_eq!(platform.account().await.unwrap().equity, 800.0 + 240.0);
+    }
+
+    #[tokio::test]
+    async fn the_trace_records_fills_and_rejections() {
+        let recorder = TraceRecorder::new();
+        let (platform, _) = platform_at(at(5, 14, 30), 1000.0);
+        let platform = platform.with_trace(recorder.clone());
+
+        platform
+            .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(2.0)))
+            .await
+            .unwrap();
+        let rejected = platform
+            .place_order(OrderRequest::market_order_buy(
+                vti(),
+                Amount::Notional(5000.0),
+            ))
+            .await;
+        platform.snapshot_equity();
+
+        assert!(rejected.is_err());
+        let summary = crate::backtest::trace::TraceSummary {
+            config: String::new(),
+            range_start: at(5, 14, 30),
+            range_end: at(5, 14, 32),
+            starting_cash: 1000.0,
+            final_value: 0.0,
+            return_percent: 0.0,
+            trade_count: 1,
+        };
+        let trace = recorder.build_trace(summary);
+        assert_eq!(trace.events.len(), 2);
+        assert_eq!(trace.events[0].kind, EventKind::Trade);
+        assert_eq!(trace.events[0].cash_after, 800.0);
+        assert_eq!(trace.events[0].equity_after, 1000.0);
+        assert_eq!(trace.events[1].kind, EventKind::RejectedOrder);
+        assert_eq!(trace.events[1].notional, Some(5000.0));
+        assert!(trace.events[1]
+            .reason
+            .as_ref()
+            .unwrap()
+            .contains("insufficient"));
+        assert_eq!(trace.equity.len(), 1);
+        assert_eq!(trace.equity[0].equity, 1000.0);
+    }
+
+    #[tokio::test]
+    async fn the_trace_names_the_running_tactic() {
+        use crate::activity::{with_tactic, TacticContext};
+        let recorder = TraceRecorder::new();
+        let (platform, _) = platform_at(at(5, 14, 30), 1000.0);
+        let platform = platform.with_trace(recorder.clone());
+        let context = TacticContext {
+            strategy: "core".to_string(),
+            tactic: "ETF".to_string(),
+        };
+
+        with_tactic(context, async {
+            platform
+                .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(1.0)))
+                .await
+        })
+        .await
+        .unwrap();
+
+        let summary = crate::backtest::trace::TraceSummary {
+            config: String::new(),
+            range_start: at(5, 14, 30),
+            range_end: at(5, 14, 32),
+            starting_cash: 1000.0,
+            final_value: 0.0,
+            return_percent: 0.0,
+            trade_count: 1,
+        };
+        let event = &recorder.build_trace(summary).events[0];
+        assert_eq!(event.strategy.as_deref(), Some("core"));
+        assert_eq!(event.tactic.as_deref(), Some("ETF"));
     }
 
     #[tokio::test]

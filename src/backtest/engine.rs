@@ -1,3 +1,4 @@
+use crate::backtest::trace::{self, TraceSummary};
 use crate::backtest::{BacktestResult, PreparedBacktest};
 use crate::clock::{Clock, Timing};
 use crate::error::GreedError;
@@ -29,6 +30,7 @@ pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, Gree
         platform,
         clock,
         starting_cash,
+        trace,
         ..
     } = prepared;
     if config.interval == 0 {
@@ -45,7 +47,7 @@ pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, Gree
     let step = ChronoDuration::seconds(config.interval as i64);
     let runner = GreedRunner::for_simulation(
         config,
-        config_path,
+        config_path.clone(),
         platform.clone(),
         Timing::simulated(clock.clone()),
     )
@@ -53,6 +55,7 @@ pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, Gree
 
     clock.set(range.start);
     let mut ticks = 0u64;
+    let mut last_snapshot_day = None;
     while clock.now() < range.end {
         if !platform.market_active_within(MARKET_CLOSED_AFTER) {
             let Some(next) = platform.next_bar_time() else {
@@ -64,6 +67,10 @@ pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, Gree
         runner.evaluate_strategies(Duration::ZERO).await;
         runner.discard_pending_quotes();
         ticks += 1;
+        if trace.is_some() && last_snapshot_day != Some(clock.now().date_naive()) {
+            platform.snapshot_equity();
+            last_snapshot_day = Some(clock.now().date_naive());
+        }
         clock.advance(step);
     }
 
@@ -71,12 +78,22 @@ pub async fn simulate(prepared: PreparedBacktest) -> Result<BacktestResult, Gree
     let final_value = platform.account().await?.equity;
     let trade_count = platform.order_count();
     info!("🧪 simulated {ticks} ticks");
-    Ok(BacktestResult::new(
-        range,
-        starting_cash,
-        final_value,
-        trade_count,
-    ))
+    let result = BacktestResult::new(range, starting_cash, final_value, trade_count);
+    if let Some((path, recorder)) = trace {
+        platform.snapshot_equity();
+        let summary = TraceSummary {
+            config: config_path.display().to_string(),
+            range_start: result.range.start,
+            range_end: result.range.end,
+            starting_cash,
+            final_value,
+            return_percent: result.return_percent,
+            trade_count,
+        };
+        trace::write(&path, &recorder.build_trace(summary))?;
+        info!("📝 wrote trace to {}", path.display());
+    }
+    Ok(result)
 }
 
 /// Ticks happen at `start + k * step`; this is the first one at or after `time`.
