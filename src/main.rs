@@ -4,6 +4,7 @@ use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, Config, ConfigBuilder, TermLogger, TerminalMode};
 
 use greed::backfill::backfill;
+use greed::backtest;
 use greed::error::GreedError;
 use greed::history_range::HistoryRange;
 use greed::platform::args::PlatformArgs;
@@ -66,6 +67,11 @@ async fn async_main(log_config: Config) {
             setup_logging(log_config);
             let report = backfill(args.into()).await.expect("backfill failed");
             println!("{report}");
+        }
+        Command::Backtest(args) => {
+            setup_logging(log_config);
+            let prepared = backtest::run(args.into()).await.expect("backtest failed");
+            println!("{prepared}");
         }
         Command::Info(args) => {
             print!("{}", cli::info::render(args.topic));

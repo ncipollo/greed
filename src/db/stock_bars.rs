@@ -47,6 +47,44 @@ pub fn insert_chunk(
     Ok(inserted)
 }
 
+/// Stored bars for `symbol` at `timeframe` with `range.start <= bar_time <
+/// range.end`, oldest first.
+pub fn load(
+    connection: &Connection,
+    symbol: &AssetSymbol,
+    timeframe: &TimeFrame,
+    range: &Range<DateTime<Utc>>,
+) -> Result<Vec<Bar>, GreedError> {
+    let mut statement = connection.prepare(
+        "SELECT bar_time, open, high, low, close, volume FROM stock_bars
+         WHERE symbol = ?1 AND timeframe = ?2 AND bar_time >= ?3 AND bar_time < ?4
+         ORDER BY bar_time",
+    )?;
+    let rows = statement.query_map(
+        params![
+            symbol.symbol,
+            timeframe.as_str(),
+            range.start.naive_utc(),
+            range.end.naive_utc()
+        ],
+        |row| {
+            Ok(Bar {
+                timestamp: row.get::<_, chrono::NaiveDateTime>(0)?.and_utc(),
+                open: row.get(1)?,
+                high: row.get(2)?,
+                low: row.get(3)?,
+                close: row.get(4)?,
+                volume: row.get::<_, u64>(5)? as usize,
+            })
+        },
+    )?;
+    let mut bars = Vec::new();
+    for row in rows {
+        bars.push(row?);
+    }
+    Ok(bars)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

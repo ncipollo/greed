@@ -19,6 +19,7 @@ mod analysis;
 mod assert;
 pub mod asset;
 pub mod backfill;
+pub mod backtest;
 mod bool;
 pub mod clock;
 pub mod config;
