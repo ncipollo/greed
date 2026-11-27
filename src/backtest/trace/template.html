@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Greed backtest trace</title>
+<style>
+:root {
+  --bg: #ffffff; --panel: #f5f6f8; --text: #1b1f24; --muted: #5d6673; --line: #d9dde3;
+  --accent: #2563eb; --buy: #15803d; --sell: #b45309; --reject: #b91c1c; --select: rgba(37, 99, 235, 0.15);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1216; --panel: #181c22; --text: #e6e9ee; --muted: #9aa3af; --line: #2a303a;
+    --accent: #60a5fa; --buy: #4ade80; --sell: #fbbf24; --reject: #f87171; --select: rgba(96, 165, 250, 0.2);
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px; background: var(--bg); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin-bottom: 16px; word-break: break-all; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+.stat .label { color: var(--muted); font-size: 12px; }
+.stat .value { font-size: 18px; font-variant-numeric: tabular-nums; }
+.pos { color: var(--buy); } .neg { color: var(--reject); }
+section { margin-bottom: 16px; }
+h2 { font-size: 14px; margin: 0 0 6px; color: var(--muted); font-weight: 600; }
+#chart { width: 100%; height: 220px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; cursor: crosshair; touch-action: none; user-select: none; }
+.hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.controls label { display: inline-flex; gap: 4px; align-items: center; }
+button, select, input[type="search"] { font: inherit; color: var(--text); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; }
+button { cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.5; cursor: default; }
+input[type="search"] { min-width: 180px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { background: var(--panel); position: sticky; top: 0; font-weight: 600; }
+td.num, th.num { text-align: right; }
+tr:last-child td { border-bottom: none; }
+.kind-trade.buy { color: var(--buy); } .kind-trade.sell { color: var(--sell); }
+.kind-rejected_order { color: var(--reject); }
+.empty { padding: 24px; text-align: center; color: var(--muted); }
+.pager { display: flex; gap: 8px; align-items: center; margin-top: 8px; color: var(--muted); }
+</style>
+</head>
+<body>
+<h1>Greed backtest trace</h1>
+<div class="sub" id="subtitle"></div>
+<div class="stats" id="stats"></div>
+
+<section>
+  <h2>Portfolio value</h2>
+  <svg id="chart" viewBox="0 0 900 220" preserveAspectRatio="none" role="img" aria-label="Portfolio value over time"></svg>
+  <div class="hint">Click a day, or drag across the chart, to jump to that period.</div>
+</section>
+
+<section>
+  <h2>Activity</h2>
+  <div class="controls">
+    <button id="prev" title="Previous period (Left arrow)">&#9664; Prev</button>
+    <select id="month" title="Jump to a month"></select>
+    <button id="next" title="Next period (Right arrow)">Next &#9654;</button>
+    <button id="clear-range" title="Show the whole run (Escape)">Whole run</button>
+    <span id="range-label" class="hint"></span>
+  </div>
+  <div class="controls">
+    <label><input type="checkbox" id="kind-trade" checked> Trades</label>
+    <label><input type="checkbox" id="kind-rejected_order" checked> Rejected</label>
+    <select id="symbol" title="Symbol"></select>
+    <select id="tactic" title="Tactic"></select>
+    <input type="search" id="search" placeholder="Search symbol, tactic, reason">
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Time (UTC)</th><th>Type</th><th>Strategy</th><th>Tactic</th><th>Symbol</th><th>Side</th>
+        <th class="num">Quantity</th><th class="num">Price</th><th class="num">Notional</th>
+        <th class="num">Cash after</th><th class="num">Value after</th><th>Reason</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>No activity matches these filters.</div>
+  </div>
+  <div class="pager">
+    <button id="page-prev">&#9664;</button>
+    <span id="page-label"></span>
+    <button id="page-next">&#9654;</button>
+  </div>
+</section>
+
+<script id="trace-data" type="application/json">/*__GREED_TRACE_DATA__*/</script>
+<script>
+(function () {
+  "use strict";
+  var PAGE_SIZE = 100;
+  var DAY = 86400000;
+  var trace = JSON.parse(document.getElementById("trace-data").textContent);
+  var summary = trace.summary;
+  var runStart = Date.parse(summary.range_start);
+  var runEnd = Date.parse(summary.range_end);
+  var events = trace.events.map(function (e) {
+    var copy = Object.assign({}, e);
+    copy.t = Date.parse(e.time);
+    return copy;
+  });
+  var equity = trace.equity.map(function (p) {
+    return { t: Date.parse(p.time), cash: p.cash, equity: p.equity };
+  });
+  var state = { trade: true, rejected_order: true, symbol: "", tactic: "", q: "", from: null, to: null, page: 0 };
+
+  function el(id) { return document.getElementById(id); }
+  function money(n) {
+    if (n === undefined || n === null) { return ""; }
+    return n.toLocaleString(undefined, { style: "currency", currency: "USD" });
+  }
+  function number(n) {
+    if (n === undefined || n === null) { return ""; }
+    return n.toLocaleString(undefined, { maximumFractionDigits: 6 });
+  }
+  function stamp(ms) { return new Date(ms).toISOString().replace("T", " ").slice(0, 16); }
+  function dayOf(ms) { return Math.floor(ms / DAY) * DAY; }
+  function monthStart(ms) { var d = new Date(ms); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); }
+  function nextMonth(ms) { var d = new Date(ms); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1); }
+  function monthLabel(ms) { return new Date(ms).toISOString().slice(0, 7); }
+  function node(tag, text, className) {
+    var n = document.createElement(tag);
+    if (text !== undefined && text !== null) { n.textContent = text; }
+    if (className) { n.className = className; }
+    return n;
+  }
+
+  // ---- header ----
+  function renderSummary() {
+    el("subtitle").textContent = summary.config + "  •  " + stamp(runStart) + " to " + stamp(runEnd) + " UTC";
+    var stats = [
+      ["Starting cash", money(summary.starting_cash), ""],
+      ["Final value", money(summary.final_value), ""],
+      ["Return", (summary.return_percent >= 0 ? "+" : "") + summary.return_percent.toFixed(2) + "%",
+        summary.return_percent >= 0 ? "pos" : "neg"],
+      ["Trades", String(summary.trade_count), ""]
+    ];
+    var box = el("stats");
+    stats.forEach(function (s) {
+      var card = node("div", null, "stat");
+      card.appendChild(node("div", s[0], "label"));
+      card.appendChild(node("div", s[1], "value " + s[2]));
+      box.appendChild(card);
+    });
+  }
+
+  // ---- equity chart ----
+  var W = 900, H = 220, PAD = { l: 8, r: 8, t: 12, b: 12 };
+  function xOf(t) {
+    var span = Math.max(runEnd - runStart, 1);
+    return PAD.l + ((t - runStart) / span) * (W - PAD.l - PAD.r);
+  }
+  function tOf(x) {
+    var span = Math.max(runEnd - runStart, 1);
+    return runStart + ((x - PAD.l) / (W - PAD.l - PAD.r)) * span;
+  }
+  function svg(tag, attrs) {
+    var n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.keys(attrs).forEach(function (k) {
+      var v = String(attrs[k]);
+      if (v.indexOf("var(") === 0) { n.style.setProperty(k, v); } else { n.setAttribute(k, v); }
+    });
+    return n;
+  }
+  function renderChart() {
+    var chart = el("chart");
+    while (chart.firstChild) { chart.removeChild(chart.firstChild); }
+    var values = equity.map(function (p) { return p.equity; });
+    if (values.length === 0) { return; }
+    var lo = Math.min.apply(null, values), hi = Math.max.apply(null, values);
+    if (hi === lo) { hi = lo + 1; }
+    function yOf(v) { return PAD.t + (1 - (v - lo) / (hi - lo)) * (H - PAD.t - PAD.b); }
+    if (state.from !== null) {
+      var x1 = xOf(state.from), x2 = xOf(state.to);
+      chart.appendChild(svg("rect", { x: x1, y: 0, width: Math.max(x2 - x1, 2), height: H, fill: "var(--select)" }));
+    }
+    var points = equity.map(function (p) { return xOf(p.t).toFixed(1) + "," + yOf(p.equity).toFixed(1); });
+    if (points.length === 1) { points.push(points[0]); }
+    chart.appendChild(svg("polyline", { points: points.join(" "), fill: "none", stroke: "var(--accent)",
+      "stroke-width": 2, "vector-effect": "non-scaling-stroke" }));
+    events.forEach(function (e) {
+      var color = e.kind === "rejected_order" ? "var(--reject)" : (e.side === "buy" ? "var(--buy)" : "var(--sell)");
+      chart.appendChild(svg("line", { x1: xOf(e.t), x2: xOf(e.t), y1: H - 10, y2: H, stroke: color,
+        "stroke-width": 1, "vector-effect": "non-scaling-stroke" }));
+    });
+  }
+  function chartTime(evt) {
+    var box = el("chart").getBoundingClientRect();
+    var x = ((evt.clientX - box.left) / box.width) * W;
+    return Math.min(Math.max(tOf(x), runStart), runEnd);
+  }
+  var dragStart = null;
+  el("chart").addEventListener("pointerdown", function (evt) {
+    dragStart = chartTime(evt);
+    el("chart").setPointerCapture(evt.pointerId);
+  });
+  el("chart").addEventListener("pointermove", function (evt) {
+    if (dragStart === null) { return; }
+    var now = chartTime(evt);
+    state.from = Math.min(dragStart, now);
+    state.to = Math.max(dragStart, now);
+    renderChart();
+  });
+  el("chart").addEventListener("pointercancel", function () { dragStart = null; renderChart(); });
+  el("chart").addEventListener("pointerup", function (evt) {
+    if (dragStart === null) { return; }
+    var end = chartTime(evt);
+    var moved = Math.abs(xOf(end) - xOf(dragStart)) > 4;
+    if (moved) {
+      setRange(Math.min(dragStart, end), Math.max(dragStart, end));
+    } else {
+      var day = dayOf(end);
+      setRange(day, day + DAY);
+    }
+    dragStart = null;
+  });
+
+  // ---- navigation ----
+  var months = [];
+  for (var m = monthStart(runStart); m <= runEnd; m = nextMonth(m)) { months.push(m); }
+  function renderMonthSelect() {
+    var select = el("month");
+    select.appendChild(node("option", "Jump to month…"));
+    select.firstChild.value = "";
+    months.forEach(function (m) {
+      var option = node("option", monthLabel(m));
+      option.value = String(m);
+      select.appendChild(option);
+    });
+  }
+  function setRange(from, to) {
+    state.from = from;
+    state.to = to;
+    state.page = 0;
+    update();
+  }
+  function shiftRange(direction) {
+    if (state.from === null) {
+      var first = monthStart(direction > 0 ? runStart : runEnd);
+      setRange(first, nextMonth(first));
+      return;
+    }
+    var span = state.to - state.from;
+    setRange(state.from + direction * span, state.to + direction * span);
+  }
+  el("month").addEventListener("change", function () {
+    if (el("month").value === "") { return; }
+    var start = Number(el("month").value);
+    setRange(start, nextMonth(start));
+  });
+  el("prev").addEventListener("click", function () { shiftRange(-1); });
+  el("next").addEventListener("click", function () { shiftRange(1); });
+  el("clear-range").addEventListener("click", function () { setRange(null, null); });
+  document.addEventListener("keydown", function (evt) {
+    var tag = evt.target && evt.target.tagName;
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") { return; }
+    if (evt.key === "ArrowLeft") { shiftRange(-1); }
+    else if (evt.key === "ArrowRight") { shiftRange(1); }
+    else if (evt.key === "Escape") { setRange(null, null); }
+  });
+
+  // ---- filters ----
+  function fillSelect(select, firstLabel, values) {
+    select.appendChild(node("option", firstLabel));
+    select.firstChild.value = "";
+    values.forEach(function (v) {
+      var option = node("option", v);
+      option.value = v;
+      select.appendChild(option);
+    });
+  }
+  function unique(values) {
+    return values.filter(function (v, i) { return v && values.indexOf(v) === i; }).sort();
+  }
+  function renderFilters() {
+    fillSelect(el("symbol"), "All symbols", unique(events.map(function (e) { return e.symbol; })));
+    fillSelect(el("tactic"), "All tactics", unique(events.map(function (e) { return e.tactic; })));
+  }
+  ["trade", "rejected_order"].forEach(function (kind) {
+    el("kind-" + kind).addEventListener("change", function () {
+      state[kind] = el("kind-" + kind).checked;
+      state.page = 0;
+      update();
+    });
+  });
+  el("symbol").addEventListener("change", function () { state.symbol = el("symbol").value; state.page = 0; update(); });
+  el("tactic").addEventListener("change", function () { state.tactic = el("tactic").value; state.page = 0; update(); });
+  el("search").addEventListener("input", function () { state.q = el("search").value; state.page = 0; update(); });
+  el("page-prev").addEventListener("click", function () { state.page -= 1; update(); });
+  el("page-next").addEventListener("click", function () { state.page += 1; update(); });
+
+  function matches(e) {
+    if (!state[e.kind]) { return false; }
+    if (state.symbol && e.symbol !== state.symbol) { return false; }
+    if (state.tactic && e.tactic !== state.tactic) { return false; }
+    if (state.from !== null && (e.t < state.from || e.t >= state.to)) { return false; }
+    if (state.q) {
+      var hay = [e.symbol, e.tactic, e.strategy, e.reason].join(" ").toLowerCase();
+      if (hay.indexOf(state.q.toLowerCase()) === -1) { return false; }
+    }
+    return true;
+  }
+
+  // ---- table ----
+  function renderRows(filtered) {
+    var pages = Math.max(Math.ceil(filtered.length / PAGE_SIZE), 1);
+    state.page = Math.min(Math.max(state.page, 0), pages - 1);
+    var from = state.page * PAGE_SIZE;
+    var visible = filtered.slice(from, from + PAGE_SIZE);
+    var body = el("rows");
+    while (body.firstChild) { body.removeChild(body.firstChild); }
+    visible.forEach(function (e) {
+      var row = document.createElement("tr");
+      var kindClass = "kind-" + e.kind + (e.kind === "trade" ? " " + e.side : "");
+      var cells = [
+        [stamp(e.t), ""], [e.kind === "trade" ? "Trade" : "Rejected", kindClass], [e.strategy || "", ""],
+        [e.tactic || "", ""], [e.symbol, ""], [e.side, kindClass],
+        [number(e.quantity), "num"], [money(e.price), "num"], [money(e.notional), "num"],
+        [money(e.cash_after), "num"], [money(e.equity_after), "num"], [e.reason || "", ""]
+      ];
+      cells.forEach(function (c) { row.appendChild(node("td", c[0], c[1])); });
+      body.appendChild(row);
+    });
+    el("empty").hidden = filtered.length !== 0;
+    el("page-prev").disabled = state.page === 0;
+    el("page-next").disabled = state.page >= pages - 1;
+    el("page-label").textContent = filtered.length === 0 ? "0 events"
+      : (from + 1) + "–" + (from + visible.length) + " of " + filtered.length + " events";
+  }
+
+  // ---- URL hash ----
+  function writeHash() {
+    var params = new URLSearchParams();
+    if (!state.trade) { params.set("trade", "0"); }
+    if (!state.rejected_order) { params.set("rejected", "0"); }
+    if (state.symbol) { params.set("symbol", state.symbol); }
+    if (state.tactic) { params.set("tactic", state.tactic); }
+    if (state.q) { params.set("q", state.q); }
+    if (state.from !== null) { params.set("from", String(Math.round(state.from))); params.set("to", String(Math.round(state.to))); }
+    if (state.page > 0) { params.set("page", String(state.page)); }
+    var text = params.toString();
+    history.replaceState(null, "", text ? "#" + text : location.pathname + location.search);
+  }
+  function readHash() {
+    var params = new URLSearchParams(location.hash.slice(1));
+    state.trade = params.get("trade") !== "0";
+    state.rejected_order = params.get("rejected") !== "0";
+    state.symbol = params.get("symbol") || "";
+    state.tactic = params.get("tactic") || "";
+    state.q = params.get("q") || "";
+    state.page = Number(params.get("page")) || 0;
+    var from = Number(params.get("from")), to = Number(params.get("to"));
+    if (params.has("from") && params.has("to") && isFinite(from) && isFinite(to)) { state.from = from; state.to = to; }
+  }
+  function syncControls() {
+    el("kind-trade").checked = state.trade;
+    el("kind-rejected_order").checked = state.rejected_order;
+    el("symbol").value = state.symbol;
+    el("tactic").value = state.tactic;
+    el("search").value = state.q;
+    el("range-label").textContent = state.from === null ? "Showing the whole run"
+      : "Showing " + stamp(state.from) + " to " + stamp(state.to);
+    el("clear-range").disabled = state.from === null;
+  }
+
+  function update() {
+    renderRows(events.filter(matches));
+    renderChart();
+    syncControls();
+    writeHash();
+  }
+
+  renderSummary();
+  renderMonthSelect();
+  renderFilters();
+  readHash();
+  update();
+  window.addEventListener("hashchange", function () { readHash(); update(); });
+})();
+</script>
+</body>
+</html>

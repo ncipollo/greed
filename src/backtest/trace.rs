@@ -1,3 +1,4 @@
+mod html;
 mod writer;
 
 pub use writer::{write, TraceFormat};

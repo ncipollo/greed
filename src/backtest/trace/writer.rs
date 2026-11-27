@@ -1,4 +1,4 @@
-use crate::backtest::trace::BacktestTrace;
+use crate::backtest::trace::{html, BacktestTrace};
 use crate::error::GreedError;
 use std::path::Path;
 
@@ -7,10 +7,12 @@ use std::path::Path;
 pub enum TraceFormat {
     Json,
     Toml,
+    /// A single self-contained page with a timeline, chart and filters.
+    Html,
 }
 
 impl TraceFormat {
-    /// `.json` or `.toml`, in any case. Checked before a backtest starts so a typo doesn't cost
+    /// `.json`, `.toml` or `.html`, in any case. Checked before a backtest starts so a typo doesn't cost
     /// a whole simulation.
     pub fn from_path(path: &Path) -> Result<Self, GreedError> {
         let extension = path
@@ -20,8 +22,9 @@ impl TraceFormat {
         match extension.as_deref() {
             Some("json") => Ok(Self::Json),
             Some("toml") => Ok(Self::Toml),
+            Some("html") => Ok(Self::Html),
             _ => Err(GreedError::new(&format!(
-                "can't tell the trace format of '{}': use a .json or .toml extension",
+                "can't tell the trace format of '{}': use a .json, .toml or .html extension",
                 path.display()
             ))),
         }
@@ -31,6 +34,7 @@ impl TraceFormat {
         match self {
             Self::Json => serde_json::to_string_pretty(trace).map_err(GreedError::from_display),
             Self::Toml => toml::to_string(trace).map_err(GreedError::from_display),
+            Self::Html => html::render(trace),
         }
     }
 }
@@ -79,6 +83,14 @@ mod test {
         assert_eq!(
             TraceFormat::from_path(Path::new("dir/out.Json")).unwrap(),
             TraceFormat::Json
+        );
+    }
+
+    #[test]
+    fn html_is_recognised_in_any_case() {
+        assert_eq!(
+            TraceFormat::from_path(Path::new("out.HTML")).unwrap(),
+            TraceFormat::Html
         );
     }
 
