@@ -55,6 +55,20 @@ tr:last-child td { border-bottom: none; }
 <div class="sub" id="subtitle"></div>
 <div class="stats" id="stats"></div>
 
+<section id="assumptions" hidden>
+  <h2>Assumptions</h2>
+  <div class="stats" id="assumption-list"></div>
+  <div id="unfilled" hidden>
+    <h2>Never filled</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Placed (UTC)</th><th>Strategy</th><th>Tactic</th><th>Symbol</th><th>Side</th><th class="num">Quantity</th><th class="num">Notional</th></tr></thead>
+        <tbody id="unfilled-rows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
 <section>
   <h2>Portfolio value</h2>
   <svg id="chart" viewBox="0 0 900 220" preserveAspectRatio="none" role="img" aria-label="Portfolio value over time"></svg>
@@ -153,6 +167,44 @@ tr:last-child td { border-bottom: none; }
       card.appendChild(node("div", s[1], "value " + s[2]));
       box.appendChild(card);
     });
+  }
+
+  // ---- assumptions ----
+  function renderAssumptions() {
+    var a = trace.assumptions;
+    if (!a) { return; }
+    var items = [
+      ["Fill rule", a.fill_rule],
+      ["Order types", a.order_types],
+      ["Fee per fill", money(a.fee)],
+      ["Slippage", a.slippage_bps + " bps"],
+      ["Strategy interval", a.interval_seconds + " s"],
+      ["Market closed after", a.market_closed_skip_minutes + " min without a bar"]
+    ];
+    var box = el("assumption-list");
+    items.forEach(function (item) {
+      var card = node("div", null, "stat");
+      card.appendChild(node("div", item[0], "label"));
+      card.appendChild(node("div", item[1], "value"));
+      box.appendChild(card);
+    });
+    var unfilled = a.unfilled_orders || [];
+    if (unfilled.length) {
+      var body = el("unfilled-rows");
+      unfilled.forEach(function (o) {
+        var row = node("tr");
+        row.appendChild(node("td", stamp(Date.parse(o.placed_at))));
+        row.appendChild(node("td", o.strategy || ""));
+        row.appendChild(node("td", o.tactic || ""));
+        row.appendChild(node("td", o.symbol));
+        row.appendChild(node("td", o.side));
+        row.appendChild(node("td", number(o.quantity), "num"));
+        row.appendChild(node("td", money(o.notional), "num"));
+        body.appendChild(row);
+      });
+      el("unfilled").hidden = false;
+    }
+    el("assumptions").hidden = false;
   }
 
   // ---- equity chart ----
@@ -382,6 +434,7 @@ tr:last-child td { border-bottom: none; }
   }
 
   renderSummary();
+  renderAssumptions();
   renderMonthSelect();
   renderFilters();
   readHash();

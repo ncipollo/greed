@@ -1,4 +1,4 @@
-use crate::backtest::trace::{self, TraceSummary};
+use crate::backtest::trace::{self, TraceAssumptions, TraceSummary};
 use crate::backtest::{BacktestResult, PreparedBacktest};
 use crate::clock::{Clock, Timing};
 use crate::error::GreedError;
@@ -48,6 +48,7 @@ pub async fn simulate(
             config.interval
         );
     }
+    let interval_seconds = config.interval;
     let step = ChronoDuration::seconds(config.interval as i64);
     let runner = GreedRunner::for_simulation(
         config,
@@ -104,6 +105,7 @@ pub async fn simulate(
         final_value,
         trade_count,
         platform.unfilled_orders(),
+        platform.costs(),
     );
     if let Some((path, recorder)) = trace {
         progress.phase(Phase::WritingTrace(path.clone()));
@@ -117,7 +119,18 @@ pub async fn simulate(
             return_percent: result.return_percent,
             trade_count,
         };
-        trace::write(&path, &recorder.build_trace(summary))?;
+        let costs = platform.costs();
+        let assumptions = TraceAssumptions {
+            fill_rule: "next bar open".to_string(),
+            order_types: "market only".to_string(),
+            fee: costs.fee,
+            slippage_bps: costs.slippage_bps,
+            starting_cash,
+            interval_seconds,
+            market_closed_skip_minutes: MARKET_CLOSED_AFTER.num_minutes(),
+            unfilled_orders: platform.unfilled_trace(),
+        };
+        trace::write(&path, &recorder.build_trace(summary, assumptions))?;
     }
     Ok(result)
 }

@@ -108,6 +108,8 @@ pub struct BacktestResult {
     pub trade_count: usize,
     /// Orders still waiting for a bar when the range ended; they never filled.
     pub unfilled_orders: usize,
+    /// The fee and slippage the run was simulated with.
+    pub costs: TradingCosts,
 }
 
 impl BacktestResult {
@@ -117,6 +119,7 @@ impl BacktestResult {
         final_value: f64,
         trade_count: usize,
         unfilled_orders: usize,
+        costs: TradingCosts,
     ) -> Self {
         Self {
             range,
@@ -125,6 +128,7 @@ impl BacktestResult {
             return_percent: (final_value - starting_cash) / starting_cash * 100.0,
             trade_count,
             unfilled_orders,
+            costs,
         }
     }
 }
@@ -139,6 +143,11 @@ impl Display for BacktestResult {
             self.range.end.format(format)
         )?;
         writeln!(f, "  starting cash: ${:.2}", self.starting_cash)?;
+        writeln!(
+            f,
+            "  assumptions:   fills at the next bar's open, fee ${:.2}, slippage {} bps",
+            self.costs.fee, self.costs.slippage_bps
+        )?;
         writeln!(f, "  trades:        {}", self.trade_count)?;
         if self.unfilled_orders > 0 {
             writeln!(f, "  unfilled:      {}", self.unfilled_orders)?;
@@ -735,6 +744,43 @@ do = { sell_all = true }
     }
 
     #[tokio::test]
+    async fn the_trace_and_summary_state_the_assumptions_used() {
+        let db_path = temp_db();
+        let config_path = always_buy_config();
+        let trace_path = std::env::temp_dir().join(format!("greed_trace_{}.json", Uuid::new_v4()));
+        let start = Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 1, 5, 15, 30, 0).unwrap();
+        seed_bars(&db_path, start, end);
+        let mut opts = simulation_options(config_path.clone(), db_path.clone());
+        opts.trace = Some(trace_path.clone());
+        opts.costs = TradingCosts {
+            fee: 1.5,
+            slippage_bps: 10.0,
+        };
+
+        let prepared = prepare(opts, now(), no_platform, &Progress::quiet())
+            .await
+            .unwrap();
+        let result = simulate(prepared, &Progress::quiet()).await.unwrap();
+
+        let trace: BacktestTrace =
+            serde_json::from_str(&std::fs::read_to_string(&trace_path).unwrap()).unwrap();
+        let assumptions = &trace.assumptions;
+        assert_eq!(assumptions.fill_rule, "next bar open");
+        assert_eq!(assumptions.fee, 1.5);
+        assert_eq!(assumptions.slippage_bps, 10.0);
+        assert_eq!(assumptions.starting_cash, DEFAULT_STARTING_CASH);
+        assert_eq!(assumptions.market_closed_skip_minutes, 15);
+        assert_eq!(assumptions.unfilled_orders.len(), result.unfilled_orders);
+        assert!(trace.events[0].fee == Some(1.5));
+        let text = result.to_string();
+        assert!(text.contains("fee $1.50, slippage 10 bps"), "{text}");
+        std::fs::remove_file(&db_path).ok();
+        std::fs::remove_file(&config_path).ok();
+        std::fs::remove_file(&trace_path).ok();
+    }
+
+    #[tokio::test]
     async fn an_unknown_trace_extension_fails_before_any_data_work() {
         let mut opts = options("config_single_tactic.toml", None);
         opts.trace = Some(PathBuf::from("out.txt"));
@@ -879,7 +925,8 @@ do = { sell_all = true }
         let range = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap()
             ..Utc.with_ymd_and_hms(2026, 2, 1, 0, 0, 0).unwrap();
 
-        let text = BacktestResult::new(range, 100_000.0, 105_000.0, 3, 0).to_string();
+        let text = BacktestResult::new(range, 100_000.0, 105_000.0, 3, 0, TradingCosts::default())
+            .to_string();
 
         assert!(text.contains("trades:        3"), "{text}");
         assert!(text.contains("+5.00%"), "{text}");

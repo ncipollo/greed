@@ -2,7 +2,9 @@ use crate::activity::{current_tactic, TacticContext};
 use crate::asset::AssetSymbol;
 use crate::backtest::market_data::MarketData;
 use crate::backtest::portfolio::Portfolio;
-use crate::backtest::trace::{EquityPoint, EventKind, TraceEvent, TraceRecorder, TraceSide};
+use crate::backtest::trace::{
+    EquityPoint, EventKind, TraceEvent, TraceRecorder, TraceSide, UnfilledOrder,
+};
 use crate::backtest::TradingCosts;
 use crate::clock::{Clock, SimulatedClock};
 use crate::error::GreedError;
@@ -171,6 +173,41 @@ impl BacktestPlatform {
                 );
             }
         }
+    }
+
+    /// The fee and slippage this run charges.
+    pub(crate) fn costs(&self) -> TradingCosts {
+        self.costs
+    }
+
+    /// The orders still waiting for a bar, as the trace records them.
+    pub(crate) fn unfilled_trace(&self) -> Vec<UnfilledOrder> {
+        self.pending
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|pending| {
+                let (quantity, notional) = match pending.request.amount {
+                    Amount::Quantity(quantity) => (Some(quantity), None),
+                    Amount::Notional(notional) => (None, Some(notional)),
+                };
+                let context = pending.context.as_ref();
+                UnfilledOrder {
+                    placed_at: pending.placed_at,
+                    symbol: pending.request.symbol.symbol.clone(),
+                    side: match pending.request.side {
+                        OrderSide::Buy => TraceSide::Buy,
+                        OrderSide::Sell => TraceSide::Sell,
+                    },
+                    quantity,
+                    notional,
+                    strategy: context
+                        .map(|c| c.strategy.clone())
+                        .filter(|s| !s.is_empty()),
+                    tactic: context.map(|c| c.tactic.clone()).filter(|t| !t.is_empty()),
+                }
+            })
+            .collect()
     }
 
     /// How many orders are still waiting for a bar to fill them.
@@ -433,6 +470,7 @@ impl FinancialPlatform for BacktestPlatform {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::backtest::trace::TraceAssumptions;
     use crate::platform::bar::time_frame::TimeFrame;
     use crate::platform::bar::Bar;
     use chrono::{DateTime, Duration, TimeZone, Utc};
@@ -742,7 +780,7 @@ mod test {
         platform.fill_due_orders();
         platform.snapshot_equity();
 
-        let trace = recorder.build_trace(trace_summary());
+        let trace = recorder.build_trace(trace_summary(), TraceAssumptions::default());
         assert_eq!(trace.events.len(), 2);
         assert_eq!(trace.events[0].kind, EventKind::Trade);
         assert_eq!(trace.events[0].time, at(5, 14, 31));
@@ -850,7 +888,9 @@ mod test {
         clock.set(at(5, 14, 31));
         platform.fill_due_orders();
 
-        let event = &recorder.build_trace(trace_summary()).events[0];
+        let event = &recorder
+            .build_trace(trace_summary(), TraceAssumptions::default())
+            .events[0];
         assert_eq!(event.fee, Some(1.0));
         // $1.05 a share on 2 shares.
         assert!((event.slippage.unwrap() - 2.1).abs() < 1e-9);
@@ -866,7 +906,9 @@ mod test {
         clock.set(at(5, 14, 31));
         platform.fill_due_orders();
 
-        let event = &recorder.build_trace(trace_summary()).events[0];
+        let event = &recorder
+            .build_trace(trace_summary(), TraceAssumptions::default())
+            .events[0];
         assert_eq!(event.fee, None);
         assert_eq!(event.slippage, None);
     }
@@ -882,7 +924,7 @@ mod test {
             .await;
 
         assert!(result.is_err());
-        let trace = recorder.build_trace(trace_summary());
+        let trace = recorder.build_trace(trace_summary(), TraceAssumptions::default());
         assert_eq!(trace.events.len(), 1);
         assert_eq!(trace.events[0].kind, EventKind::RejectedOrder);
         assert_eq!(trace.events[0].time, at(5, 14, 0));
@@ -904,7 +946,9 @@ mod test {
         // The fill happens later, outside the tactic's scope.
         platform.fill_due_orders();
 
-        let event = &recorder.build_trace(trace_summary()).events[0];
+        let event = &recorder
+            .build_trace(trace_summary(), TraceAssumptions::default())
+            .events[0];
         assert_eq!(event.strategy.as_deref(), Some("core"));
         assert_eq!(event.tactic.as_deref(), Some("ETF"));
     }
