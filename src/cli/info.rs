@@ -13,6 +13,10 @@ pub struct InfoArgs {
 pub enum InfoTopic {
     /// What greed is, its CLI commands, and run vs server
     General,
+    /// greed backfill: fetch historical minute bars into DuckDB
+    Backfill,
+    /// greed backtest: replay a config against stored bars
+    Backtest,
     /// Top-level greed.toml config
     Config,
     /// Simple CSV config format
@@ -58,6 +62,45 @@ mod test {
             .map(|t| t.name())
             .collect();
         assert_eq!(enum_names, greed::info::names());
+    }
+
+    /// Every flag and positional of `backfill` and `backtest` must appear on its page, so a
+    /// new option can't ship undocumented.
+    #[test]
+    fn command_pages_document_every_argument() {
+        use clap::CommandFactory;
+        let cli = Cli::command();
+        for name in ["backfill", "backtest"] {
+            let page = greed::info::topic(name).expect("topic exists");
+            let command = cli.find_subcommand(name).expect("subcommand exists");
+            for arg in command.get_arguments() {
+                if arg.get_id() == "help" {
+                    continue;
+                }
+                let needle = match arg.get_long() {
+                    Some(long) => format!("--{long}"),
+                    None => arg
+                        .get_value_names()
+                        .and_then(|names| names.first())
+                        .map(|name| name.to_string())
+                        .unwrap_or_else(|| arg.get_id().to_string()),
+                };
+                assert!(
+                    page.contains(&needle),
+                    "`greed info {name}` is missing {needle}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn general_points_at_the_command_pages_instead_of_repeating_them() {
+        let general = greed::info::topic("general").expect("topic exists");
+
+        assert!(general.contains("greed info backfill"));
+        assert!(general.contains("greed info backtest"));
+        assert!(!general.contains("--slippage-bps"));
+        assert!(!general.contains("BACKTEST MODEL"));
     }
 
     #[test]

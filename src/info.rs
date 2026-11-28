@@ -6,6 +6,8 @@
 //! config types and check every `ServerRoute` appears in the server page.
 
 mod agent;
+mod backfill;
+mod backtest;
 mod config;
 mod config_simple;
 mod general;
@@ -24,6 +26,16 @@ pub const TOPICS: &[Topic] = &[
         name: "general",
         summary: "What greed is, its CLI commands, and run vs server",
         render: general::render,
+    },
+    Topic {
+        name: "backfill",
+        summary: "greed backfill: fetch historical minute bars into DuckDB",
+        render: backfill::render,
+    },
+    Topic {
+        name: "backtest",
+        summary: "greed backtest: replay a config against stored bars",
+        render: backtest::render,
     },
     Topic {
         name: "config",
