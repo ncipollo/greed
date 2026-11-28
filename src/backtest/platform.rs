@@ -3,6 +3,7 @@ use crate::asset::AssetSymbol;
 use crate::backtest::market_data::MarketData;
 use crate::backtest::portfolio::Portfolio;
 use crate::backtest::trace::{EquityPoint, EventKind, TraceEvent, TraceRecorder, TraceSide};
+use crate::backtest::TradingCosts;
 use crate::clock::{Clock, SimulatedClock};
 use crate::error::GreedError;
 use crate::num::NumFromFloat;
@@ -40,6 +41,7 @@ pub struct BacktestPlatform {
     portfolio: Mutex<Portfolio>,
     trace: Option<TraceRecorder>,
     pending: Mutex<Vec<PendingOrder>>,
+    costs: TradingCosts,
 }
 
 /// A market order waiting for the next bar to open.
@@ -54,6 +56,9 @@ struct PendingOrder {
 /// A filled order plus what the account looked like right after.
 struct Fill {
     time: DateTime<Utc>,
+    fee: f64,
+    /// What slippage cost in total: the price moved against the trader times the quantity.
+    slippage: f64,
     order: Order,
     quantity: f64,
     price: f64,
@@ -69,7 +74,14 @@ impl BacktestPlatform {
             portfolio: Mutex::new(Portfolio::new(starting_cash)),
             trace: None,
             pending: Mutex::new(Vec::new()),
+            costs: TradingCosts::default(),
         }
+    }
+
+    /// Charges a fee per fill and moves every fill price against the trader by the slippage.
+    pub fn with_costs(mut self, costs: TradingCosts) -> Self {
+        self.costs = costs;
+        self
     }
 
     /// Records every fill and rejection (and daily equity points) to `recorder`.
@@ -171,17 +183,23 @@ impl BacktestPlatform {
         &self,
         pending: &PendingOrder,
         time: DateTime<Utc>,
-        price: f64,
+        open: f64,
     ) -> Result<Fill, GreedError> {
         let request = &pending.request;
+        let slip = self.costs.slippage_bps / 10_000.0;
+        let price = match request.side {
+            OrderSide::Buy => open * (1.0 + slip),
+            OrderSide::Sell => open * (1.0 - slip),
+        };
+        let fee = self.costs.fee;
         let quantity = match request.amount {
             Amount::Quantity(quantity) => quantity,
             Amount::Notional(notional) => notional / price,
         };
         let mut portfolio = self.portfolio.lock().unwrap();
         match request.side {
-            OrderSide::Buy => portfolio.buy(&request.symbol, quantity, price)?,
-            OrderSide::Sell => portfolio.sell(&request.symbol, quantity, price)?,
+            OrderSide::Buy => portfolio.buy(&request.symbol, quantity, price, fee)?,
+            OrderSide::Sell => portfolio.sell(&request.symbol, quantity, price, fee)?,
         }
         let order = Order {
             status: Status::Filled,
@@ -194,6 +212,8 @@ impl BacktestPlatform {
         portfolio.record_order(order.clone());
         Ok(Fill {
             time,
+            fee,
+            slippage: (price - open).abs() * quantity,
             order,
             quantity,
             price,
@@ -236,6 +256,8 @@ impl BacktestPlatform {
                 side,
                 quantity: Some(fill.quantity),
                 price: Some(fill.price),
+                fee: Some(fill.fee).filter(|fee| *fee > 0.0),
+                slippage: Some(fill.slippage).filter(|cost| *cost > 0.0),
                 notional: Some(fill.quantity * fill.price),
                 cash_after: fill.cash_after,
                 equity_after: fill.equity_after,
@@ -252,6 +274,8 @@ impl BacktestPlatform {
                     side,
                     quantity,
                     price: self.price_of(&request.symbol),
+                    fee: None,
+                    slippage: None,
                     notional,
                     cash_after: portfolio.cash(),
                     equity_after: portfolio.equity(|symbol| self.mark_price(symbol)),
@@ -734,6 +758,117 @@ mod test {
             .contains("insufficient"));
         assert_eq!(trace.equity.len(), 1);
         assert_eq!(trace.equity[0].equity, 790.0 + 220.0);
+    }
+
+    fn costly_platform(costs: TradingCosts) -> (BacktestPlatform, Arc<SimulatedClock>) {
+        let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
+        (platform.with_costs(costs), clock)
+    }
+
+    #[tokio::test]
+    async fn slippage_makes_a_buy_fill_higher_and_a_sell_lower() {
+        let costs = TradingCosts {
+            fee: 0.0,
+            slippage_bps: 100.0,
+        };
+        let (platform, clock) = costly_platform(costs);
+        buy(&platform, 2.0).await;
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
+        platform
+            .place_order(OrderRequest::market_order_sell(
+                vti(),
+                Amount::Quantity(2.0),
+            ))
+            .await
+            .unwrap();
+        clock.set(at(5, 14, 32));
+        platform.fill_due_orders();
+
+        let orders = platform.recent_orders().await.unwrap();
+        // Opens are $105 and $115; 1% slippage moves them against the trader.
+        assert_eq!(orders[0].average_fill_price, Some(Num::from_f64(106.05)));
+        assert_eq!(orders[1].average_fill_price, Some(Num::from_f64(113.85)));
+    }
+
+    #[tokio::test]
+    async fn a_fee_is_charged_on_every_fill() {
+        let costs = TradingCosts {
+            fee: 2.0,
+            slippage_bps: 0.0,
+        };
+        let (platform, clock) = costly_platform(costs);
+        buy(&platform, 2.0).await;
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
+        assert_eq!(platform.account().await.unwrap().cash, 1000.0 - 210.0 - 2.0);
+        platform
+            .place_order(OrderRequest::market_order_sell(
+                vti(),
+                Amount::Quantity(2.0),
+            ))
+            .await
+            .unwrap();
+
+        clock.set(at(5, 14, 32));
+        platform.fill_due_orders();
+
+        assert_eq!(
+            platform.account().await.unwrap().cash,
+            1000.0 - 210.0 - 2.0 + 230.0 - 2.0
+        );
+    }
+
+    #[tokio::test]
+    async fn a_buy_is_rejected_when_cash_cannot_cover_price_plus_fee() {
+        let costs = TradingCosts {
+            fee: 5.0,
+            slippage_bps: 0.0,
+        };
+        let (platform, clock) = platform_at(at(5, 14, 30), 212.0);
+        let platform = platform.with_costs(costs);
+        buy(&platform, 2.0).await;
+
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
+
+        assert_eq!(platform.order_count(), 0);
+        assert_eq!(platform.account().await.unwrap().cash, 212.0);
+    }
+
+    #[tokio::test]
+    async fn the_trace_records_fee_and_slippage_on_a_fill() {
+        let recorder = TraceRecorder::new();
+        let costs = TradingCosts {
+            fee: 1.0,
+            slippage_bps: 100.0,
+        };
+        let (platform, clock) = costly_platform(costs);
+        let platform = platform.with_trace(recorder.clone());
+        buy(&platform, 2.0).await;
+
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
+
+        let event = &recorder.build_trace(trace_summary()).events[0];
+        assert_eq!(event.fee, Some(1.0));
+        // $1.05 a share on 2 shares.
+        assert!((event.slippage.unwrap() - 2.1).abs() < 1e-9);
+    }
+
+    #[tokio::test]
+    async fn free_trading_leaves_fee_and_slippage_off_the_trace() {
+        let recorder = TraceRecorder::new();
+        let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
+        let platform = platform.with_trace(recorder.clone());
+        buy(&platform, 2.0).await;
+
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
+
+        let event = &recorder.build_trace(trace_summary()).events[0];
+        assert_eq!(event.fee, None);
+        assert_eq!(event.slippage, None);
     }
 
     #[tokio::test]

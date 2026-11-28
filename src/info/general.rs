@@ -19,6 +19,7 @@ COMMANDS
                                              [--dry-run] [-v]
   greed backtest <CONFIG>                    replay a config against stored minute bars and print
                                              the final value [--starting-cash N] [--trace FILE]
+                                             [--fee DOLLARS] [--slippage-bps BPS]
                                              [--from D --to D | --days N --months N --years N] [-v]
   greed completions <shell>                  print shell completions
   greed info [TOPIC]                         this documentation
@@ -57,6 +58,9 @@ BACKFILL AND BACKTEST OUTPUT
   Orders are market orders that fill at the open of the next bar after the
   decision (never at the price the strategy just saw); orders with no later
   bar are reported as unfilled.
+  --fee charges a flat dollar fee on every fill, and --slippage-bps moves every
+  fill price against you (up for buys, down for sells; 100 bps = 1%). Both
+  default to 0, a free and frictionless market.
 
 TOPICS
   Run `greed info` for the list of topics.

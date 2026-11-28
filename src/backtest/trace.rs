@@ -58,6 +58,12 @@ pub struct TraceEvent {
     pub price: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notional: Option<f64>,
+    /// The fee charged on a fill, when there was one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fee: Option<f64>,
+    /// What slippage cost on a fill (price moved against the trader times quantity), when any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slippage: Option<f64>,
     /// Cash once the event is done.
     pub cash_after: f64,
     /// Cash plus holdings once the event is done.
@@ -137,6 +143,8 @@ pub(crate) mod fixture {
                     quantity: Some(100.0),
                     price: Some(100.0),
                     notional: Some(10_000.0),
+                    fee: None,
+                    slippage: None,
                     cash_after: 90_000.0,
                     equity_after: 100_000.0,
                     reason: None,
@@ -151,6 +159,8 @@ pub(crate) mod fixture {
                     quantity: Some(1.0),
                     price: None,
                     notional: None,
+                    fee: None,
+                    slippage: None,
                     cash_after: 90_000.0,
                     equity_after: 101_000.0,
                     reason: Some("can't sell 1 of SPY: only 0 held".to_string()),
