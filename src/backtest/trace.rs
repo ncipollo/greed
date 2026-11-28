@@ -12,6 +12,9 @@ use std::sync::{Arc, Mutex};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BacktestTrace {
     pub summary: TraceSummary,
+    /// The rules this run was simulated under, so runs can be compared on a clear basis.
+    #[serde(default)]
+    pub assumptions: TraceAssumptions,
     pub events: Vec<TraceEvent>,
     /// Portfolio value over time, one point per simulated day plus the end.
     pub equity: Vec<EquityPoint>,
@@ -26,6 +29,44 @@ pub struct TraceSummary {
     pub final_value: f64,
     pub return_percent: f64,
     pub trade_count: usize,
+}
+
+/// How a backtest simulated the market. Plain values come first because TOML needs them before
+/// its nested tables.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct TraceAssumptions {
+    /// When an order fills and at what price.
+    pub fill_rule: String,
+    /// Which order types the simulation supports.
+    pub order_types: String,
+    /// Flat fee charged on each fill, in dollars.
+    pub fee: f64,
+    /// How far each fill price moved against the trader, in basis points.
+    pub slippage_bps: f64,
+    pub starting_cash: f64,
+    /// Seconds between simulated strategy runs.
+    pub interval_seconds: u64,
+    /// Minutes without any bar after which the market counts as closed and is skipped.
+    pub market_closed_skip_minutes: i64,
+    /// Orders placed but never filled because no later bar existed.
+    #[serde(default)]
+    pub unfilled_orders: Vec<UnfilledOrder>,
+}
+
+/// An order still waiting for a bar when the run ended.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct UnfilledOrder {
+    pub placed_at: DateTime<Utc>,
+    pub symbol: String,
+    pub side: TraceSide,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quantity: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notional: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub strategy: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tactic: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -105,10 +146,15 @@ impl TraceRecorder {
         self.log.lock().unwrap().equity.push(point);
     }
 
-    pub fn build_trace(&self, summary: TraceSummary) -> BacktestTrace {
+    pub fn build_trace(
+        &self,
+        summary: TraceSummary,
+        assumptions: TraceAssumptions,
+    ) -> BacktestTrace {
         let log = self.log.lock().unwrap();
         BacktestTrace {
             summary,
+            assumptions,
             events: log.events.clone(),
             equity: log.equity.clone(),
         }
@@ -131,6 +177,24 @@ pub(crate) mod fixture {
                 final_value: 101_000.0,
                 return_percent: 1.0,
                 trade_count: 2,
+            },
+            assumptions: TraceAssumptions {
+                fill_rule: "next bar open".to_string(),
+                order_types: "market only".to_string(),
+                fee: 1.0,
+                slippage_bps: 5.0,
+                starting_cash: 100_000.0,
+                interval_seconds: 60,
+                market_closed_skip_minutes: 15,
+                unfilled_orders: vec![UnfilledOrder {
+                    placed_at: at(15),
+                    symbol: "VTI".to_string(),
+                    side: TraceSide::Buy,
+                    quantity: None,
+                    notional: Some(500.0),
+                    strategy: Some("core".to_string()),
+                    tactic: None,
+                }],
             },
             events: vec![
                 TraceEvent {
@@ -187,6 +251,16 @@ mod test {
     use super::*;
 
     #[test]
+    fn a_trace_from_before_assumptions_still_parses() {
+        let mut value = serde_json::to_value(fixture::trace()).unwrap();
+        value.as_object_mut().unwrap().remove("assumptions");
+
+        let parsed: BacktestTrace = serde_json::from_value(value).unwrap();
+
+        assert_eq!(parsed.assumptions, TraceAssumptions::default());
+    }
+
+    #[test]
     fn the_recorder_shares_its_log_between_clones() {
         let recorder = TraceRecorder::new();
         let clone = recorder.clone();
@@ -195,7 +269,7 @@ mod test {
         clone.record_event(trace.events[0].clone());
         recorder.record_equity(trace.equity[0].clone());
 
-        let built = recorder.build_trace(trace.summary.clone());
+        let built = recorder.build_trace(trace.summary.clone(), trace.assumptions.clone());
         assert_eq!(built.events, vec![trace.events[0].clone()]);
         assert_eq!(built.equity, vec![trace.equity[0].clone()]);
     }

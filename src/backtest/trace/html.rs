@@ -71,7 +71,16 @@ mod test {
 
         assert!(html.starts_with("<!doctype html>"));
         for id in [
-            "stats", "chart", "month", "symbol", "tactic", "search", "rows",
+            "stats",
+            "assumptions",
+            "assumption-list",
+            "unfilled-rows",
+            "chart",
+            "month",
+            "symbol",
+            "tactic",
+            "search",
+            "rows",
         ] {
             assert!(html.contains(&format!("id=\"{id}\"")), "missing #{id}");
         }

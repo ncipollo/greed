@@ -55,12 +55,21 @@ BACKFILL AND BACKTEST OUTPUT
   Without -v, backtest hides the strategies' per-tick logging; -v keeps it.
   A backtest backfills any missing data first, then simulates with no network
   calls and no database writes. --trace accepts .json, .toml or .html.
-  Orders are market orders that fill at the open of the next bar after the
-  decision (never at the price the strategy just saw); orders with no later
-  bar are reported as unfilled.
+
+BACKTEST MODEL
+  The simulated clock steps through the range at the config's interval.
+  Strategies only ever see bars at or before the clock, never later ones.
+  Orders are market orders. An order placed at one step waits and fills at the
+  open of the first bar after the decision, never at the price the strategy
+  just saw; cash and holdings are checked when it fills, not when it is placed.
+  Limit, stop and bracket orders are rejected as unsupported.
   --fee charges a flat dollar fee on every fill, and --slippage-bps moves every
   fill price against you (up for buys, down for sells; 100 bps = 1%). Both
   default to 0, a free and frictionless market.
+  Stretches with no bar for 15 minutes count as the market being closed and are
+  skipped. Orders still waiting when the range ends are reported as unfilled.
+  The result prints these assumptions, and the trace records them (fill rule,
+  fee, slippage, interval, closed-market rule and each unfilled order).
 
 TOPICS
   Run `greed info` for the list of topics.
