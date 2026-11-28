@@ -1,6 +1,6 @@
 use crate::cli::time_range::TimeRangeArgs;
 use clap::Args;
-use greed::backtest::{BacktestOptions, TraceFormat, DEFAULT_STARTING_CASH};
+use greed::backtest::{BacktestOptions, TraceFormat, TradingCosts, DEFAULT_STARTING_CASH};
 use std::path::PathBuf;
 
 #[derive(Args, Debug)]
@@ -13,6 +13,12 @@ pub struct BacktestArgs {
     /// Starting buying power for the simulated account.
     #[arg(long, value_name = "DOLLARS", default_value_t = DEFAULT_STARTING_CASH)]
     pub starting_cash: f64,
+    /// A flat fee charged on every simulated fill. Defaults to none.
+    #[arg(long, value_name = "DOLLARS", default_value_t = 0.0)]
+    pub fee: f64,
+    /// How far every fill price moves against you, in basis points (1 bp = 0.01%). Defaults to none.
+    #[arg(long, value_name = "BPS", default_value_t = 0.0)]
+    pub slippage_bps: f64,
     /// Override the path to the DuckDB database file holding backfilled bars. Defaults to
     /// "greed.duckdb" next to the config file, like `run` and `backfill`.
     #[arg(long, value_name = "PATH")]
@@ -40,6 +46,10 @@ impl From<BacktestArgs> for BacktestOptions {
             config_path: value.config_path,
             time_range: (&value.time_range).into(),
             starting_cash: value.starting_cash,
+            costs: TradingCosts {
+                fee: value.fee,
+                slippage_bps: value.slippage_bps,
+            },
             db_path: value.db_path,
             trace: value.trace,
         }
@@ -86,6 +96,18 @@ mod test {
     fn rejects_a_trace_with_an_unknown_extension_before_running() {
         assert!(parse(&["greed.toml", "--trace", "out.txt"]).is_err());
         assert!(parse(&["greed.toml", "--trace", "out"]).is_err());
+    }
+
+    #[test]
+    fn costs_default_to_none_and_parse_when_given() {
+        let none: BacktestOptions = parse(&["greed.toml"]).expect("parse").into();
+        let costs: BacktestOptions = parse(&["greed.toml", "--fee", "1.5", "--slippage-bps", "10"])
+            .expect("parse")
+            .into();
+
+        assert_eq!(none.costs, greed::backtest::TradingCosts::default());
+        assert_eq!(costs.costs.fee, 1.5);
+        assert_eq!(costs.costs.slippage_bps, 10.0);
     }
 
     #[test]

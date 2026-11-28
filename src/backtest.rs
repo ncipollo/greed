@@ -45,12 +45,37 @@ use std::sync::Arc;
 /// Starting buying power when `--starting-cash` isn't given.
 pub const DEFAULT_STARTING_CASH: f64 = 100_000.0;
 
+/// What trading costs in a backtest. Both default to zero, which is a free, frictionless market.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct TradingCosts {
+    /// A flat dollar fee charged on every fill.
+    pub fee: f64,
+    /// How far every fill price moves against the trader, in basis points (1 bp = 0.01%).
+    pub slippage_bps: f64,
+}
+
+impl TradingCosts {
+    fn validate(&self) -> Result<(), GreedError> {
+        if !self.fee.is_finite() || self.fee < 0.0 {
+            return Err(GreedError::new("the fee must be zero or a positive amount"));
+        }
+        if !self.slippage_bps.is_finite() || self.slippage_bps < 0.0 {
+            return Err(GreedError::new(
+                "slippage must be zero or a positive number of basis points",
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// Everything `greed backtest` needs, as parsed from the command line.
 #[derive(Debug)]
 pub struct BacktestOptions {
     pub config_path: PathBuf,
     pub time_range: TimeRangeSpec,
     pub starting_cash: f64,
+    /// Overrides the DuckDB path    /// Fee and slippage applied to every simulated fill.
+    pub costs: TradingCosts,
     /// Overrides the DuckDB path; defaults next to the config like `run` and `backfill`.
     pub db_path: Option<PathBuf>,
     /// Where to write a trace of every simulated trade (`.json`, `.toml` or `.html`).
@@ -151,6 +176,7 @@ where
     if options.starting_cash <= 0.0 || !options.starting_cash.is_finite() {
         return Err(GreedError::new("starting cash must be a positive amount"));
     }
+    options.costs.validate()?;
     let config = read_config_from_path(&options.config_path).await?;
     reject_unsimulatable(&config)?;
     if config.interval == 0 {
@@ -188,7 +214,8 @@ where
     let trace = options
         .trace
         .map(|path| (path, trace::TraceRecorder::new()));
-    let mut platform = BacktestPlatform::new(clock.clone(), market, options.starting_cash);
+    let mut platform = BacktestPlatform::new(clock.clone(), market, options.starting_cash)
+        .with_costs(options.costs);
     if let Some((_, recorder)) = &trace {
         platform = platform.with_trace(recorder.clone());
     }
@@ -252,6 +279,7 @@ mod test {
                 ..Default::default()
             },
             starting_cash: DEFAULT_STARTING_CASH,
+            costs: TradingCosts::default(),
             db_path,
             trace: None,
         }
@@ -298,6 +326,35 @@ mod test {
         };
 
         assert!(reject_unsimulatable(&config).is_ok());
+    }
+
+    #[tokio::test]
+    async fn rejects_negative_or_non_finite_costs() {
+        for costs in [
+            TradingCosts {
+                fee: -1.0,
+                slippage_bps: 0.0,
+            },
+            TradingCosts {
+                fee: f64::NAN,
+                slippage_bps: 0.0,
+            },
+            TradingCosts {
+                fee: 0.0,
+                slippage_bps: -5.0,
+            },
+            TradingCosts {
+                fee: 0.0,
+                slippage_bps: f64::INFINITY,
+            },
+        ] {
+            let mut opts = options("config_single_tactic.toml", None);
+            opts.costs = costs;
+
+            let result = prepare(opts, now(), no_platform, &Progress::quiet()).await;
+
+            assert!(result.is_err(), "{costs:?}");
+        }
     }
 
     #[tokio::test]
@@ -445,6 +502,7 @@ do = { sell_all = true }
                 ..Default::default()
             },
             starting_cash: DEFAULT_STARTING_CASH,
+            costs: TradingCosts::default(),
             db_path: Some(db_path),
             trace: None,
         }
@@ -621,6 +679,7 @@ do = { sell_all = true }
                     ..Default::default()
                 },
                 starting_cash: DEFAULT_STARTING_CASH,
+                costs: TradingCosts::default(),
                 db_path: Some(db_path.clone()),
                 trace: None,
             },

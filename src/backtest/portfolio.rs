@@ -49,15 +49,16 @@ impl Portfolio {
         self.orders.push(order);
     }
 
-    /// Buys `quantity` shares at `price`. Fails, changing nothing, when cash
-    /// can't cover it.
+    /// Buys `quantity` shares at `price`, paying `fee` on top. Fails, changing nothing, when
+    /// cash can't cover both.
     pub fn buy(
         &mut self,
         symbol: &AssetSymbol,
         quantity: f64,
         price: f64,
+        fee: f64,
     ) -> Result<(), GreedError> {
-        let cost = quantity * price;
+        let cost = quantity * price + fee;
         if quantity <= 0.0 || price <= 0.0 {
             return Err(GreedError::new(
                 "backtest buy needs a positive quantity and price",
@@ -74,19 +75,20 @@ impl Portfolio {
             quantity: 0.0,
             average_cost: 0.0,
         });
-        let total_cost = holding.average_cost * holding.quantity + cost;
+        let total_cost = holding.average_cost * holding.quantity + quantity * price;
         holding.quantity += quantity;
         holding.average_cost = total_cost / holding.quantity;
         Ok(())
     }
 
-    /// Sells `quantity` shares at `price`. Fails, changing nothing, when more
-    /// is sold than is held (no shorting).
+    /// Sells `quantity` shares at `price`, paying `fee` out of the proceeds. Fails, changing
+    /// nothing, when more is sold than is held (no shorting).
     pub fn sell(
         &mut self,
         symbol: &AssetSymbol,
         quantity: f64,
         price: f64,
+        fee: f64,
     ) -> Result<(), GreedError> {
         if quantity <= 0.0 || price <= 0.0 {
             return Err(GreedError::new(
@@ -100,7 +102,7 @@ impl Portfolio {
                 symbol.symbol
             )));
         }
-        self.cash += quantity * price;
+        self.cash += quantity * price - fee;
         if let Some(holding) = self.holdings.get_mut(symbol) {
             holding.quantity -= quantity;
             if holding.quantity <= QUANTITY_TOLERANCE {
@@ -134,10 +136,40 @@ mod test {
     }
 
     #[test]
+    fn a_buy_fee_comes_out_of_cash_on_top_of_the_price() {
+        let mut portfolio = Portfolio::new(1000.0);
+
+        portfolio.buy(&vti(), 2.0, 100.0, 5.0).unwrap();
+
+        assert_eq!(portfolio.cash(), 795.0);
+        assert_eq!(portfolio.holding(&vti()).unwrap().average_cost, 100.0);
+    }
+
+    #[test]
+    fn a_buy_must_cover_the_fee_too() {
+        let mut portfolio = Portfolio::new(200.0);
+
+        let result = portfolio.buy(&vti(), 2.0, 100.0, 1.0);
+
+        assert!(result.is_err());
+        assert_eq!(portfolio.cash(), 200.0);
+    }
+
+    #[test]
+    fn a_sell_fee_comes_out_of_the_proceeds() {
+        let mut portfolio = Portfolio::new(1000.0);
+        portfolio.buy(&vti(), 2.0, 100.0, 0.0).unwrap();
+
+        portfolio.sell(&vti(), 2.0, 110.0, 5.0).unwrap();
+
+        assert_eq!(portfolio.cash(), 800.0 + 220.0 - 5.0);
+    }
+
+    #[test]
     fn buy_moves_cash_into_a_holding() {
         let mut portfolio = Portfolio::new(1000.0);
 
-        portfolio.buy(&vti(), 2.0, 100.0).unwrap();
+        portfolio.buy(&vti(), 2.0, 100.0, 0.0).unwrap();
 
         assert_eq!(portfolio.cash(), 800.0);
         assert_eq!(
@@ -153,8 +185,8 @@ mod test {
     fn buying_again_averages_the_cost() {
         let mut portfolio = Portfolio::new(1000.0);
 
-        portfolio.buy(&vti(), 2.0, 100.0).unwrap();
-        portfolio.buy(&vti(), 2.0, 200.0).unwrap();
+        portfolio.buy(&vti(), 2.0, 100.0, 0.0).unwrap();
+        portfolio.buy(&vti(), 2.0, 200.0, 0.0).unwrap();
 
         let holding = portfolio.holding(&vti()).unwrap();
         assert_eq!(holding.quantity, 4.0);
@@ -166,7 +198,7 @@ mod test {
     fn buy_beyond_cash_fails_and_changes_nothing() {
         let mut portfolio = Portfolio::new(100.0);
 
-        let result = portfolio.buy(&vti(), 2.0, 100.0);
+        let result = portfolio.buy(&vti(), 2.0, 100.0, 0.0);
 
         assert!(result.is_err());
         assert_eq!(portfolio.cash(), 100.0);
@@ -176,9 +208,9 @@ mod test {
     #[test]
     fn sell_returns_cash_and_reduces_the_holding() {
         let mut portfolio = Portfolio::new(1000.0);
-        portfolio.buy(&vti(), 4.0, 100.0).unwrap();
+        portfolio.buy(&vti(), 4.0, 100.0, 0.0).unwrap();
 
-        portfolio.sell(&vti(), 1.0, 150.0).unwrap();
+        portfolio.sell(&vti(), 1.0, 150.0, 0.0).unwrap();
 
         assert_eq!(portfolio.cash(), 750.0);
         assert_eq!(portfolio.holding(&vti()).unwrap().quantity, 3.0);
@@ -188,9 +220,9 @@ mod test {
     #[test]
     fn selling_everything_removes_the_holding() {
         let mut portfolio = Portfolio::new(1000.0);
-        portfolio.buy(&vti(), 4.0, 100.0).unwrap();
+        portfolio.buy(&vti(), 4.0, 100.0, 0.0).unwrap();
 
-        portfolio.sell(&vti(), 4.0, 100.0).unwrap();
+        portfolio.sell(&vti(), 4.0, 100.0, 0.0).unwrap();
 
         assert!(portfolio.holding(&vti()).is_none());
         assert_eq!(portfolio.cash(), 1000.0);
@@ -199,9 +231,9 @@ mod test {
     #[test]
     fn selling_more_than_held_fails_and_changes_nothing() {
         let mut portfolio = Portfolio::new(1000.0);
-        portfolio.buy(&vti(), 1.0, 100.0).unwrap();
+        portfolio.buy(&vti(), 1.0, 100.0, 0.0).unwrap();
 
-        let result = portfolio.sell(&vti(), 2.0, 100.0);
+        let result = portfolio.sell(&vti(), 2.0, 100.0, 0.0);
 
         assert!(result.is_err());
         assert_eq!(portfolio.cash(), 900.0);
@@ -212,15 +244,15 @@ mod test {
     fn selling_an_unheld_symbol_fails() {
         let mut portfolio = Portfolio::new(1000.0);
 
-        assert!(portfolio.sell(&vti(), 1.0, 100.0).is_err());
+        assert!(portfolio.sell(&vti(), 1.0, 100.0, 0.0).is_err());
     }
 
     #[test]
     fn fractional_shares_are_supported() {
         let mut portfolio = Portfolio::new(1000.0);
 
-        portfolio.buy(&vti(), 0.5, 100.0).unwrap();
-        portfolio.sell(&vti(), 0.5, 100.0).unwrap();
+        portfolio.buy(&vti(), 0.5, 100.0, 0.0).unwrap();
+        portfolio.sell(&vti(), 0.5, 100.0, 0.0).unwrap();
 
         assert!(portfolio.holding(&vti()).is_none());
     }
@@ -228,7 +260,7 @@ mod test {
     #[test]
     fn equity_marks_holdings_to_market() {
         let mut portfolio = Portfolio::new(1000.0);
-        portfolio.buy(&vti(), 2.0, 100.0).unwrap();
+        portfolio.buy(&vti(), 2.0, 100.0, 0.0).unwrap();
 
         let equity = portfolio.equity(|_| Some(150.0));
 
@@ -238,7 +270,7 @@ mod test {
     #[test]
     fn equity_falls_back_to_cost_without_a_price() {
         let mut portfolio = Portfolio::new(1000.0);
-        portfolio.buy(&vti(), 2.0, 100.0).unwrap();
+        portfolio.buy(&vti(), 2.0, 100.0, 0.0).unwrap();
 
         assert_eq!(portfolio.equity(|_| None), 1000.0);
     }
