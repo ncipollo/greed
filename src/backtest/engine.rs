@@ -74,6 +74,7 @@ pub async fn simulate(
             clock.set(first_tick_at_or_after(range.start, step, next));
             continue;
         }
+        platform.fill_due_orders();
         runner.evaluate_strategies(Duration::ZERO).await;
         ticks += 1;
         if progress.is_verbose() {
@@ -97,7 +98,13 @@ pub async fn simulate(
         progress.month_done(done.into_progress(final_value));
     }
     log::debug!("simulated {ticks} ticks");
-    let result = BacktestResult::new(range, starting_cash, final_value, trade_count);
+    let result = BacktestResult::new(
+        range,
+        starting_cash,
+        final_value,
+        trade_count,
+        platform.unfilled_orders(),
+    );
     if let Some((path, recorder)) = trace {
         progress.phase(Phase::WritingTrace(path.clone()));
         platform.snapshot_equity();

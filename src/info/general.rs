@@ -54,6 +54,9 @@ BACKFILL AND BACKTEST OUTPUT
   Without -v, backtest hides the strategies' per-tick logging; -v keeps it.
   A backtest backfills any missing data first, then simulates with no network
   calls and no database writes. --trace accepts .json, .toml or .html.
+  Orders are market orders that fill at the open of the next bar after the
+  decision (never at the price the strategy just saw); orders with no later
+  bar are reported as unfilled.
 
 TOPICS
   Run `greed info` for the list of topics.

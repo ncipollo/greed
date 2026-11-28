@@ -58,6 +58,12 @@ impl MarketData {
             .min()
     }
 
+    /// The first bar for `symbol` strictly after `time`: where an order placed at `time` fills.
+    pub fn first_bar_after(&self, symbol: &AssetSymbol, time: DateTime<Utc>) -> Option<&Bar> {
+        let bars = self.minute_bars.get(symbol)?;
+        bars.get(bars.partition_point(|bar| bar.timestamp <= time))
+    }
+
     /// The newest close at or before `now` however old, for valuing holdings (unlike
     /// `latest_bar`, which refuses stale prices because they're not safe to trade on).
     pub fn last_close(&self, symbol: &AssetSymbol, now: DateTime<Utc>) -> Option<f64> {

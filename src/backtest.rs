@@ -81,6 +81,8 @@ pub struct BacktestResult {
     pub final_value: f64,
     pub return_percent: f64,
     pub trade_count: usize,
+    /// Orders still waiting for a bar when the range ended; they never filled.
+    pub unfilled_orders: usize,
 }
 
 impl BacktestResult {
@@ -89,6 +91,7 @@ impl BacktestResult {
         starting_cash: f64,
         final_value: f64,
         trade_count: usize,
+        unfilled_orders: usize,
     ) -> Self {
         Self {
             range,
@@ -96,6 +99,7 @@ impl BacktestResult {
             final_value,
             return_percent: (final_value - starting_cash) / starting_cash * 100.0,
             trade_count,
+            unfilled_orders,
         }
     }
 }
@@ -111,6 +115,9 @@ impl Display for BacktestResult {
         )?;
         writeln!(f, "  starting cash: ${:.2}", self.starting_cash)?;
         writeln!(f, "  trades:        {}", self.trade_count)?;
+        if self.unfilled_orders > 0 {
+            writeln!(f, "  unfilled:      {}", self.unfilled_orders)?;
+        }
         writeln!(f, "  return:        {:+.2}%", self.return_percent)?;
         write!(f, "Final value: ${:.2}", self.final_value)
     }
@@ -392,6 +399,16 @@ do = { sell_all = true }
 
     /// Minute bars 14:30..=15:30 on Monday 2026-01-05 at $100, then $110 from 15:00.
     fn seed_bars(db_path: &Path, range_start: DateTime<Utc>, range_end: DateTime<Utc>) {
+        seed_bars_opening_above_close(db_path, range_start, range_end, 0.0);
+    }
+
+    /// Like `seed_bars`, with every bar opening `open_premium` above its close.
+    fn seed_bars_opening_above_close(
+        db_path: &Path,
+        range_start: DateTime<Utc>,
+        range_end: DateTime<Utc>,
+        open_premium: f64,
+    ) {
         let first = Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap();
         let switch = Utc.with_ymd_and_hms(2026, 1, 5, 15, 0, 0).unwrap();
         let bars: Vec<Bar> = (0..=60)
@@ -400,8 +417,8 @@ do = { sell_all = true }
                 let price = if timestamp < switch { 100.0 } else { 110.0 };
                 Bar {
                     timestamp,
-                    open: price,
-                    high: price,
+                    open: price + open_premium,
+                    high: price + open_premium,
                     low: price,
                     close: price,
                     volume: 1,
@@ -473,6 +490,39 @@ do = { sell_all = true }
         assert!((result.return_percent - 1.0).abs() < 1e-9);
         std::fs::remove_file(&db_path).ok();
         std::fs::remove_file(&config_path).ok();
+    }
+
+    #[tokio::test]
+    async fn orders_fill_at_the_next_bars_open_not_the_decisions_close() {
+        let start = Utc.with_ymd_and_hms(2026, 1, 5, 14, 30, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 1, 5, 15, 30, 0).unwrap();
+        let mut finals = Vec::new();
+
+        for premium in [0.0, 2.0] {
+            let db_path = temp_db();
+            let config_path = always_buy_config();
+            seed_bars_opening_above_close(&db_path, start, end, premium);
+            let prepared = prepare(
+                simulation_options(config_path.clone(), db_path.clone()),
+                now(),
+                no_platform,
+                &Progress::quiet(),
+            )
+            .await
+            .unwrap();
+            finals.push(
+                simulate(prepared, &Progress::quiet())
+                    .await
+                    .unwrap()
+                    .final_value,
+            );
+            std::fs::remove_file(&db_path).ok();
+            std::fs::remove_file(&config_path).ok();
+        }
+
+        // The price rises during the run, so paying more at the open leaves fewer shares to
+        // revalue: the result must depend on the open, not just the close.
+        assert!(finals[1] < finals[0], "{finals:?}");
     }
 
     #[tokio::test]
@@ -770,7 +820,7 @@ do = { sell_all = true }
         let range = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap()
             ..Utc.with_ymd_and_hms(2026, 2, 1, 0, 0, 0).unwrap();
 
-        let text = BacktestResult::new(range, 100_000.0, 105_000.0, 3).to_string();
+        let text = BacktestResult::new(range, 100_000.0, 105_000.0, 3, 0).to_string();
 
         assert!(text.contains("trades:        3"), "{text}");
         assert!(text.contains("+5.00%"), "{text}");
