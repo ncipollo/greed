@@ -1,3 +1,4 @@
+use crate::activity::{current_tactic, TacticContext};
 use crate::asset::AssetSymbol;
 use crate::backtest::market_data::MarketData;
 use crate::backtest::portfolio::Portfolio;
@@ -20,6 +21,7 @@ use crate::platform::request::OrderRequest;
 use crate::platform::side::Side;
 use crate::platform::FinancialPlatform;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use num_decimal::Num;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
@@ -27,7 +29,8 @@ use uuid::Uuid;
 /// A simulated brokerage: prices come from stored historical bars at the
 /// simulated clock's current time, and the account lives in memory.
 ///
-/// v1 order support: market orders fill immediately at the latest close.
+/// v1 order support: market orders wait and fill at the open of the first bar after the one the
+/// strategy decided on, so a decision never trades at a price it could not yet act on.
 /// Limit, stop, stop-limit and trailing-stop orders, and bracket legs
 /// (`stop_loss`/`take_profit`), are rejected as unsupported rather than
 /// silently mis-simulated.
@@ -36,10 +39,21 @@ pub struct BacktestPlatform {
     market: MarketData,
     portfolio: Mutex<Portfolio>,
     trace: Option<TraceRecorder>,
+    pending: Mutex<Vec<PendingOrder>>,
+}
+
+/// A market order waiting for the next bar to open.
+struct PendingOrder {
+    order: Order,
+    request: OrderRequest,
+    placed_at: DateTime<Utc>,
+    /// The tactic that placed it, so the fill is credited to it later.
+    context: Option<TacticContext>,
 }
 
 /// A filled order plus what the account looked like right after.
 struct Fill {
+    time: DateTime<Utc>,
     order: Order,
     quantity: f64,
     price: f64,
@@ -54,6 +68,7 @@ impl BacktestPlatform {
             market,
             portfolio: Mutex::new(Portfolio::new(starting_cash)),
             trace: None,
+            pending: Mutex::new(Vec::new()),
         }
     }
 
@@ -100,12 +115,65 @@ impl BacktestPlatform {
             .map(|bar| bar.close)
     }
 
-    /// Fills a market order at the current price, or says why it can't.
-    fn fill(&self, request: &OrderRequest) -> Result<Fill, GreedError> {
+    /// Checks an order can be placed now: a supported type and a current price to size it from.
+    fn validate(&self, request: &OrderRequest) -> Result<(), GreedError> {
         Self::reject_unsupported(request)?;
-        let price = self.price_of(&request.symbol).ok_or_else(|| {
+        self.price_of(&request.symbol).ok_or_else(|| {
             GreedError::new(&format!("no current price for {}", request.symbol.symbol))
         })?;
+        Ok(())
+    }
+
+    /// Fills every pending order whose next bar has opened by the simulated now, at that bar's
+    /// open and in the order they were placed. An order the account can no longer afford is
+    /// rejected at this point; no cash is held back when an order is placed.
+    pub(crate) fn fill_due_orders(&self) {
+        let now = self.clock.now();
+        let due: Vec<(PendingOrder, DateTime<Utc>, f64)> = {
+            let mut pending = self.pending.lock().unwrap();
+            let mut due = Vec::new();
+            let mut waiting = Vec::new();
+            for order in pending.drain(..) {
+                let next = self
+                    .market
+                    .first_bar_after(&order.request.symbol, order.placed_at)
+                    .filter(|bar| bar.timestamp <= now)
+                    .map(|bar| (bar.timestamp, bar.open));
+                match next {
+                    Some((time, open)) => due.push((order, time, open)),
+                    None => waiting.push(order),
+                }
+            }
+            *pending = waiting;
+            due
+        };
+        for (pending, time, open) in due {
+            let result = self.execute(&pending, time, open);
+            if let Some(trace) = &self.trace {
+                self.record_outcome(
+                    trace,
+                    &pending.request,
+                    time,
+                    pending.context.clone(),
+                    &result,
+                );
+            }
+        }
+    }
+
+    /// How many orders are still waiting for a bar to fill them.
+    pub fn unfilled_orders(&self) -> usize {
+        self.pending.lock().unwrap().len()
+    }
+
+    /// Fills a pending market order at `price`, or says why it can't.
+    fn execute(
+        &self,
+        pending: &PendingOrder,
+        time: DateTime<Utc>,
+        price: f64,
+    ) -> Result<Fill, GreedError> {
+        let request = &pending.request;
         let quantity = match request.amount {
             Amount::Quantity(quantity) => quantity,
             Amount::Notional(notional) => notional / price,
@@ -115,24 +183,17 @@ impl BacktestPlatform {
             OrderSide::Buy => portfolio.buy(&request.symbol, quantity, price)?,
             OrderSide::Sell => portfolio.sell(&request.symbol, quantity, price)?,
         }
-        let now = self.clock.now();
         let order = Order {
-            id: Id::Uuid(Uuid::new_v4()),
             status: Status::Filled,
-            created_at: now,
-            submitted_at: Some(now),
-            filled_at: Some(now),
-            symbol: request.symbol.clone(),
-            amount: request.amount.clone(),
+            updated_at: Some(time),
+            filled_at: Some(time),
             filled_quantity: Num::from_f64(quantity),
-            order_type: OrderType::Market,
-            side: request.side,
-            time_in_force: request.time_in_force,
             average_fill_price: Some(Num::from_f64(price)),
-            ..Default::default()
+            ..pending.order.clone()
         };
         portfolio.record_order(order.clone());
         Ok(Fill {
+            time,
             order,
             quantity,
             price,
@@ -146,9 +207,10 @@ impl BacktestPlatform {
         &self,
         trace: &TraceRecorder,
         request: &OrderRequest,
+        time: DateTime<Utc>,
+        context: Option<TacticContext>,
         result: &Result<Fill, GreedError>,
     ) {
-        let context = crate::activity::current_tactic();
         let (strategy, tactic) = match context {
             Some(c) => (
                 Some(c.strategy).filter(|s| !s.is_empty()),
@@ -166,7 +228,7 @@ impl BacktestPlatform {
         };
         let event = match result {
             Ok(fill) => TraceEvent {
-                time: self.clock.now(),
+                time: fill.time,
                 kind: EventKind::Trade,
                 strategy,
                 tactic,
@@ -182,7 +244,7 @@ impl BacktestPlatform {
             Err(error) => {
                 let portfolio = self.portfolio.lock().unwrap();
                 TraceEvent {
-                    time: self.clock.now(),
+                    time,
                     kind: EventKind::RejectedOrder,
                     strategy,
                     tactic,
@@ -271,11 +333,33 @@ impl FinancialPlatform for BacktestPlatform {
     }
 
     async fn place_order(&self, request: OrderRequest) -> Result<Order, GreedError> {
-        let result = self.fill(&request);
-        if let Some(trace) = &self.trace {
-            self.record_outcome(trace, &request, &result);
+        let now = self.clock.now();
+        if let Err(error) = self.validate(&request) {
+            let result = Err(error);
+            if let Some(trace) = &self.trace {
+                self.record_outcome(trace, &request, now, current_tactic(), &result);
+            }
+            return result.map(|fill: Fill| fill.order);
         }
-        result.map(|fill| fill.order)
+        let order = Order {
+            id: Id::Uuid(Uuid::new_v4()),
+            status: Status::New,
+            created_at: now,
+            submitted_at: Some(now),
+            symbol: request.symbol.clone(),
+            amount: request.amount.clone(),
+            order_type: OrderType::Market,
+            side: request.side,
+            time_in_force: request.time_in_force,
+            ..Default::default()
+        };
+        self.pending.lock().unwrap().push(PendingOrder {
+            order: order.clone(),
+            request,
+            placed_at: now,
+            context: current_tactic(),
+        });
+        Ok(order)
     }
 
     async fn positions(&self) -> Result<Vec<Position>, GreedError> {
@@ -304,13 +388,21 @@ impl FinancialPlatform for BacktestPlatform {
         Ok(positions)
     }
 
-    /// Market orders fill immediately, so nothing is ever left open.
+    /// Orders placed but not yet filled.
     async fn open_orders(&self) -> Result<Vec<Order>, GreedError> {
-        Ok(Vec::new())
+        Ok(self
+            .pending
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|pending| pending.order.clone())
+            .collect())
     }
 
     async fn recent_orders(&self) -> Result<Vec<Order>, GreedError> {
-        Ok(self.portfolio.lock().unwrap().orders().to_vec())
+        let mut orders = self.portfolio.lock().unwrap().orders().to_vec();
+        orders.extend(self.open_orders().await?);
+        Ok(orders)
     }
 }
 
@@ -333,7 +425,7 @@ mod test {
     fn bar(time: DateTime<Utc>, close: f64) -> Bar {
         Bar {
             timestamp: time,
-            open: close,
+            open: close - 5.0,
             high: close,
             low: close,
             close,
@@ -341,7 +433,8 @@ mod test {
         }
     }
 
-    /// VTI closes at $100 at 14:30, $110 at 14:31 and $120 at 14:32 on Monday.
+    /// VTI closes at $100 at 14:30, $110 at 14:31 and $120 at 14:32 on Monday, each bar opening $5
+    /// below its close.
     fn platform_at(now: DateTime<Utc>, cash: f64) -> (BacktestPlatform, Arc<SimulatedClock>) {
         let market = MarketData::new(HashMap::from([(
             vti(),
@@ -423,94 +516,135 @@ mod test {
         assert_eq!(bars.bars[0].close, 120.0);
     }
 
-    #[tokio::test]
-    async fn market_buy_by_quantity_fills_at_the_current_close() {
-        let (platform, _) = platform_at(at(5, 14, 30), 1000.0);
-
-        let order = platform
-            .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(2.0)))
-            .await
-            .unwrap();
-
-        assert_eq!(order.status, Status::Filled);
-        assert_eq!(order.filled_quantity, Num::from_f64(2.0));
-        assert_eq!(order.average_fill_price, Some(Num::from_f64(100.0)));
-        let account = platform.account().await.unwrap();
-        assert_eq!(account.cash, 800.0);
-        assert_eq!(account.market_value_long, 200.0);
-        assert_eq!(account.equity, 1000.0);
-    }
-
-    #[tokio::test]
-    async fn notional_buy_converts_to_fractional_quantity() {
-        let (platform, _) = platform_at(at(5, 14, 30), 1000.0);
-
+    async fn buy(platform: &BacktestPlatform, quantity: f64) -> Order {
         platform
             .place_order(OrderRequest::market_order_buy(
                 vti(),
-                Amount::Notional(50.0),
+                Amount::Quantity(quantity),
+            ))
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_market_buy_waits_for_the_next_bar() {
+        let (platform, _) = platform_at(at(5, 14, 30), 1000.0);
+
+        let order = buy(&platform, 2.0).await;
+        platform.fill_due_orders();
+
+        assert_eq!(order.status, Status::New);
+        assert_eq!(platform.account().await.unwrap().cash, 1000.0);
+        assert_eq!(platform.open_orders().await.unwrap().len(), 1);
+        assert_eq!(platform.unfilled_orders(), 1);
+        assert!(platform.positions().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_market_buy_fills_at_the_next_bars_open() {
+        let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
+        buy(&platform, 2.0).await;
+
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
+
+        let filled = &platform.recent_orders().await.unwrap()[0];
+        assert_eq!(filled.status, Status::Filled);
+        assert_eq!(filled.filled_quantity, Num::from_f64(2.0));
+        assert_eq!(filled.average_fill_price, Some(Num::from_f64(105.0)));
+        assert_eq!(filled.filled_at, Some(at(5, 14, 31)));
+        let account = platform.account().await.unwrap();
+        assert_eq!(account.cash, 790.0);
+        assert_eq!(account.market_value_long, 220.0);
+        assert!(platform.open_orders().await.unwrap().is_empty());
+        assert_eq!(platform.order_count(), 1);
+    }
+
+    #[tokio::test]
+    async fn a_late_tick_still_fills_at_the_open_of_the_bar_after_the_decision() {
+        let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
+        buy(&platform, 2.0).await;
+
+        clock.set(at(5, 14, 32));
+        platform.fill_due_orders();
+
+        let filled = &platform.recent_orders().await.unwrap()[0];
+        assert_eq!(filled.average_fill_price, Some(Num::from_f64(105.0)));
+        assert_eq!(filled.filled_at, Some(at(5, 14, 31)));
+    }
+
+    #[tokio::test]
+    async fn notional_buy_converts_to_quantity_at_the_fill_price() {
+        let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
+        platform
+            .place_order(OrderRequest::market_order_buy(
+                vti(),
+                Amount::Notional(52.5),
             ))
             .await
             .unwrap();
 
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
+
         let positions = platform.positions().await.unwrap();
         assert_eq!(positions.len(), 1);
         assert_eq!(positions[0].quantity, 0.5);
-        assert_eq!(platform.account().await.unwrap().cash, 950.0);
+        assert_eq!(platform.account().await.unwrap().cash, 947.5);
     }
 
     #[tokio::test]
     async fn equity_marks_positions_at_the_current_price() {
         let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
-        platform
-            .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(2.0)))
-            .await
-            .unwrap();
+        buy(&platform, 2.0).await;
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
 
-        clock.advance(Duration::minutes(2));
+        clock.set(at(5, 14, 32));
 
         let account = platform.account().await.unwrap();
-        assert_eq!(account.equity, 800.0 + 240.0);
+        assert_eq!(account.equity, 790.0 + 240.0);
         let position = &platform.positions().await.unwrap()[0];
-        assert_eq!(position.unrealized_gain_total, Some(40.0));
+        assert_eq!(position.unrealized_gain_total, Some(30.0));
     }
 
     #[tokio::test]
-    async fn buying_more_than_buying_power_is_rejected() {
-        let (platform, _) = platform_at(at(5, 14, 30), 100.0);
+    async fn buying_more_than_buying_power_is_rejected_when_it_fills() {
+        let (platform, clock) = platform_at(at(5, 14, 30), 100.0);
+        buy(&platform, 2.0).await;
 
-        let result = platform
-            .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(2.0)))
-            .await;
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
 
-        assert!(result.is_err());
         assert_eq!(platform.account().await.unwrap().cash, 100.0);
         assert!(platform.recent_orders().await.unwrap().is_empty());
+        assert_eq!(platform.unfilled_orders(), 0);
     }
 
     #[tokio::test]
-    async fn selling_more_than_held_is_rejected() {
-        let (platform, _) = platform_at(at(5, 14, 30), 1000.0);
-
-        let result = platform
+    async fn selling_more_than_held_is_rejected_when_it_fills() {
+        let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
+        platform
             .place_order(OrderRequest::market_order_sell(
                 vti(),
                 Amount::Quantity(1.0),
             ))
-            .await;
+            .await
+            .unwrap();
 
-        assert!(result.is_err());
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
+
+        assert!(platform.recent_orders().await.unwrap().is_empty());
+        assert_eq!(platform.account().await.unwrap().cash, 1000.0);
     }
 
     #[tokio::test]
-    async fn selling_returns_cash_at_the_current_price() {
+    async fn selling_returns_cash_at_the_next_open() {
         let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
-        platform
-            .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(2.0)))
-            .await
-            .unwrap();
-        clock.advance(Duration::minutes(2));
-
+        buy(&platform, 2.0).await;
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
         platform
             .place_order(OrderRequest::market_order_sell(
                 vti(),
@@ -519,46 +653,43 @@ mod test {
             .await
             .unwrap();
 
-        assert_eq!(platform.account().await.unwrap().cash, 1040.0);
+        clock.set(at(5, 14, 32));
+        platform.fill_due_orders();
+
+        assert_eq!(platform.account().await.unwrap().cash, 790.0 + 230.0);
         assert!(platform.positions().await.unwrap().is_empty());
         assert_eq!(platform.recent_orders().await.unwrap().len(), 2);
         assert!(platform.open_orders().await.unwrap().is_empty());
     }
 
     #[tokio::test]
+    async fn an_order_on_the_last_bar_never_fills() {
+        let (platform, clock) = platform_at(at(5, 14, 32), 1000.0);
+        buy(&platform, 1.0).await;
+
+        clock.set(at(5, 14, 40));
+        platform.fill_due_orders();
+
+        assert_eq!(platform.unfilled_orders(), 1);
+        assert_eq!(platform.order_count(), 0);
+        assert_eq!(platform.account().await.unwrap().cash, 1000.0);
+    }
+
+    #[tokio::test]
     async fn holdings_stay_marked_at_the_last_close_when_the_price_goes_stale() {
         let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
-        platform
-            .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(2.0)))
-            .await
-            .unwrap();
+        buy(&platform, 2.0).await;
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
 
         clock.set(at(9, 14, 30));
 
         assert!(platform.latest_quotes(&[vti()]).await.unwrap().is_empty());
-        assert_eq!(platform.account().await.unwrap().equity, 800.0 + 240.0);
+        assert_eq!(platform.account().await.unwrap().equity, 790.0 + 240.0);
     }
 
-    #[tokio::test]
-    async fn the_trace_records_fills_and_rejections() {
-        let recorder = TraceRecorder::new();
-        let (platform, _) = platform_at(at(5, 14, 30), 1000.0);
-        let platform = platform.with_trace(recorder.clone());
-
-        platform
-            .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(2.0)))
-            .await
-            .unwrap();
-        let rejected = platform
-            .place_order(OrderRequest::market_order_buy(
-                vti(),
-                Amount::Notional(5000.0),
-            ))
-            .await;
-        platform.snapshot_equity();
-
-        assert!(rejected.is_err());
-        let summary = crate::backtest::trace::TraceSummary {
+    fn trace_summary() -> crate::backtest::trace::TraceSummary {
+        crate::backtest::trace::TraceSummary {
             config: String::new(),
             range_start: at(5, 14, 30),
             range_end: at(5, 14, 32),
@@ -566,12 +697,34 @@ mod test {
             final_value: 0.0,
             return_percent: 0.0,
             trade_count: 1,
-        };
-        let trace = recorder.build_trace(summary);
+        }
+    }
+
+    #[tokio::test]
+    async fn the_trace_records_fills_and_rejections() {
+        let recorder = TraceRecorder::new();
+        let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
+        let platform = platform.with_trace(recorder.clone());
+        buy(&platform, 2.0).await;
+        platform
+            .place_order(OrderRequest::market_order_buy(
+                vti(),
+                Amount::Notional(5000.0),
+            ))
+            .await
+            .unwrap();
+
+        clock.set(at(5, 14, 31));
+        platform.fill_due_orders();
+        platform.snapshot_equity();
+
+        let trace = recorder.build_trace(trace_summary());
         assert_eq!(trace.events.len(), 2);
         assert_eq!(trace.events[0].kind, EventKind::Trade);
-        assert_eq!(trace.events[0].cash_after, 800.0);
-        assert_eq!(trace.events[0].equity_after, 1000.0);
+        assert_eq!(trace.events[0].time, at(5, 14, 31));
+        assert_eq!(trace.events[0].price, Some(105.0));
+        assert_eq!(trace.events[0].cash_after, 790.0);
+        assert_eq!(trace.events[0].equity_after, 790.0 + 220.0);
         assert_eq!(trace.events[1].kind, EventKind::RejectedOrder);
         assert_eq!(trace.events[1].notional, Some(5000.0));
         assert!(trace.events[1]
@@ -580,38 +733,43 @@ mod test {
             .unwrap()
             .contains("insufficient"));
         assert_eq!(trace.equity.len(), 1);
-        assert_eq!(trace.equity[0].equity, 1000.0);
+        assert_eq!(trace.equity[0].equity, 790.0 + 220.0);
     }
 
     #[tokio::test]
-    async fn the_trace_names_the_running_tactic() {
+    async fn an_order_that_cannot_be_placed_is_traced_at_once() {
+        let recorder = TraceRecorder::new();
+        let (platform, _) = platform_at(at(5, 14, 0), 1000.0);
+        let platform = platform.with_trace(recorder.clone());
+
+        let result = platform
+            .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(1.0)))
+            .await;
+
+        assert!(result.is_err());
+        let trace = recorder.build_trace(trace_summary());
+        assert_eq!(trace.events.len(), 1);
+        assert_eq!(trace.events[0].kind, EventKind::RejectedOrder);
+        assert_eq!(trace.events[0].time, at(5, 14, 0));
+    }
+
+    #[tokio::test]
+    async fn the_trace_names_the_tactic_that_placed_the_order() {
         use crate::activity::{with_tactic, TacticContext};
         let recorder = TraceRecorder::new();
-        let (platform, _) = platform_at(at(5, 14, 30), 1000.0);
+        let (platform, clock) = platform_at(at(5, 14, 30), 1000.0);
         let platform = platform.with_trace(recorder.clone());
         let context = TacticContext {
             strategy: "core".to_string(),
             tactic: "ETF".to_string(),
         };
 
-        with_tactic(context, async {
-            platform
-                .place_order(OrderRequest::market_order_buy(vti(), Amount::Quantity(1.0)))
-                .await
-        })
-        .await
-        .unwrap();
+        with_tactic(context, async { buy(&platform, 1.0).await }).await;
+        clock.set(at(5, 14, 31));
+        // The fill happens later, outside the tactic's scope.
+        platform.fill_due_orders();
 
-        let summary = crate::backtest::trace::TraceSummary {
-            config: String::new(),
-            range_start: at(5, 14, 30),
-            range_end: at(5, 14, 32),
-            starting_cash: 1000.0,
-            final_value: 0.0,
-            return_percent: 0.0,
-            trade_count: 1,
-        };
-        let event = &recorder.build_trace(summary).events[0];
+        let event = &recorder.build_trace(trace_summary()).events[0];
         assert_eq!(event.strategy.as_deref(), Some("core"));
         assert_eq!(event.tactic.as_deref(), Some("ETF"));
     }
